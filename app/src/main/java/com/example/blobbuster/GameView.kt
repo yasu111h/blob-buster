@@ -172,8 +172,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                     val idx = event.findPointerIndex(dragPointerId)
                     if (idx != -1) {
                         val currentX = event.getX(idx)
-                        player.move(currentX - lastDragX)
-                        lastDragX = currentX
+                        player.x = currentX.coerceIn(player.width / 2f, screenWidth - player.width / 2f)
                     }
                 }
             }

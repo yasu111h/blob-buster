@@ -21,7 +21,7 @@ class Blob(
     val radius: Float get() = size.radius(screenWidth)
 
     private val groundY: Float = screenHeight * 0.88f
-    private val gravity: Float = screenHeight * 0.0008f
+    private val gravity: Float = screenHeight * 0.0005f
 
     fun update() {
         vy += gravity
@@ -53,12 +53,12 @@ class Blob(
     fun split(): List<Blob> {
         val smallerSize = size.smaller() ?: return emptyList()
         val leftVx = when (smallerSize) {
-            BlobSize.MEDIUM -> -screenWidth * 0.011f
-            BlobSize.SMALL -> -screenWidth * 0.014f
-            BlobSize.LARGE -> -screenWidth * 0.008f
+            BlobSize.MEDIUM -> -screenWidth * 0.007f
+            BlobSize.SMALL -> -screenWidth * 0.009f
+            BlobSize.LARGE -> -screenWidth * 0.005f
         }
         val rightVx = -leftVx
-        val splitVy = -screenHeight * 0.025f
+        val splitVy = -screenHeight * 0.018f
 
         return listOf(
             Blob(cx, cy, leftVx, splitVy, smallerSize, screenWidth, screenHeight),
