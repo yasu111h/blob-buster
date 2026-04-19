@@ -31,6 +31,7 @@ class BlobManager(
         }
 
         blobs.forEach { it.update(playerX, playerY) }
+        blobs.removeAll { it.isDead }  // 画面外に出た敵を削除
 
         // 予算蓄積
         if (blobs.size < maxBlobs) {

@@ -123,6 +123,8 @@ class Blob(
                 }
             }
         }
+        // 画面下に出たら消える
+        if (cy > screenHeight + radius * 2) isDead = true
         if (flashTimer > 0) flashTimer--
     }
 
