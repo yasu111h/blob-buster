@@ -10,38 +10,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-private class BlobPaints(
-    val outerGlow: Paint, val innerGlow: Paint, val body: Paint,
-    val rim: Paint, val shadow: Paint,
-    val eyeGlow: Paint, val eyeWhite: Paint, val pupil: Paint,
-    val pupilHighlight: Paint, val eyebrow: Paint
-) {
+private class BlobPaints(val body: Paint) {
     companion object {
-        fun create(size: BlobSize, screenWidth: Int): BlobPaints {
-            val baseColor = size.color()
-            val r = (baseColor shr 16) and 0xFF
-            val g = (baseColor shr 8) and 0xFF
-            val b = baseColor and 0xFF
-            val radius = size.radius(screenWidth)
-            return BlobPaints(
-                outerGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(40, r, g, b) },
-                innerGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(75, r, g, b) },
-                body      = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = baseColor },
-                rim       = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb(110, 255, 255, 255)
-                    style = Paint.Style.STROKE; strokeWidth = radius * 0.055f
-                },
-                shadow    = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(55, 0, 0, 0) },
-                eyeGlow   = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(85, 255, 40, 40) },
-                eyeWhite  = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFF9E7") },
-                pupil     = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF1744") },
-                pupilHighlight = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE },
-                eyebrow   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.parseColor("#1A0000"); style = Paint.Style.STROKE
-                    strokeCap = Paint.Cap.ROUND; strokeWidth = radius * 0.09f
-                }
-            )
-        }
+        fun create(size: BlobSize): BlobPaints =
+            BlobPaints(body = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = size.color() })
     }
 }
 
@@ -72,7 +44,6 @@ class Blob(
     // 攻撃タイマー（全敵対応）
     private var atkTimer1: Int = Random.nextInt(120)
     private var atkTimer2: Int = if (size == BlobSize.HUGE || size == BlobSize.DRAGON) Random.nextInt(60) else 0
-    private var atkTimer3: Int = if (size == BlobSize.DRAGON) Random.nextInt(120) else 0
 
     companion object {
         private val cache = HashMap<BlobSize, BlobPaints>(8)
@@ -82,9 +53,9 @@ class Blob(
         private val hpBarYellowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFD740") }
         private val hpBarRedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF3030") }
 
-        fun initSharedPaints(screenWidth: Int) {
+        fun initSharedPaints(@Suppress("UNUSED_PARAMETER") screenWidth: Int) {
             cache.clear()
-            for (size in BlobSize.values()) cache[size] = BlobPaints.create(size, screenWidth)
+            for (size in BlobSize.values()) cache[size] = BlobPaints.create(size)
         }
     }
 
@@ -185,16 +156,12 @@ class Blob(
             }
             BlobSize.DRAGON -> {
                 atkTimer1++
-                if (atkTimer1 >= (180 * congestion).toInt()) { atkTimer1 = 0
-                    result.addAll(ringBurst(count = 8, tint = 2))
+                if (atkTimer1 >= (120 * congestion).toInt()) { atkTimer1 = 0
+                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.30f, tint = 2, speedMult = 1.6f))
                 }
                 atkTimer2++
-                if (atkTimer2 >= (48 * congestion).toInt()) { atkTimer2 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 3, spread = 0.18f, tint = 2, speedMult = 1.9f))
-                }
-                atkTimer3++
-                if (atkTimer3 >= (280 * congestion).toInt()) { atkTimer3 = 0
-                    result.addAll(spiralBurst(count = 12, tint = 2))
+                if (atkTimer2 >= (60 * congestion).toInt()) { atkTimer2 = 0
+                    aimShot(playerX, playerY, tint = 2, speedMult = 2.0f)?.let { result.add(it) }
                 }
             }
         }
@@ -222,25 +189,6 @@ class Blob(
         }
     }
 
-    private fun ringBurst(count: Int, tint: Int): List<EnemyBullet> {
-        val speed = screenHeight * 0.007f
-        val step = (2.0 * Math.PI / count).toFloat()
-        return (0 until count).map { i ->
-            val a = step * i
-            EnemyBullet(cx, cy, cos(a) * speed, sin(a) * speed, screenWidth, screenHeight, tint)
-        }
-    }
-
-    private fun spiralBurst(count: Int, tint: Int): List<EnemyBullet> {
-        val baseSpeed = screenHeight * 0.006f
-        val step = (2.0 * Math.PI / count).toFloat()
-        return (0 until count).map { i ->
-            val a = step * i
-            val spd = baseSpeed * (0.7f + 0.8f * i.toFloat() / count)
-            EnemyBullet(cx, cy, cos(a) * spd, sin(a) * spd, screenWidth, screenHeight, tint)
-        }
-    }
-
     fun takeDamage(): Boolean {
         hp--; flashTimer = 8
         if (hp <= 0) { isDead = true; return true }
@@ -250,38 +198,11 @@ class Blob(
     fun draw(canvas: Canvas) {
         val p = cache[size] ?: return
 
-        if (size == BlobSize.DRAGON) {
-            canvas.drawCircle(cx, cy, radius * 2.2f, p.outerGlow)
-            canvas.drawCircle(cx, cy, radius * 1.85f, p.innerGlow)
-            canvas.drawCircle(cx, cy, radius * 1.55f, p.outerGlow)
-        }
-
-        canvas.drawCircle(cx, cy, radius * 1.45f, p.outerGlow)
-        canvas.drawCircle(cx, cy, radius * 1.18f, p.innerGlow)
+        // 本体（丸1つ）
         canvas.drawCircle(cx, cy, radius, p.body)
-        canvas.drawCircle(cx, cy, radius * 0.91f, p.rim)
-        canvas.drawCircle(cx, cy + radius * 0.5f, radius * 0.72f, p.shadow)
-
         if (flashTimer > 0) canvas.drawCircle(cx, cy, radius, flashPaint)
 
-        val eyeOffsetX = radius * 0.33f
-        val eyeOffsetY = radius * 0.12f
-        val eyeRadius  = radius * 0.25f
-        canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, eyeRadius * 1.6f, p.eyeGlow)
-        canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, eyeRadius * 1.6f, p.eyeGlow)
-        canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, eyeRadius, p.eyeWhite)
-        canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, eyeRadius, p.eyeWhite)
-        val pupilRadius = eyeRadius * 0.62f
-        canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, pupilRadius, p.pupil)
-        canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, pupilRadius, p.pupil)
-        val hlr = pupilRadius * 0.28f
-        canvas.drawCircle(cx - eyeOffsetX - pupilRadius * 0.28f, cy - eyeOffsetY - pupilRadius * 0.28f, hlr, p.pupilHighlight)
-        canvas.drawCircle(cx + eyeOffsetX - pupilRadius * 0.28f, cy - eyeOffsetY - pupilRadius * 0.28f, hlr, p.pupilHighlight)
-        canvas.drawLine(cx - eyeOffsetX - eyeRadius, cy - eyeOffsetY - eyeRadius * 0.7f,
-            cx - eyeOffsetX + eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f, p.eyebrow)
-        canvas.drawLine(cx + eyeOffsetX - eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f,
-            cx + eyeOffsetX + eyeRadius, cy - eyeOffsetY - eyeRadius * 0.7f, p.eyebrow)
-
+        // HPバー（HP複数の敵のみ）
         if (maxHp > 1) {
             val bw = radius * 1.8f; val bh = radius * 0.22f
             val bx = cx - bw / 2f; val by = cy + radius * 1.25f
@@ -293,11 +214,6 @@ class Blob(
                 else            -> hpBarGreenPaint
             }
             canvas.drawRoundRect(RectF(bx, by, bx + bw * ratio, by + bh), bh / 2, bh / 2, fgPaint)
-        }
-
-        if (size == BlobSize.HUGE) {
-            canvas.drawCircle(cx, cy, radius * 1.7f, p.outerGlow)
-            canvas.drawCircle(cx, cy, radius * 1.9f, p.innerGlow)
         }
     }
 }

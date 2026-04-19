@@ -447,36 +447,36 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             }
         }
 
-        // 弾×Blob当たり判定（toList()コピーなし）
-        val bulletsToRemove = mutableListOf<Bullet>()
-        val blobsToRemove   = mutableListOf<Blob>()
-
+        // 弾×Blob当たり判定（最適化: 中間リスト廃止・O(1)dead判定）
+        val deadBlobsForDrop = mutableListOf<Blob>()
         for (bullet in bullets) {
             if (bullet.isDead) continue
             for (blob in blobManager.blobs) {
-                if (blobsToRemove.contains(blob)) continue
+                if (blob.isDead) continue   // O(1) フラグチェック（旧: O(n) contains）
                 val dx = bullet.x - blob.cx
                 val dy = bullet.y - blob.cy
                 val r  = bullet.radius + blob.radius
                 if (dx * dx + dy * dy <= r * r) {
-                    bulletsToRemove.add(bullet)
-                    if (blob.takeDamage()) {
-                        blobsToRemove.add(blob)
+                    bullet.isDead = true
+                    bulletPool.recycle(bullet)
+                    if (blob.takeDamage()) {    // blob.isDead = true もここでセット
                         scoreManager.addScore(blob.size.score())
                         blobManager.onKill()
+                        deadBlobsForDrop.add(blob)
                     }
                     break
                 }
             }
         }
 
-        bulletsToRemove.forEach { it.isDead = true; bulletPool.recycle(it) }
-        bullets.removeAll(bulletsToRemove)
-        blobManager.blobs.removeAll(blobsToRemove)
+        // イテレータで一括削除（removeAll + 線形検索を排除）
+        val bIter2 = bullets.iterator()
+        while (bIter2.hasNext()) { if (bIter2.next().isDead) bIter2.remove() }
+        blobManager.blobs.removeAll { it.isDead }
 
         // 倒した敵からアイテムドロップ（画面上2個まで）
-        for (deadBlob in blobsToRemove) {
-            if (items.size < 2 && kotlin.random.Random.nextFloat() < deadBlob.size.itemDropChance()) {
+        for (deadBlob in deadBlobsForDrop) {
+            if (items.size < 2 && Random.nextFloat() < deadBlob.size.itemDropChance()) {
                 items.add(PowerUpItem(deadBlob.cx, deadBlob.cy, screenWidth, screenHeight))
             }
         }
