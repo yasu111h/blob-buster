@@ -101,7 +101,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private var hp: Int = 3
     private val maxHp: Int = 3
     private var invincibleTimer: Int = 0
-    private val invincibleDuration: Int = 60
+    private val invincibleDuration: Int = 90  // 1.5秒 @ 60fps
 
     private var gameState: GameState = GameState.PLAYING
     private var frameCount: Int = 0

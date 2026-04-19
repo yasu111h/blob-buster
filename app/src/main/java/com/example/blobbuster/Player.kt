@@ -85,7 +85,7 @@ class Player(
     }
 
     fun draw(canvas: Canvas, invincible: Boolean, frameCount: Int) {
-        if (invincible && frameCount % 6 < 3) return
+        if (invincible && frameCount % 4 < 2) return
         canvas.drawCircle(x, y, width / 2f, bodyPaint)
     }
 }
