@@ -21,6 +21,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     // マルチタッチ管理
     private var dragPointerId: Int = -1   // プレイヤー移動用の指
     private var lastDragX: Float = 0f
+    private var shootPointerId: Int = -1  // 射撃用の指
+    @Volatile private var shootTargetX: Float = 0f
+    @Volatile private var shootTargetY: Float = 0f
+    @Volatile private var isShooting: Boolean = false
     private val pendingBullets = mutableListOf<Bullet>() // UIスレッドから追加する弾
 
     private var screenWidth: Int = 0
@@ -104,6 +108,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         gameState = GameState.PLAYING
         frameCount = 0
         dragPointerId = -1
+        shootPointerId = -1
+        isShooting = false
         synchronized(pendingBullets) { pendingBullets.clear() }
     }
 
@@ -159,15 +165,18 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                         lastDragX = tapX
                     }
                 } else {
-                    // 上ゾーン: 射撃（UIスレッドから安全に追加）
-                    val bullet = player.shoot(tapX, tapY)
-                    if (bullet != null) {
-                        synchronized(pendingBullets) { pendingBullets.add(bullet) }
+                    // 上ゾーン: 射撃開始（ホールド中は連続発射）
+                    if (shootPointerId == -1) {
+                        shootPointerId = pointerId
+                        shootTargetX = tapX
+                        shootTargetY = tapY
+                        isShooting = true
                     }
                 }
             }
 
             MotionEvent.ACTION_MOVE -> {
+                // ドラッグ移動
                 if (dragPointerId != -1) {
                     val idx = event.findPointerIndex(dragPointerId)
                     if (idx != -1) {
@@ -175,10 +184,22 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                         player.x = currentX.coerceIn(player.width / 2f, screenWidth - player.width / 2f)
                     }
                 }
+                // 射撃位置更新（指を動かすと向きが変わる）
+                if (shootPointerId != -1) {
+                    val idx = event.findPointerIndex(shootPointerId)
+                    if (idx != -1) {
+                        shootTargetX = event.getX(idx)
+                        shootTargetY = event.getY(idx)
+                    }
+                }
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
                 if (pointerId == dragPointerId) dragPointerId = -1
+                if (pointerId == shootPointerId) {
+                    shootPointerId = -1
+                    isShooting = false
+                }
             }
         }
         return true
@@ -191,6 +212,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
         // プレイヤー更新
         player.update()
+
+        // 射撃ホールド中は毎フレーム発射試行（クールダウンはPlayer側で管理）
+        if (isShooting) {
+            player.shoot(shootTargetX, shootTargetY)?.let { bullets.add(it) }
+        }
 
         // UIスレッドで追加された弾をメインリストへ
         synchronized(pendingBullets) {
