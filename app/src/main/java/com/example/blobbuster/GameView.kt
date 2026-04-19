@@ -22,10 +22,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     // マルチタッチ管理
     private var dragPointerId: Int = -1   // プレイヤー移動用の指
     private var lastDragX: Float = 0f
-    private var shootPointerId: Int = -1  // 射撃用の指
-    @Volatile private var shootTargetX: Float = 0f
-    @Volatile private var shootTargetY: Float = 0f
-    @Volatile private var isShooting: Boolean = false
     private val pendingBullets = mutableListOf<Bullet>() // UIスレッドから追加する弾
 
     private var screenWidth: Int = 0
@@ -157,8 +153,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         items.clear()
         player.bulletLevel = 1
         dragPointerId = -1
-        shootPointerId = -1
-        isShooting = false
         synchronized(pendingBullets) { pendingBullets.clear() }
     }
 
@@ -215,13 +209,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                 if (distToPlayer <= player.playerRadius && dragPointerId == -1) {
                     // プレイヤー近辺 → ドラッグ開始
                     dragPointerId = pointerId
-                } else if (shootPointerId == -1) {
-                    // それ以外 → 射撃方向指定
-                    shootPointerId = pointerId
-                    shootTargetX = tapX
-                    shootTargetY = tapY
-                    isShooting = true
                 }
+                // それ以外のタップは無視（発射方向は常に真上固定）
             }
 
             MotionEvent.ACTION_MOVE -> {
@@ -233,19 +222,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                         player.y = event.getY(idx).coerceIn(screenHeight * 0.35f, screenHeight * 0.93f)
                     }
                 }
-                // 射撃方向更新
-                if (shootPointerId != -1) {
-                    val idx = event.findPointerIndex(shootPointerId)
-                    if (idx != -1) {
-                        shootTargetX = event.getX(idx)
-                        shootTargetY = event.getY(idx)
-                    }
-                }
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
                 if (pointerId == dragPointerId) dragPointerId = -1
-                if (pointerId == shootPointerId) { shootPointerId = -1; isShooting = false }
             }
         }
         return true
@@ -262,10 +242,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // プレイヤー更新
         player.update()
 
-        // 常時連射（5連射扇状・タップ中はその方向、未タップ時は真上）
-        val aimX = if (isShooting) shootTargetX else player.x
-        val aimY = if (isShooting) shootTargetY else 0f
-        bullets.addAll(player.shootSpread(aimX, aimY, bulletPool))
+        // 常時連射（常に真上固定）
+        bullets.addAll(player.shootSpread(player.x, 0f, bulletPool))
 
         // UIスレッドで追加された弾をメインリストへ
         synchronized(pendingBullets) {
