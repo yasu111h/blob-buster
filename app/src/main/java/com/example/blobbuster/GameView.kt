@@ -24,6 +24,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private var lastDragX: Float = 0f
     private val pendingBullets = mutableListOf<Bullet>() // UIスレッドから追加する弾
 
+    // 敵弾の上限
+    private val maxEnemyBullets = 35
+
+    // ダッシュダメージ用：前フレームのプレイヤー位置
+    private var prevPlayerX: Float = 0f
+    private var prevPlayerY: Float = 0f
+
     private var screenWidth: Int = 0
     private var screenHeight: Int = 0
 
@@ -153,6 +160,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         items.clear()
         dragPointerId = -1
         synchronized(pendingBullets) { pendingBullets.clear() }
+        prevPlayerX = screenWidth / 2f
+        prevPlayerY = screenHeight * 0.90f
     }
 
     private fun startThread() {
@@ -241,6 +250,32 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // プレイヤー更新
         player.update()
 
+        // ダッシュダメージ判定（高速移動で敵・敵弾と衝突したら1ダメージ）
+        val dashDx = player.x - prevPlayerX
+        val dashDy = player.y - prevPlayerY
+        val dashDist = sqrt(dashDx * dashDx + dashDy * dashDy)
+        val dashThreshold = screenWidth * 0.11f  // 画面幅の11%以上移動でダッシュ扱い
+        if (dashDist > dashThreshold && invincibleTimer <= 0) {
+            var dashHit = false
+            for (blob in blobManager.blobs) {
+                if (segmentCircleDist(prevPlayerX, prevPlayerY, player.x, player.y, blob.cx, blob.cy)
+                    <= blob.radius + player.width / 2f) { dashHit = true; break }
+            }
+            if (!dashHit) {
+                for (eb in enemyBullets) {
+                    if (segmentCircleDist(prevPlayerX, prevPlayerY, player.x, player.y, eb.x, eb.y)
+                        <= eb.radius + player.width / 2f) { dashHit = true; break }
+                }
+            }
+            if (dashHit) {
+                hp--
+                invincibleTimer = invincibleDuration
+                if (hp <= 0) gameState = GameState.GAME_OVER
+            }
+        }
+        prevPlayerX = player.x
+        prevPlayerY = player.y
+
         // 常時連射（常に真上固定）
         bullets.addAll(player.shootSpread(player.x, 0f, bulletPool))
 
@@ -264,9 +299,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // Blob更新（プレイヤー座標とスコアを渡す）
         blobManager.update(player.x, player.y, scoreManager.score)
 
-        // 敵弾発射
+        // 敵弾発射（上限チェック・混雑度による間隔制御込み）
         for (blob in blobManager.blobs) {
-            enemyBullets.addAll(blob.tryShoot(player.x, player.y))
+            enemyBullets.addAll(blob.tryShoot(player.x, player.y, enemyBullets.size, maxEnemyBullets))
         }
 
         // 敵弾更新
@@ -474,5 +509,23 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                 retryPaint
             )
         }
+    }
+
+    /**
+     * 線分 (ax,ay)-(bx,by) と点 (px,py) の最短距離
+     * ダッシュ経路上に敵・弾がいるか判定するために使用
+     */
+    private fun segmentCircleDist(
+        ax: Float, ay: Float, bx: Float, by: Float,
+        px: Float, py: Float
+    ): Float {
+        val dx = bx - ax; val dy = by - ay
+        val lenSq = dx * dx + dy * dy
+        if (lenSq == 0f) return sqrt((px - ax) * (px - ax) + (py - ay) * (py - ay))
+        val t = ((px - ax) * dx + (py - ay) * dy) / lenSq
+        val clampedT = t.coerceIn(0f, 1f)
+        val projX = ax + clampedT * dx
+        val projY = ay + clampedT * dy
+        return sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY))
     }
 }

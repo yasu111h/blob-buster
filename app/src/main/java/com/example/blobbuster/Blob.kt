@@ -129,61 +129,71 @@ class Blob(
         if (flashTimer > 0) flashTimer--
     }
 
-    fun tryShoot(playerX: Float, playerY: Float): List<EnemyBullet> {
+    /**
+     * @param bulletCount 現在画面上の敵弾数
+     * @param maxBullets  敵弾の上限。上限に達していたら発射しない
+     */
+    fun tryShoot(playerX: Float, playerY: Float, bulletCount: Int, maxBullets: Int): List<EnemyBullet> {
+        if (bulletCount >= maxBullets) return emptyList()
+
+        // 混雑度に応じて攻撃間隔を延ばす（弾が多いほど遅くなる）
+        // 0本=1.0倍、上限の半分=2.0倍、上限=3.0倍
+        val congestion = 1f + (bulletCount.toFloat() / maxBullets) * 2f
+
         val result = mutableListOf<EnemyBullet>()
 
         when (size) {
             BlobSize.TINY -> {
                 atkTimer1++
-                if (atkTimer1 >= 300) { atkTimer1 = 0
+                if (atkTimer1 >= (300 * congestion).toInt()) { atkTimer1 = 0
                     aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
                 }
             }
             BlobSize.SMALL -> {
                 atkTimer1++
-                if (atkTimer1 >= 240) { atkTimer1 = 0
+                if (atkTimer1 >= (240 * congestion).toInt()) { atkTimer1 = 0
                     aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
                 }
             }
             BlobSize.SPEEDY -> {
                 atkTimer1++
-                if (atkTimer1 >= 200) { atkTimer1 = 0
+                if (atkTimer1 >= (200 * congestion).toInt()) { atkTimer1 = 0
                     aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
                 }
             }
             BlobSize.MEDIUM -> {
                 atkTimer1++
-                if (atkTimer1 >= 120) { atkTimer1 = 0
+                if (atkTimer1 >= (120 * congestion).toInt()) { atkTimer1 = 0
                     aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
                 }
             }
             BlobSize.LARGE -> {
                 atkTimer1++
-                if (atkTimer1 >= 100) { atkTimer1 = 0
+                if (atkTimer1 >= (100 * congestion).toInt()) { atkTimer1 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 3, spread = 0.35f, tint = 0))
                 }
             }
             BlobSize.HUGE -> {
                 atkTimer1++
-                if (atkTimer1 >= 85) { atkTimer1 = 0
+                if (atkTimer1 >= (85 * congestion).toInt()) { atkTimer1 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.45f, tint = 1))
                 }
                 atkTimer2++
-                if (atkTimer2 >= 55) { atkTimer2 = 0
+                if (atkTimer2 >= (55 * congestion).toInt()) { atkTimer2 = 0
                     aimShot(playerX, playerY, tint = 1, speedMult = 1.6f)?.let { result.add(it) }
                 }
             }
             BlobSize.DRAGON -> {
                 atkTimer1++
-                if (atkTimer1 >= 180) { atkTimer1 = 0
+                if (atkTimer1 >= (180 * congestion).toInt()) { atkTimer1 = 0
                     result.addAll(ringBurst(count = 8, tint = 2))
                 }
                 atkTimer2++
-                if (atkTimer2 >= 48) { atkTimer2 = 0
+                if (atkTimer2 >= (48 * congestion).toInt()) { atkTimer2 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 3, spread = 0.18f, tint = 2, speedMult = 1.9f))
                 }
                 atkTimer3++
-                if (atkTimer3 >= 280) { atkTimer3 = 0
+                if (atkTimer3 >= (280 * congestion).toInt()) { atkTimer3 = 0
                     result.addAll(spiralBurst(count = 12, tint = 2))
                 }
             }
