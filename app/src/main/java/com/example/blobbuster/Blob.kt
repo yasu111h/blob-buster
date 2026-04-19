@@ -56,14 +56,10 @@ class Blob(
 
     private val moveSpeed: Float = size.speed(screenHeight)
 
-    // 敵弾発射（SMALLは撃たない）
-    private val canShoot: Boolean = size != BlobSize.SMALL
-    private val shootInterval: Int = when (size) {
-        BlobSize.LARGE  -> 80 + Random.nextInt(40)
-        BlobSize.MEDIUM -> 110 + Random.nextInt(40)
-        BlobSize.SMALL  -> Int.MAX_VALUE
-    }
-    private var shootTimer: Int = Random.nextInt(60) // 最初の発射タイミングをバラけさせる
+    // 敵弾発射（BlobSizeから取得）
+    private val canShoot: Boolean = size.canShoot()
+    private val shootInterval: Int = size.shootInterval()
+    private var shootTimer: Int = if (canShoot) Random.nextInt(shootInterval.coerceAtMost(60)) else 0
 
     companion object {
         private val cache = HashMap<BlobSize, BlobPaints>(4)
@@ -151,6 +147,13 @@ class Blob(
             canvas.drawRoundRect(RectF(bx, by, bx + bw, by + bh), bh / 2, bh / 2, hpBarBgPaint)
             val ratio = hp.toFloat() / maxHp
             canvas.drawRoundRect(RectF(bx, by, bx + bw * ratio, by + bh), bh / 2, bh / 2, hpBarFgPaint)
+        }
+
+        // HUGE専用: 追加の威圧リング
+        if (size == BlobSize.HUGE) {
+            val hugePaint = cache[size]!!
+            canvas.drawCircle(cx, cy, radius * 1.7f, hugePaint.outerGlow)
+            canvas.drawCircle(cx, cy, radius * 1.9f, hugePaint.innerGlow)
         }
     }
 }

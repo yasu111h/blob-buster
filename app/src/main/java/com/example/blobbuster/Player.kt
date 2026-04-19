@@ -15,11 +15,13 @@ class Player(
     private val screenHeight: Int
 ) {
     var x: Float = screenWidth / 2f
-    val y: Float = screenHeight * 0.90f
+    var y: Float = screenHeight * 0.90f
     val width: Float = screenWidth * 0.08f
     private val maxSpeed: Float = screenWidth * 0.018f
     private val shootCooldownMax: Int = 5
     private var shootCooldown: Int = 0
+    var bulletLevel: Int = 1
+    val playerRadius get() = width * 1.5f
 
     // 外側グロー
     private val outerGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -64,7 +66,7 @@ class Player(
         if (shootCooldown > 0) shootCooldown--
     }
 
-    /** 扇状に5発同時発射。クールダウン中は空リストを返す */
+    /** bulletLevelに応じて弾数を変える。クールダウン中は空リストを返す */
     fun shootSpread(targetX: Float, targetY: Float, pool: BulletPool): List<Bullet> {
         if (shootCooldown > 0) return emptyList()
         shootCooldown = shootCooldownMax
@@ -77,12 +79,24 @@ class Player(
 
         val baseAngle = atan2(dy, dx)
         val speed = screenHeight * 0.025f
-        // 中央・±15°・±32° の5方向
-        val offsets = floatArrayOf(-0.56f, -0.26f, 0f, 0.26f, 0.56f)
+
+        val offsets = when (bulletLevel) {
+            1    -> floatArrayOf(0f)
+            3    -> floatArrayOf(-0.26f, 0f, 0.26f)
+            else -> floatArrayOf(-0.56f, -0.26f, 0f, 0.26f, 0.56f)
+        }
 
         return offsets.map { offset ->
             val angle = baseAngle + offset
             pool.obtain(startX, startY, cos(angle) * speed, sin(angle) * speed)
+        }
+    }
+
+    fun increaseBulletLevel() {
+        bulletLevel = when (bulletLevel) {
+            1    -> 3
+            3    -> 5
+            else -> 5
         }
     }
 

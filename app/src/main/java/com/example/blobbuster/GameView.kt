@@ -37,6 +37,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private lateinit var player: Player
     private val bullets: MutableList<Bullet> = mutableListOf()
     private val enemyBullets: MutableList<EnemyBullet> = mutableListOf()
+    private val items: MutableList<PowerUpItem> = mutableListOf()
     private lateinit var blobManager: BlobManager
     private val scoreManager = ScoreManager()
 
@@ -108,6 +109,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         Blob.initSharedPaints(screenWidth)
         Bullet.initSharedPaints(screenWidth)
         EnemyBullet.initSharedPaints(screenWidth)
+        PowerUpItem.initPaints(screenWidth)
         bulletPool = BulletPool(screenWidth, screenHeight, initialSize = 60)
 
         val textSize = screenWidth * 0.05f
@@ -152,6 +154,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         frameCount = 0
         bgScrollY = 0f
         enemyBullets.clear()
+        items.clear()
+        player.bulletLevel = 1
         dragPointerId = -1
         shootPointerId = -1
         isShooting = false
@@ -187,8 +191,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         }
     }
 
-    // 下ゾーン境界: この y 以下はドラッグ操作、以上は射撃操作
-    private val dragZoneTop get() = screenHeight * 0.75f
+    private val dragZoneTop get() = screenHeight * 0.75f  // 後方互換のため残す
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (gameState == GameState.GAME_OVER) {
@@ -203,33 +206,34 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val tapX = event.getX(actionIndex)
                 val tapY = event.getY(actionIndex)
-                if (tapY >= dragZoneTop) {
-                    // 下ゾーン: ドラッグ開始
-                    if (dragPointerId == -1) {
-                        dragPointerId = pointerId
-                        lastDragX = tapX
-                    }
-                } else {
-                    // 上ゾーン: 射撃開始（ホールド中は連続発射）
-                    if (shootPointerId == -1) {
-                        shootPointerId = pointerId
-                        shootTargetX = tapX
-                        shootTargetY = tapY
-                        isShooting = true
-                    }
+
+                // プレイヤー近辺かどうか判定
+                val dx = tapX - player.x
+                val dy = tapY - player.y
+                val distToPlayer = sqrt(dx * dx + dy * dy)
+
+                if (distToPlayer <= player.playerRadius && dragPointerId == -1) {
+                    // プレイヤー近辺 → ドラッグ開始
+                    dragPointerId = pointerId
+                } else if (shootPointerId == -1) {
+                    // それ以外 → 射撃方向指定
+                    shootPointerId = pointerId
+                    shootTargetX = tapX
+                    shootTargetY = tapY
+                    isShooting = true
                 }
             }
 
             MotionEvent.ACTION_MOVE -> {
-                // ドラッグ移動
+                // プレイヤー移動（X・Y両方追従）
                 if (dragPointerId != -1) {
                     val idx = event.findPointerIndex(dragPointerId)
                     if (idx != -1) {
-                        val currentX = event.getX(idx)
-                        player.x = currentX.coerceIn(player.width / 2f, screenWidth - player.width / 2f)
+                        player.x = event.getX(idx).coerceIn(player.width / 2f, screenWidth - player.width / 2f)
+                        player.y = event.getY(idx).coerceIn(screenHeight * 0.35f, screenHeight * 0.93f)
                     }
                 }
-                // 射撃位置更新（指を動かすと向きが変わる）
+                // 射撃方向更新
                 if (shootPointerId != -1) {
                     val idx = event.findPointerIndex(shootPointerId)
                     if (idx != -1) {
@@ -241,10 +245,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
                 if (pointerId == dragPointerId) dragPointerId = -1
-                if (pointerId == shootPointerId) {
-                    shootPointerId = -1
-                    isShooting = false
-                }
+                if (pointerId == shootPointerId) { shootPointerId = -1; isShooting = false }
             }
         }
         return true
@@ -299,6 +300,20 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             if (eb.isDead) ebIter.remove()
         }
 
+        // アイテム更新・回収
+        val itemIter = items.iterator()
+        while (itemIter.hasNext()) {
+            val item = itemIter.next()
+            item.update(player.x, player.y)
+            if (item.checkCollect(player.x, player.y, player.width)) {
+                player.increaseBulletLevel()
+                item.isDead = true
+                itemIter.remove()
+            } else if (item.isDead) {
+                itemIter.remove()
+            }
+        }
+
         // 弾×Blob当たり判定（toList()コピーなし）
         val bulletsToRemove = mutableListOf<Bullet>()
         val blobsToRemove   = mutableListOf<Blob>()
@@ -325,6 +340,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         bulletsToRemove.forEach { it.isDead = true; bulletPool.recycle(it) }
         bullets.removeAll(bulletsToRemove)
         blobManager.blobs.removeAll(blobsToRemove)
+
+        // 倒した敵からアイテムドロップ
+        for (deadBlob in blobsToRemove) {
+            if (kotlin.random.Random.nextFloat() < deadBlob.size.itemDropChance()) {
+                items.add(PowerUpItem(deadBlob.cx, deadBlob.cy, screenWidth, screenHeight))
+            }
+        }
 
         // Player×Blob当たり判定（toList()コピーなし）
         if (invincibleTimer <= 0) {
@@ -414,6 +436,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
         // 敵弾描画
         enemyBullets.forEach { it.draw(canvas) }
+
+        // アイテム描画
+        items.forEach { it.draw(canvas) }
 
         // プレイヤー描画（無敵中は点滅）
         player.draw(canvas, invincibleTimer > 0, frameCount)
