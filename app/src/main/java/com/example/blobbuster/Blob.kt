@@ -3,20 +3,14 @@ package com.example.blobbuster
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import kotlin.math.abs
+import android.graphics.RectF
+import kotlin.math.sqrt
 
-/** BlobSize別に共有するPaintセット。インスタンスごとに持たず3セットだけ存在する */
 private class BlobPaints(
-    val outerGlow: Paint,
-    val innerGlow: Paint,
-    val body: Paint,
-    val rim: Paint,
-    val shadow: Paint,
-    val eyeGlow: Paint,
-    val eyeWhite: Paint,
-    val pupil: Paint,
-    val pupilHighlight: Paint,
-    val eyebrow: Paint
+    val outerGlow: Paint, val innerGlow: Paint, val body: Paint,
+    val rim: Paint, val shadow: Paint,
+    val eyeGlow: Paint, val eyeWhite: Paint, val pupil: Paint,
+    val pupilHighlight: Paint, val eyebrow: Paint
 ) {
     companion object {
         fun create(size: BlobSize, screenWidth: Int): BlobPaints {
@@ -30,9 +24,7 @@ private class BlobPaints(
                 innerGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(75, r, g, b) },
                 body      = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = baseColor },
                 rim       = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb(110, 255, 255, 255)
-                    style = Paint.Style.STROKE
-                    strokeWidth = radius * 0.055f
+                    color = Color.argb(110, 255, 255, 255); style = Paint.Style.STROKE; strokeWidth = radius * 0.055f
                 },
                 shadow    = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(55, 0, 0, 0) },
                 eyeGlow   = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(85, 255, 40, 40) },
@@ -40,10 +32,8 @@ private class BlobPaints(
                 pupil     = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF1744") },
                 pupilHighlight = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE },
                 eyebrow   = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.parseColor("#1A0000")
-                    style = Paint.Style.STROKE
-                    strokeCap = Paint.Cap.ROUND
-                    strokeWidth = radius * 0.09f
+                    color = Color.parseColor("#1A0000"); style = Paint.Style.STROKE
+                    strokeCap = Paint.Cap.ROUND; strokeWidth = radius * 0.09f
                 }
             )
         }
@@ -53,100 +43,89 @@ private class BlobPaints(
 class Blob(
     var cx: Float,
     var cy: Float,
-    var vx: Float,
-    var vy: Float,
     val size: BlobSize,
     private val screenWidth: Int,
     private val screenHeight: Int
 ) {
-    // radiusはsizeとscreenWidthが変わらないのでvalで1回だけ計算
     val radius: Float = size.radius(screenWidth)
+    var hp: Int = size.maxHp()
+    private val maxHp: Int = size.maxHp()
+    var isDead: Boolean = false
+    private var flashTimer: Int = 0
 
-    private val groundY: Float = screenHeight * 0.88f
-    private val gravity: Float = screenHeight * 0.0005f
+    private val moveSpeed: Float = size.speed(screenHeight)
 
     companion object {
-        // BlobSize 3種 × 1セットだけ存在する共有Paint
         private val cache = HashMap<BlobSize, BlobPaints>(4)
+        private val flashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(180, 255, 255, 255) }
+        private val hpBarBgPaint = Paint().apply { color = Color.argb(120, 0, 0, 0) }
+        private val hpBarFgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#00FF88") }
 
-        /** surfaceCreated時に1回だけ呼ぶ */
         fun initSharedPaints(screenWidth: Int) {
             cache.clear()
-            for (size in BlobSize.values()) {
-                cache[size] = BlobPaints.create(size, screenWidth)
-            }
+            for (size in BlobSize.values()) cache[size] = BlobPaints.create(size, screenWidth)
         }
     }
 
-    fun update() {
-        vy += gravity
-        cx += vx
-        cy += vy
-
-        if (cy + radius >= groundY) { cy = groundY - radius; vy = -abs(vy) }
-        if (cy - radius <= 0f)      { cy = radius;           vy =  abs(vy) }
-        if (cx - radius <= 0f)      { cx = radius;           vx =  abs(vx) }
-        if (cx + radius >= screenWidth) { cx = screenWidth - radius; vx = -abs(vx) }
+    fun update(playerX: Float, playerY: Float) {
+        val dx = playerX - cx
+        val dy = playerY - cy
+        val dist = sqrt(dx * dx + dy * dy)
+        if (dist > 1f) {
+            cx += (dx / dist) * moveSpeed
+            cy += (dy / dist) * moveSpeed
+        }
+        if (flashTimer > 0) flashTimer--
     }
 
-    fun split(): List<Blob> {
-        val smallerSize = size.smaller() ?: return emptyList()
-        val leftVx = when (smallerSize) {
-            BlobSize.MEDIUM -> -screenWidth * 0.007f
-            BlobSize.SMALL  -> -screenWidth * 0.009f
-            BlobSize.LARGE  -> -screenWidth * 0.005f
-        }
-        val splitVy = -screenHeight * 0.018f
-        return listOf(
-            Blob(cx, cy,  leftVx, splitVy, smallerSize, screenWidth, screenHeight),
-            Blob(cx, cy, -leftVx, splitVy, smallerSize, screenWidth, screenHeight)
-        )
+    /** 弾が当たった時に呼ぶ。trueなら死亡 */
+    fun takeDamage(): Boolean {
+        hp--
+        flashTimer = 8
+        if (hp <= 0) { isDead = true; return true }
+        return false
     }
 
     fun draw(canvas: Canvas) {
-        val p = cache[size] ?: return  // initSharedPaints未呼出しなら描画スキップ
+        val p = cache[size] ?: return
 
-        // グロー
         canvas.drawCircle(cx, cy, radius * 1.45f, p.outerGlow)
         canvas.drawCircle(cx, cy, radius * 1.18f, p.innerGlow)
-
-        // メインボディ
         canvas.drawCircle(cx, cy, radius, p.body)
-
-        // リムハイライト
         canvas.drawCircle(cx, cy, radius * 0.91f, p.rim)
-
-        // 下影（clipRect不使用で軽量化）
         canvas.drawCircle(cx, cy + radius * 0.5f, radius * 0.72f, p.shadow)
+
+        // 被弾フラッシュ
+        if (flashTimer > 0) canvas.drawCircle(cx, cy, radius, flashPaint)
 
         // 目
         val eyeOffsetX = radius * 0.33f
         val eyeOffsetY = radius * 0.12f
         val eyeRadius  = radius * 0.25f
-
         canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, eyeRadius * 1.6f, p.eyeGlow)
         canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, eyeRadius * 1.6f, p.eyeGlow)
         canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, eyeRadius, p.eyeWhite)
         canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, eyeRadius, p.eyeWhite)
-
         val pupilRadius = eyeRadius * 0.62f
         canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, pupilRadius, p.pupil)
         canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, pupilRadius, p.pupil)
-
         val hlr = pupilRadius * 0.28f
         canvas.drawCircle(cx - eyeOffsetX - pupilRadius * 0.28f, cy - eyeOffsetY - pupilRadius * 0.28f, hlr, p.pupilHighlight)
         canvas.drawCircle(cx + eyeOffsetX - pupilRadius * 0.28f, cy - eyeOffsetY - pupilRadius * 0.28f, hlr, p.pupilHighlight)
+        canvas.drawLine(cx - eyeOffsetX - eyeRadius, cy - eyeOffsetY - eyeRadius * 0.7f,
+            cx - eyeOffsetX + eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f, p.eyebrow)
+        canvas.drawLine(cx + eyeOffsetX - eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f,
+            cx + eyeOffsetX + eyeRadius, cy - eyeOffsetY - eyeRadius * 0.7f, p.eyebrow)
 
-        // 怒り眉毛
-        canvas.drawLine(
-            cx - eyeOffsetX - eyeRadius * 1.0f, cy - eyeOffsetY - eyeRadius * 0.7f,
-            cx - eyeOffsetX + eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f,
-            p.eyebrow
-        )
-        canvas.drawLine(
-            cx + eyeOffsetX - eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f,
-            cx + eyeOffsetX + eyeRadius * 1.0f,  cy - eyeOffsetY - eyeRadius * 0.7f,
-            p.eyebrow
-        )
+        // HPバー（2HP以上の敵のみ）
+        if (maxHp > 1) {
+            val bw = radius * 1.8f
+            val bh = radius * 0.22f
+            val bx = cx - bw / 2f
+            val by = cy + radius * 1.25f
+            canvas.drawRoundRect(RectF(bx, by, bx + bw, by + bh), bh / 2, bh / 2, hpBarBgPaint)
+            val ratio = hp.toFloat() / maxHp
+            canvas.drawRoundRect(RectF(bx, by, bx + bw * ratio, by + bh), bh / 2, bh / 2, hpBarFgPaint)
+        }
     }
 }

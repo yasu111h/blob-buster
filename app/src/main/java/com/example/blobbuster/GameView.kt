@@ -46,6 +46,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
     private var gameState: GameState = GameState.PLAYING
     private var frameCount: Int = 0
+    private var bgScrollY: Float = 0f
 
     // 星空データ: [x, y, radius, alpha]
     private data class Star(val x: Float, val y: Float, val r: Float, val alpha: Int)
@@ -147,6 +148,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         invincibleTimer = 0
         gameState = GameState.PLAYING
         frameCount = 0
+        bgScrollY = 0f
         dragPointerId = -1
         shootPointerId = -1
         isShooting = false
@@ -250,6 +252,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
         frameCount++
 
+        // 背景スクロール
+        bgScrollY += 1.5f
+
         // プレイヤー更新
         player.update()
 
@@ -275,13 +280,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             }
         }
 
-        // Blob更新
-        blobManager.update()
+        // Blob更新（プレイヤー座標を渡す）
+        blobManager.update(player.x, player.y)
 
         // 弾×Blob当たり判定（toList()コピーなし）
         val bulletsToRemove = mutableListOf<Bullet>()
         val blobsToRemove   = mutableListOf<Blob>()
-        val blobsToAdd      = mutableListOf<Blob>()
 
         for (bullet in bullets) {
             if (bullet.isDead) continue
@@ -292,19 +296,19 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                 val r  = bullet.radius + blob.radius
                 if (dx * dx + dy * dy <= r * r) {
                     bulletsToRemove.add(bullet)
-                    blobsToRemove.add(blob)
-                    scoreManager.addScore(blob.size.score())
-                    blobsToAdd.addAll(blob.split())
+                    if (blob.takeDamage()) {
+                        blobsToRemove.add(blob)
+                        scoreManager.addScore(blob.size.score())
+                        blobManager.onKill()
+                    }
                     break
                 }
             }
         }
 
-        // 当たった弾をプールに返却
         bulletsToRemove.forEach { it.isDead = true; bulletPool.recycle(it) }
         bullets.removeAll(bulletsToRemove)
         blobManager.blobs.removeAll(blobsToRemove)
-        blobManager.blobs.addAll(blobsToAdd)
 
         // Player×Blob当たり判定（toList()コピーなし）
         if (invincibleTimer <= 0) {
@@ -321,14 +325,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             }
         } else {
             invincibleTimer--
-        }
-
-        // クリア判定
-        if (blobManager.isEmpty()) {
-            blobManager.nextRound()
-            scoreManager.round = blobManager.round
-            bullets.forEach { bulletPool.recycle(it) }
-            bullets.clear()
         }
 
         // GAME_OVER判定（念の為）
@@ -350,23 +346,27 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // 背景
         canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), bgPaint)
 
-        // グリッドライン
+        // グリッドライン（スクロール）
         val gridSpacing = screenWidth * 0.12f
         var gx = 0f
         while (gx <= screenWidth) {
             canvas.drawLine(gx, 0f, gx, screenHeight * 0.88f, gridPaint)
             gx += gridSpacing
         }
-        var gy = 0f
+        val scrollOffset = bgScrollY % gridSpacing
+        var gy = scrollOffset - gridSpacing
         while (gy <= screenHeight * 0.88f) {
             canvas.drawLine(0f, gy, screenWidth.toFloat(), gy, gridPaint)
             gy += gridSpacing
         }
 
-        // 星空
+        // 星空（スクロール）
         for (star in stars) {
+            val sy = ((star.y + bgScrollY * 0.4f) % (screenHeight * 0.88f)).let {
+                if (it < 0f) it + screenHeight * 0.88f else it
+            }
             starPaint.color = Color.argb(star.alpha, 200, 220, 255)
-            canvas.drawCircle(star.x, star.y, star.r, starPaint)
+            canvas.drawCircle(star.x, sy, star.r, starPaint)
         }
 
         // 地面ライン（プレイエリア境界）
@@ -391,8 +391,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
         canvas.drawText(heartText, screenWidth - heartBounds.width() - screenWidth * 0.03f, screenHeight * 0.05f, heartPaint)
 
-        // UI: ラウンド（中央上）
-        val roundText = "ROUND ${scoreManager.round}"
+        // UI: WAVE（中央上）
+        val roundText = "WAVE ${blobManager.wave}"
         roundPaint.textSize = scorePaint.textSize
         val roundBounds = Rect()
         roundPaint.getTextBounds(roundText, 0, roundText.length, roundBounds)

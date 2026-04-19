@@ -1,74 +1,83 @@
 package com.example.blobbuster
 
 import android.graphics.Canvas
+import kotlin.random.Random
 
 class BlobManager(
     private val screenWidth: Int,
     private val screenHeight: Int
 ) {
     val blobs: MutableList<Blob> = mutableListOf()
-    var round: Int = 1
+    var wave: Int = 1
+        private set
+    var killCount: Int = 0
         private set
 
+    private val maxBlobs = 15
+    private var spawnTimer = 0
+    private var spawnInterval = 110  // フレーム数（初期: 約1.8秒）
+
+    // ゲーム開始直後は少し遅らせてスポーン
     init {
-        initRound(round)
+        spawnTimer = -60  // 最初の1秒はスポーンしない
     }
 
-    private fun initRound(r: Int) {
-        blobs.clear()
-        val largeCount = r / 2 + 1
-        val mediumCount = if (r >= 2) r / 3 else 0
+    fun update(playerX: Float, playerY: Float) {
+        blobs.forEach { it.update(playerX, playerY) }
 
-        when (r) {
-            1 -> {
-                repeat(2) { i -> blobs.add(createBlob(BlobSize.LARGE, i)) }
-            }
-            2 -> {
-                repeat(2) { i -> blobs.add(createBlob(BlobSize.LARGE, i)) }
-                blobs.add(createBlob(BlobSize.MEDIUM, 2))
-            }
-            else -> {
-                repeat(largeCount) { i -> blobs.add(createBlob(BlobSize.LARGE, i)) }
-                repeat(mediumCount) { i -> blobs.add(createBlob(BlobSize.MEDIUM, i + largeCount)) }
-            }
+        spawnTimer++
+        if (spawnTimer >= spawnInterval && blobs.size < maxBlobs) {
+            spawnBlob()
+            spawnTimer = 0
         }
     }
 
-    private fun createBlob(size: BlobSize, index: Int): Blob {
-        val section = screenWidth / 4f
-        val cx = section * (index % 3 + 1).toFloat()
-        val cy = screenHeight * 0.2f
-        val vxBase = when (size) {
-            BlobSize.LARGE -> screenWidth * 0.005f
-            BlobSize.MEDIUM -> screenWidth * 0.007f
-            BlobSize.SMALL -> screenWidth * 0.009f
+    private fun spawnBlob() {
+        val rng = Random.Default
+        // 画面上部からランダムX座標でスポーン
+        val margin = screenWidth * 0.1f
+        val cx = margin + rng.nextFloat() * (screenWidth - margin * 2)
+        val cy = -screenWidth * 0.12f  // 画面外上から
+
+        val size = when {
+            wave >= 6 -> when (rng.nextInt(10)) {
+                in 0..3 -> BlobSize.LARGE
+                in 4..6 -> BlobSize.MEDIUM
+                else    -> BlobSize.SMALL
+            }
+            wave >= 3 -> when (rng.nextInt(10)) {
+                in 0..1 -> BlobSize.LARGE
+                in 2..5 -> BlobSize.MEDIUM
+                else    -> BlobSize.SMALL
+            }
+            else -> when (rng.nextInt(10)) {
+                0       -> BlobSize.LARGE
+                in 1..3 -> BlobSize.MEDIUM
+                else    -> BlobSize.SMALL
+            }
         }
-        val vx = if (index % 2 == 0) vxBase else -vxBase
-        val vy = when (size) {
-            BlobSize.LARGE -> -screenHeight * 0.015f
-            BlobSize.MEDIUM -> -screenHeight * 0.019f
-            BlobSize.SMALL -> -screenHeight * 0.022f
-        }
-        return Blob(cx, cy, vx, vy, size, screenWidth, screenHeight)
+        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight))
     }
 
-    fun update() {
-        blobs.forEach { it.update() }
+    /** 敵を倒したときに呼ぶ */
+    fun onKill() {
+        killCount++
+        // 20キルごとにWaveアップ
+        if (killCount % 20 == 0) {
+            wave++
+            spawnInterval = maxOf(45, 110 - wave * 8)
+        }
     }
 
     fun draw(canvas: Canvas) {
         blobs.forEach { it.draw(canvas) }
     }
 
-    fun isEmpty(): Boolean = blobs.isEmpty()
-
-    fun nextRound() {
-        round++
-        initRound(round)
-    }
-
     fun reset() {
-        round = 1
-        initRound(round)
+        blobs.clear()
+        wave = 1
+        killCount = 0
+        spawnTimer = -60
+        spawnInterval = 110
     }
 }
