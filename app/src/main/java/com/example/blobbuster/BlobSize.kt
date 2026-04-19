@@ -78,13 +78,13 @@ enum class BlobSize {
     }
 
     fun itemDropChance(): Float = when (this) {
-        TINY   -> 0.03f
-        SMALL  -> 0.04f
-        SPEEDY -> 0.06f
-        MEDIUM -> 0.09f
-        LARGE  -> 0.14f
-        HUGE   -> 0.28f
-        DRAGON -> 0.50f
+        TINY   -> 0.015f
+        SMALL  -> 0.02f
+        SPEEDY -> 0.03f
+        MEDIUM -> 0.045f
+        LARGE  -> 0.07f
+        HUGE   -> 0.14f
+        DRAGON -> 0.25f
     }
 
     /** この敵が出現するのに必要な最低レベル */
