@@ -123,8 +123,9 @@ class Blob(
                 }
             }
         }
-        // 画面下に出たら消える
-        if (cy > screenHeight + radius * 2) isDead = true
+        // 画面下に出たら消える（CHASE以外は地面ライン付近で削除、CHASEはプレイヤーを追うので画面端まで許容）
+        val bottomLimit = if (moveType == MoveType.CHASE) screenHeight.toFloat() else screenHeight * 0.96f
+        if (cy > bottomLimit) isDead = true
         if (flashTimer > 0) flashTimer--
     }
 

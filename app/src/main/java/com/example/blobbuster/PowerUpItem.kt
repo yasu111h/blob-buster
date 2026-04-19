@@ -42,7 +42,7 @@ class PowerUpItem(
         y += speed  // 真下に落下
         animTick++
         // 画面下を超えたら消える
-        if (y > screenHeight + radius) isDead = true
+        if (y > screenHeight * 0.91f) isDead = true
     }
 
     fun checkCollect(playerX: Float, playerY: Float, playerWidth: Float): Boolean {
