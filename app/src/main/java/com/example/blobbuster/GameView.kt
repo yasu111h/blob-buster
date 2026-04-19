@@ -151,7 +151,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         bgScrollY = 0f
         enemyBullets.clear()
         items.clear()
-        player.bulletLevel = 1
         dragPointerId = -1
         synchronized(pendingBullets) { pendingBullets.clear() }
     }
@@ -262,12 +261,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             }
         }
 
-        // Blob更新（プレイヤー座標を渡す）
-        blobManager.update(player.x, player.y)
+        // Blob更新（プレイヤー座標とスコアを渡す）
+        blobManager.update(player.x, player.y, scoreManager.score)
 
         // 敵弾発射
         for (blob in blobManager.blobs) {
-            blob.tryShoot(player.x, player.y)?.let { enemyBullets.add(it) }
+            enemyBullets.addAll(blob.tryShoot(player.x, player.y))
         }
 
         // 敵弾更新

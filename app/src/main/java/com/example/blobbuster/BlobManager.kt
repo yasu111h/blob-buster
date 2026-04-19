@@ -1,6 +1,7 @@
 package com.example.blobbuster
 
 import android.graphics.Canvas
+import kotlin.math.pow
 import kotlin.random.Random
 
 class BlobManager(
@@ -10,81 +11,91 @@ class BlobManager(
     val blobs: MutableList<Blob> = mutableListOf()
     var wave: Int = 1
         private set
-    var killCount: Int = 0
-        private set
 
-    private val maxBlobs = 20
-    private var spawnTimer = 0
-    private var spawnInterval = 75  // フレーム数（初期: 約1.25秒）
+    private val maxBlobs = 22
+    private var spawnBudget: Float = 0f
 
-    // ゲーム開始直後は少し遅らせてスポーン
-    init {
-        spawnTimer = -60  // 最初の1秒はスポーンしない
-    }
+    // Wave 1 = 1コスト/秒 = 1/60コスト/フレーム
+    // Wave N = 2^(N-1)/60 per frame, 最大40/60
+    private val budgetPerFrame: Float
+        get() = minOf(2f.pow(wave - 1) / 60f, 40f / 60f)
 
-    fun update(playerX: Float, playerY: Float) {
+    // waveThresholds[i] = wave (i+1) になる累積スコア
+    private val waveThresholds = intArrayOf(
+        0, 300, 700, 1400, 2600, 4500, 7500, 12000, 19000
+    )
+
+    fun update(playerX: Float, playerY: Float, score: Int) {
+        // スコアに応じてwave更新（単調増加のみ）
+        for (i in waveThresholds.indices.reversed()) {
+            if (score >= waveThresholds[i]) {
+                val newWave = i + 1
+                if (newWave > wave) wave = newWave
+                break
+            }
+        }
+
         blobs.forEach { it.update(playerX, playerY) }
 
-        spawnTimer++
-        if (spawnTimer >= spawnInterval && blobs.size < maxBlobs) {
-            spawnBlob()
-            spawnTimer = 0
+        // 予算蓄積 & スポーン
+        if (blobs.size < maxBlobs) {
+            spawnBudget += budgetPerFrame
+        }
+
+        while (blobs.size < maxBlobs) {
+            val size = pickAffordableSize() ?: break
+            spawnBlob(size)
+            spawnBudget -= size.spawnCost().toFloat()
         }
     }
 
-    private fun spawnBlob() {
+    private fun pickAffordableSize(): BlobSize? {
         val rng = Random.Default
-        val margin = screenWidth * 0.1f
-
-        // Wave3以上で25%の確率で2体同時スポーン
-        val count = if (wave >= 3 && rng.nextFloat() < 0.25f) 2 else 1
-        repeat(count) {
-            if (blobs.size >= maxBlobs) return
-            val cx = margin + rng.nextFloat() * (screenWidth - margin * 2)
-            val cy = -screenWidth * 0.15f
-
-            val size = when {
-                wave >= 8 -> when (rng.nextInt(10)) {
-                    0       -> BlobSize.HUGE
-                    in 1..3 -> BlobSize.LARGE
-                    in 4..5 -> BlobSize.SPEEDY
-                    in 6..7 -> BlobSize.MEDIUM
-                    else    -> BlobSize.SMALL
-                }
-                wave >= 5 -> when (rng.nextInt(10)) {
-                    in 0..1 -> BlobSize.HUGE
-                    in 2..4 -> BlobSize.LARGE
-                    5       -> BlobSize.SPEEDY
-                    in 6..7 -> BlobSize.MEDIUM
-                    else    -> BlobSize.SMALL
-                }
-                wave >= 3 -> when (rng.nextInt(10)) {
-                    0       -> BlobSize.HUGE
-                    in 1..2 -> BlobSize.LARGE
-                    in 3..4 -> BlobSize.SPEEDY
-                    in 5..6 -> BlobSize.MEDIUM
-                    else    -> BlobSize.SMALL
-                }
-                else -> when (rng.nextInt(10)) {
-                    0       -> BlobSize.LARGE
-                    in 1..3 -> BlobSize.MEDIUM
-                    4       -> BlobSize.SPEEDY
-                    else    -> BlobSize.SMALL
-                }
-            }
-            blobs.add(Blob(cx, cy, size, screenWidth, screenHeight))
+        // 重みマップからwave対応の候補を取得 → 予算内でランダム選択
+        val candidates = buildWeightMap()
+        val affordable = candidates.filter { (size, _) -> size.spawnCost() <= spawnBudget }
+        if (affordable.isEmpty()) return null
+        val total = affordable.values.sum()
+        var roll = rng.nextInt(total)
+        for ((size, w) in affordable) {
+            roll -= w
+            if (roll < 0) return size
         }
+        return affordable.keys.first()
     }
 
-    /** 敵を倒したときに呼ぶ */
-    fun onKill() {
-        killCount++
-        // 20キルごとにWaveアップ
-        if (killCount % 20 == 0) {
-            wave++
-            spawnInterval = maxOf(45, 110 - wave * 8)
-        }
+    private fun buildWeightMap(): Map<BlobSize, Int> = when {
+        wave >= 9 -> mapOf(
+            BlobSize.DRAGON to 15, BlobSize.HUGE to 20, BlobSize.LARGE to 20,
+            BlobSize.MEDIUM to 18, BlobSize.SPEEDY to 10, BlobSize.SMALL to 10, BlobSize.TINY to 7
+        )
+        wave >= 7 -> mapOf(
+            BlobSize.DRAGON to 8, BlobSize.HUGE to 18, BlobSize.LARGE to 22,
+            BlobSize.MEDIUM to 22, BlobSize.SPEEDY to 12, BlobSize.SMALL to 12, BlobSize.TINY to 6
+        )
+        wave >= 5 -> mapOf(
+            BlobSize.HUGE to 10, BlobSize.LARGE to 20, BlobSize.MEDIUM to 25,
+            BlobSize.SPEEDY to 18, BlobSize.SMALL to 20, BlobSize.TINY to 7
+        )
+        wave >= 3 -> mapOf(
+            BlobSize.LARGE to 8, BlobSize.MEDIUM to 22, BlobSize.SPEEDY to 22,
+            BlobSize.SMALL to 30, BlobSize.TINY to 18
+        )
+        else -> mapOf(
+            BlobSize.MEDIUM to 5, BlobSize.SPEEDY to 12,
+            BlobSize.SMALL to 40, BlobSize.TINY to 43
+        )
     }
+
+    private fun spawnBlob(size: BlobSize) {
+        val margin = screenWidth * 0.08f
+        val cx = margin + Random.nextFloat() * (screenWidth - margin * 2)
+        val cy = -screenWidth * 0.15f
+        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight))
+    }
+
+    /** 後方互換性のため残す（現在はスコアでwaveが上がるため何もしない） */
+    fun onKill() {}
 
     fun draw(canvas: Canvas) {
         blobs.forEach { it.draw(canvas) }
@@ -93,8 +104,6 @@ class BlobManager(
     fun reset() {
         blobs.clear()
         wave = 1
-        killCount = 0
-        spawnTimer = -60
-        spawnInterval = 75
+        spawnBudget = 0f
     }
 }

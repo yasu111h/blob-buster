@@ -8,7 +8,6 @@ import android.graphics.RectF
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 class Player(
     private val screenWidth: Int,
@@ -21,38 +20,34 @@ class Player(
     private val shootCooldownMax: Int = 5
     private var shootCooldown: Int = 0
     var bulletLevel: Int = 1
+        private set
     val playerRadius get() = width * 1.5f
 
-    // 外側グロー
+    // バレットレベルタイマー（1以上ならカウントダウン中、0なら非アクティブ）
+    private var bulletLevelTimer: Int = 0
+    private val bulletLevelDuration: Int = 600  // 10秒 @ 60fps
+
     private val outerGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(35, 64, 196, 255)
     }
-    // 翼
     private val wingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#006699")
     }
     private val wingEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(64, 128, 170, 255)
-        style = Paint.Style.STROKE
+        color = Color.argb(64, 128, 170, 255); style = Paint.Style.STROKE
     }
-    // メインボディ
     private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#40C4FF")
     }
-    // ボディエッジハイライト
     private val edgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(160, 255, 255, 255)
-        style = Paint.Style.STROKE
+        color = Color.argb(160, 255, 255, 255); style = Paint.Style.STROKE
     }
-    // コックピット
     private val cockpitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(220, 220, 245, 255)
     }
-    // エンジン外側グロー
     private val engineOuterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(80, 255, 110, 0)
     }
-    // エンジン内側コア
     private val engineCorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFCC44")
     }
@@ -64,6 +59,25 @@ class Player(
 
     fun update() {
         if (shootCooldown > 0) shootCooldown--
+        // バレットレベルタイマー処理
+        if (bulletLevelTimer > 0) {
+            bulletLevelTimer--
+            if (bulletLevelTimer == 0) {
+                when (bulletLevel) {
+                    5 -> { bulletLevel = 3; bulletLevelTimer = bulletLevelDuration }  // 5→3、タイマー再起動
+                    3 -> { bulletLevel = 1 }                                           // 3→1、終了
+                }
+            }
+        }
+    }
+
+    /** アイテム取得時に呼ぶ */
+    fun increaseBulletLevel() {
+        when (bulletLevel) {
+            1 -> { bulletLevel = 3; bulletLevelTimer = bulletLevelDuration }
+            3 -> { bulletLevel = 5; bulletLevelTimer = bulletLevelDuration }
+            5 -> { bulletLevelTimer = bulletLevelDuration }  // タイマーリセットのみ
+        }
     }
 
     /** bulletLevelに応じて弾数を変える。クールダウン中は空リストを返す */
@@ -92,21 +106,12 @@ class Player(
         }
     }
 
-    fun increaseBulletLevel() {
-        bulletLevel = when (bulletLevel) {
-            1    -> 3
-            3    -> 5
-            else -> 5
-        }
-    }
-
     fun draw(canvas: Canvas, invincible: Boolean, frameCount: Int) {
         if (invincible && frameCount % 6 < 3) return
 
         val hw = width / 2f
         val h = width * 1.4f
 
-        // --- 外側グロー ---
         val glowPath = Path().apply {
             moveTo(x, y - h * 1.15f)
             lineTo(x - hw * 2.5f, y + hw * 0.4f)
@@ -115,7 +120,6 @@ class Player(
         }
         canvas.drawPath(glowPath, outerGlowPaint)
 
-        // --- 翼（ボディの後ろに描画）---
         wingEdgePaint.strokeWidth = hw * 0.06f
         val leftWing = Path().apply {
             moveTo(x - hw * 0.45f, y - h * 0.22f)
@@ -137,28 +141,25 @@ class Player(
         canvas.drawPath(rightWing, wingPaint)
         canvas.drawPath(rightWing, wingEdgePaint)
 
-        // --- メインボディ ---
         edgePaint.strokeWidth = hw * 0.06f
         val bodyPath = Path().apply {
-            moveTo(x, y - h)                         // ノーズ先端
-            lineTo(x - hw * 0.55f, y - h * 0.48f)   // 左肩
-            lineTo(x - hw * 0.72f, y)                // 左底
-            lineTo(x - hw * 0.22f, y - h * 0.08f)   // 底左くびれ
-            lineTo(x + hw * 0.22f, y - h * 0.08f)   // 底右くびれ
-            lineTo(x + hw * 0.72f, y)                // 右底
-            lineTo(x + hw * 0.55f, y - h * 0.48f)   // 右肩
+            moveTo(x, y - h)
+            lineTo(x - hw * 0.55f, y - h * 0.48f)
+            lineTo(x - hw * 0.72f, y)
+            lineTo(x - hw * 0.22f, y - h * 0.08f)
+            lineTo(x + hw * 0.22f, y - h * 0.08f)
+            lineTo(x + hw * 0.72f, y)
+            lineTo(x + hw * 0.55f, y - h * 0.48f)
             close()
         }
         canvas.drawPath(bodyPath, bodyPaint)
         canvas.drawPath(bodyPath, edgePaint)
 
-        // --- コックピット ---
         canvas.drawOval(
             RectF(x - hw * 0.24f, y - h * 0.83f, x + hw * 0.24f, y - h * 0.46f),
             cockpitPaint
         )
 
-        // --- エンジングロー ---
         canvas.drawCircle(x, y + hw * 0.06f, hw * 0.42f, engineOuterPaint)
         canvas.drawCircle(x, y + hw * 0.02f, hw * 0.18f, engineCorePaint)
     }
