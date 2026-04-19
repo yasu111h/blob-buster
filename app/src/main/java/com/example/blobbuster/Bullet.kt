@@ -33,61 +33,17 @@ class Bullet(
 
     fun draw(canvas: Canvas) {
         if (isDead) return
-        val p = sharedPaints ?: return
-
-        val tailEndX = x - vx / screenHeight * radius * 200f
-        val tailEndY = y - vy / screenHeight * radius * 200f
-
-        canvas.drawLine(x, y, tailEndX, tailEndY, p.trail)
-        canvas.drawLine(x, y, tailEndX, tailEndY, p.midGlow)
-        canvas.drawCircle(x, y, radius * 2.8f, p.outerBloom)
-        canvas.drawCircle(x, y, radius * 1.6f, p.innerGlow)
-        canvas.drawCircle(x, y, radius * 0.7f, p.core)
+        val p = sharedPaint ?: return
+        canvas.drawCircle(x, y, radius, p)
     }
 
     companion object {
-        private var sharedPaints: BulletPaints? = null
+        private var sharedPaint: Paint? = null
 
-        /** surfaceCreated時に1回だけ呼ぶ */
-        fun initSharedPaints(screenWidth: Int) {
-            sharedPaints = BulletPaints.create(screenWidth)
-        }
-    }
-}
-
-private class BulletPaints(
-    val trail: Paint,
-    val midGlow: Paint,
-    val outerBloom: Paint,
-    val innerGlow: Paint,
-    val core: Paint
-) {
-    companion object {
-        fun create(screenWidth: Int): BulletPaints {
-            val radius = screenWidth * 0.012f
-            return BulletPaints(
-                trail = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb(60, 255, 160, 30)
-                    style = Paint.Style.STROKE
-                    strokeCap = Paint.Cap.ROUND
-                    strokeWidth = radius * 2.2f
-                },
-                midGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb(90, 255, 200, 50)
-                    style = Paint.Style.STROKE
-                    strokeCap = Paint.Cap.ROUND
-                    strokeWidth = radius * 1.4f
-                },
-                outerBloom = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb(55, 255, 215, 0)
-                },
-                innerGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.argb(160, 255, 215, 80)
-                },
-                core = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.parseColor("#FFFFFF")
-                }
-            )
+        fun initSharedPaints(@Suppress("UNUSED_PARAMETER") screenWidth: Int) {
+            sharedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.argb(230, 255, 220, 80)
+            }
         }
     }
 }

@@ -3,8 +3,6 @@ package com.example.blobbuster
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RectF
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -28,29 +26,8 @@ class Player(
     private val level3Duration: Int = 360  // lv3: 6秒 @ 60fps
     private val level5Duration: Int = 150  // lv5: 2.5秒 @ 60fps（早めに終わる）
 
-    private val outerGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(35, 64, 196, 255)
-    }
-    private val wingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#006699")
-    }
-    private val wingEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(64, 128, 170, 255); style = Paint.Style.STROKE
-    }
     private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#40C4FF")
-    }
-    private val edgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(160, 255, 255, 255); style = Paint.Style.STROKE
-    }
-    private val cockpitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(220, 220, 245, 255)
-    }
-    private val engineOuterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(80, 255, 110, 0)
-    }
-    private val engineCorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FFCC44")
     }
 
     fun move(deltaX: Float) {
@@ -109,60 +86,7 @@ class Player(
 
     fun draw(canvas: Canvas, invincible: Boolean, frameCount: Int) {
         if (invincible && frameCount % 6 < 3) return
-
-        val hw = width / 2f
-        val h = width * 1.4f
-
-        val glowPath = Path().apply {
-            moveTo(x, y - h * 1.15f)
-            lineTo(x - hw * 2.5f, y + hw * 0.4f)
-            lineTo(x + hw * 2.5f, y + hw * 0.4f)
-            close()
-        }
-        canvas.drawPath(glowPath, outerGlowPaint)
-
-        wingEdgePaint.strokeWidth = hw * 0.06f
-        val leftWing = Path().apply {
-            moveTo(x - hw * 0.45f, y - h * 0.22f)
-            lineTo(x - hw * 2.0f, y - h * 0.04f)
-            lineTo(x - hw * 1.5f, y + hw * 0.12f)
-            lineTo(x - hw * 0.65f, y)
-            close()
-        }
-        canvas.drawPath(leftWing, wingPaint)
-        canvas.drawPath(leftWing, wingEdgePaint)
-
-        val rightWing = Path().apply {
-            moveTo(x + hw * 0.45f, y - h * 0.22f)
-            lineTo(x + hw * 2.0f, y - h * 0.04f)
-            lineTo(x + hw * 1.5f, y + hw * 0.12f)
-            lineTo(x + hw * 0.65f, y)
-            close()
-        }
-        canvas.drawPath(rightWing, wingPaint)
-        canvas.drawPath(rightWing, wingEdgePaint)
-
-        edgePaint.strokeWidth = hw * 0.06f
-        val bodyPath = Path().apply {
-            moveTo(x, y - h)
-            lineTo(x - hw * 0.55f, y - h * 0.48f)
-            lineTo(x - hw * 0.72f, y)
-            lineTo(x - hw * 0.22f, y - h * 0.08f)
-            lineTo(x + hw * 0.22f, y - h * 0.08f)
-            lineTo(x + hw * 0.72f, y)
-            lineTo(x + hw * 0.55f, y - h * 0.48f)
-            close()
-        }
-        canvas.drawPath(bodyPath, bodyPaint)
-        canvas.drawPath(bodyPath, edgePaint)
-
-        canvas.drawOval(
-            RectF(x - hw * 0.24f, y - h * 0.83f, x + hw * 0.24f, y - h * 0.46f),
-            cockpitPaint
-        )
-
-        canvas.drawCircle(x, y + hw * 0.06f, hw * 0.42f, engineOuterPaint)
-        canvas.drawCircle(x, y + hw * 0.02f, hw * 0.18f, engineCorePaint)
+        canvas.drawCircle(x, y, width / 2f, bodyPaint)
     }
 }
 
