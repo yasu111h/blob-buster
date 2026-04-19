@@ -116,25 +116,25 @@ class Blob(
         when (size) {
             BlobSize.TINY -> {
                 atkTimer1++
-                if (atkTimer1 >= (300 * congestion).toInt()) { atkTimer1 = 0
+                if (atkTimer1 >= (375 * congestion).toInt()) { atkTimer1 = 0
                     aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
                 }
             }
             BlobSize.SMALL -> {
                 atkTimer1++
-                if (atkTimer1 >= (240 * congestion).toInt()) { atkTimer1 = 0
+                if (atkTimer1 >= (300 * congestion).toInt()) { atkTimer1 = 0
                     aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
                 }
             }
             BlobSize.SPEEDY -> {
                 atkTimer1++
-                if (atkTimer1 >= (200 * congestion).toInt()) { atkTimer1 = 0
+                if (atkTimer1 >= (250 * congestion).toInt()) { atkTimer1 = 0
                     aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
                 }
             }
             BlobSize.MEDIUM -> {
                 atkTimer1++
-                if (atkTimer1 >= (120 * congestion).toInt()) { atkTimer1 = 0
+                if (atkTimer1 >= (150 * congestion).toInt()) { atkTimer1 = 0
                     aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
                 }
             }
