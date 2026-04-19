@@ -300,12 +300,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         blobManager.update(player.x, player.y, scoreManager.score)
 
         // 敵弾発射（上限チェック・混雑度による間隔制御込み）
-        // 地面ライン(0.88f)より下にいる敵は発射しない。生成された弾も地面ライン以下なら捨てる
-        val groundLine = screenHeight * 0.88f
+        // 発射禁止ライン(0.80f)より下にいる敵は撃たせない。
+        // 削除ライン(0.88f)との間にバッファを設けることで、
+        // 最速弾でも削除前に地面を越えることが数学上ありえない構造にする。
+        val noFireLine = screenHeight * 0.80f
         for (blob in blobManager.blobs) {
-            if (blob.cy > groundLine) continue
-            val newBullets = blob.tryShoot(player.x, player.y, enemyBullets.size, maxEnemyBullets)
-            enemyBullets.addAll(newBullets.filter { it.y <= groundLine })
+            if (blob.cy > noFireLine) continue
+            enemyBullets.addAll(blob.tryShoot(player.x, player.y, enemyBullets.size, maxEnemyBullets))
         }
 
         // 敵弾更新
