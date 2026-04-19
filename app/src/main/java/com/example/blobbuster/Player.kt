@@ -25,7 +25,8 @@ class Player(
 
     // バレットレベルタイマー（1以上ならカウントダウン中、0なら非アクティブ）
     private var bulletLevelTimer: Int = 0
-    private val bulletLevelDuration: Int = 600  // 10秒 @ 60fps
+    private val level3Duration: Int = 360  // lv3: 6秒 @ 60fps
+    private val level5Duration: Int = 150  // lv5: 2.5秒 @ 60fps（早めに終わる）
 
     private val outerGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(35, 64, 196, 255)
@@ -64,8 +65,8 @@ class Player(
             bulletLevelTimer--
             if (bulletLevelTimer == 0) {
                 when (bulletLevel) {
-                    5 -> { bulletLevel = 3; bulletLevelTimer = bulletLevelDuration }  // 5→3、タイマー再起動
-                    3 -> { bulletLevel = 1 }                                           // 3→1、終了
+                    5 -> { bulletLevel = 3; bulletLevelTimer = level3Duration }  // 5→3、タイマー再起動
+                    3 -> { bulletLevel = 1 }                                      // 3→1、終了
                 }
             }
         }
@@ -74,9 +75,9 @@ class Player(
     /** アイテム取得時に呼ぶ */
     fun increaseBulletLevel() {
         when (bulletLevel) {
-            1 -> { bulletLevel = 3; bulletLevelTimer = bulletLevelDuration }
-            3 -> { bulletLevel = 5; bulletLevelTimer = bulletLevelDuration }
-            5 -> { bulletLevelTimer = bulletLevelDuration }  // タイマーリセットのみ
+            1 -> { bulletLevel = 3; bulletLevelTimer = level3Duration }
+            3 -> { bulletLevel = 5; bulletLevelTimer = level5Duration }
+            5 -> { bulletLevelTimer = level5Duration }  // タイマーリセットのみ
         }
     }
 

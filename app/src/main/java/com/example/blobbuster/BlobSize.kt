@@ -86,4 +86,15 @@ enum class BlobSize {
         HUGE   -> 0.55f
         DRAGON -> 1.00f
     }
+
+    /** この敵が出現するのに必要な最低レベル */
+    fun minLevel(): Int = when (this) {
+        TINY   -> 1
+        SMALL  -> 2
+        SPEEDY -> 3
+        MEDIUM -> 4
+        LARGE  -> 6
+        HUGE   -> 8
+        DRAGON -> 10
+    }
 }

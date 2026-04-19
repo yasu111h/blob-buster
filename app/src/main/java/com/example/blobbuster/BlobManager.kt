@@ -64,14 +64,9 @@ class BlobManager(
         return available.last()
     }
 
-    /** 現在のlevelで出現可能な敵リスト */
-    private fun availableSizes(): List<BlobSize> = when {
-        level >= 9 -> BlobSize.values().toList()
-        level >= 7 -> listOf(BlobSize.TINY, BlobSize.SMALL, BlobSize.SPEEDY, BlobSize.MEDIUM, BlobSize.LARGE, BlobSize.HUGE)
-        level >= 5 -> listOf(BlobSize.TINY, BlobSize.SMALL, BlobSize.SPEEDY, BlobSize.MEDIUM, BlobSize.LARGE)
-        level >= 3 -> listOf(BlobSize.TINY, BlobSize.SMALL, BlobSize.SPEEDY, BlobSize.MEDIUM)
-        else       -> listOf(BlobSize.TINY, BlobSize.SMALL, BlobSize.SPEEDY)
-    }
+    /** 現在のlevelで出現可能な敵リスト（minLevel以下はフィルタ） */
+    private fun availableSizes(): List<BlobSize> =
+        BlobSize.values().filter { level >= it.minLevel() }
 
     private fun spawnBlob(size: BlobSize) {
         val margin = screenWidth * 0.08f

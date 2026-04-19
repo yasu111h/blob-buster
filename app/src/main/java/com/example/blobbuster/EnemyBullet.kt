@@ -41,7 +41,7 @@ class EnemyBullet(
     fun update() {
         x += vx
         y += vy
-        if (y > screenHeight * 0.97f || y < -radius ||
+        if (y > screenHeight * 0.94f || y < -radius ||
             x < -radius || x > screenWidth + radius) {
             isDead = true
         }
