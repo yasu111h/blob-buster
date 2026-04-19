@@ -4,7 +4,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 class PowerUpItem(
     var x: Float,
@@ -15,8 +14,7 @@ class PowerUpItem(
     val radius: Float = screenWidth * 0.032f
     var isDead: Boolean = false
     private var animTick: Int = 0
-
-    private val speed = screenHeight * 0.007f
+    private val speed = screenHeight * 0.006f
 
     companion object {
         private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -39,15 +37,12 @@ class PowerUpItem(
         }
     }
 
+    /** playerX/playerY は当たり判定用（移動には使わない） */
     fun update(playerX: Float, playerY: Float) {
-        val dx = playerX - x
-        val dy = playerY - y
-        val dist = sqrt(dx * dx + dy * dy)
-        if (dist > 1f) {
-            x += (dx / dist) * speed
-            y += (dy / dist) * speed
-        }
+        y += speed  // 真下に落下
         animTick++
+        // 画面下を超えたら消える
+        if (y > screenHeight + radius) isDead = true
     }
 
     fun checkCollect(playerX: Float, playerY: Float, playerWidth: Float): Boolean {

@@ -59,9 +59,18 @@ class Blob(
     private var flashTimer: Int = 0
 
     private val moveSpeed: Float = size.speed(screenHeight)
+    private val moveType: MoveType = size.moveType()
 
-    // 攻撃タイマー（複数攻撃パターン対応）
-    private var atkTimer1: Int = if (size.canShoot()) Random.nextInt(60) else 0
+    // ZIGZAGアニメーション用
+    private var zigzagAngle: Float = Random.nextFloat() * 6.28f
+
+    // RANDOM移動用
+    private var randomDirX: Float = (Random.nextFloat() * 2f - 1f)
+    private var randomDirY: Float = 0.5f + Random.nextFloat() * 0.5f
+    private var randomTimer: Int = Random.nextInt(60)
+
+    // 攻撃タイマー（全敵対応）
+    private var atkTimer1: Int = Random.nextInt(120)
     private var atkTimer2: Int = if (size == BlobSize.HUGE || size == BlobSize.DRAGON) Random.nextInt(60) else 0
     private var atkTimer3: Int = if (size == BlobSize.DRAGON) Random.nextInt(120) else 0
 
@@ -80,22 +89,65 @@ class Blob(
     }
 
     fun update(playerX: Float, playerY: Float) {
-        val dx = playerX - cx
-        val dy = playerY - cy
-        val dist = sqrt(dx * dx + dy * dy)
-        if (dist > 1f) {
-            cx += (dx / dist) * moveSpeed
-            cy += (dy / dist) * moveSpeed
+        when (moveType) {
+            MoveType.STRAIGHT_DOWN -> {
+                cy += moveSpeed
+            }
+            MoveType.ZIGZAG -> {
+                zigzagAngle += 0.07f
+                cx += sin(zigzagAngle) * moveSpeed * 3.0f
+                cy += moveSpeed * 0.8f
+                cx = cx.coerceIn(radius, screenWidth - radius)
+            }
+            MoveType.RANDOM -> {
+                randomTimer++
+                if (randomTimer >= 70) {
+                    randomTimer = 0
+                    val angle = (Random.nextFloat() * 2f - 0.5f) * Math.PI.toFloat()  // 下方向バイアス
+                    randomDirX = cos(angle)
+                    randomDirY = sin(angle).coerceAtLeast(-0.3f)  // 上方向を制限
+                }
+                cx += randomDirX * moveSpeed * 1.5f
+                cy += randomDirY * moveSpeed * 1.5f
+                cx = cx.coerceIn(radius, screenWidth - radius)
+                // 上に行きすぎたら補正
+                if (cy < -radius * 2f) cy += moveSpeed
+            }
+            MoveType.CHASE -> {
+                val dx = playerX - cx
+                val dy = playerY - cy
+                val dist = sqrt(dx * dx + dy * dy)
+                if (dist > 1f) {
+                    cx += (dx / dist) * moveSpeed
+                    cy += (dy / dist) * moveSpeed
+                }
+            }
         }
         if (flashTimer > 0) flashTimer--
     }
 
-    /** プレイヤーに向けて弾を発射。このフレームに発射する弾リストを返す */
     fun tryShoot(playerX: Float, playerY: Float): List<EnemyBullet> {
-        if (!size.canShoot()) return emptyList()
         val result = mutableListOf<EnemyBullet>()
 
         when (size) {
+            BlobSize.TINY -> {
+                atkTimer1++
+                if (atkTimer1 >= 300) { atkTimer1 = 0
+                    aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
+                }
+            }
+            BlobSize.SMALL -> {
+                atkTimer1++
+                if (atkTimer1 >= 240) { atkTimer1 = 0
+                    aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
+                }
+            }
+            BlobSize.SPEEDY -> {
+                atkTimer1++
+                if (atkTimer1 >= 200) { atkTimer1 = 0
+                    aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
+                }
+            }
             BlobSize.MEDIUM -> {
                 atkTimer1++
                 if (atkTimer1 >= 120) { atkTimer1 = 0
@@ -109,35 +161,29 @@ class Blob(
                 }
             }
             BlobSize.HUGE -> {
-                // 攻撃1: 5方向拡散
                 atkTimer1++
                 if (atkTimer1 >= 85) { atkTimer1 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.45f, tint = 1))
                 }
-                // 攻撃2: 高速照準弾
                 atkTimer2++
                 if (atkTimer2 >= 55) { atkTimer2 = 0
                     aimShot(playerX, playerY, tint = 1, speedMult = 1.6f)?.let { result.add(it) }
                 }
             }
             BlobSize.DRAGON -> {
-                // 攻撃1: 8方向全方位リングバースト
                 atkTimer1++
                 if (atkTimer1 >= 180) { atkTimer1 = 0
                     result.addAll(ringBurst(count = 8, tint = 2))
                 }
-                // 攻撃2: 3連射高速照準弾
                 atkTimer2++
                 if (atkTimer2 >= 48) { atkTimer2 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 3, spread = 0.18f, tint = 2, speedMult = 1.9f))
                 }
-                // 攻撃3: 12発スパイラルバースト
                 atkTimer3++
                 if (atkTimer3 >= 280) { atkTimer3 = 0
                     result.addAll(spiralBurst(count = 12, tint = 2))
                 }
             }
-            else -> {}
         }
         return result
     }
@@ -182,10 +228,8 @@ class Blob(
         }
     }
 
-    /** 弾が当たった時に呼ぶ。trueなら死亡 */
     fun takeDamage(): Boolean {
-        hp--
-        flashTimer = 8
+        hp--; flashTimer = 8
         if (hp <= 0) { isDead = true; return true }
         return false
     }
@@ -193,7 +237,6 @@ class Blob(
     fun draw(canvas: Canvas) {
         val p = cache[size] ?: return
 
-        // DRAGON: 追加グロー
         if (size == BlobSize.DRAGON) {
             canvas.drawCircle(cx, cy, radius * 2.2f, p.outerGlow)
             canvas.drawCircle(cx, cy, radius * 1.85f, p.innerGlow)
@@ -208,7 +251,6 @@ class Blob(
 
         if (flashTimer > 0) canvas.drawCircle(cx, cy, radius, flashPaint)
 
-        // 目
         val eyeOffsetX = radius * 0.33f
         val eyeOffsetY = radius * 0.12f
         val eyeRadius  = radius * 0.25f
@@ -227,7 +269,6 @@ class Blob(
         canvas.drawLine(cx + eyeOffsetX - eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f,
             cx + eyeOffsetX + eyeRadius, cy - eyeOffsetY - eyeRadius * 0.7f, p.eyebrow)
 
-        // HPバー（2HP以上の敵のみ）
         if (maxHp > 1) {
             val bw = radius * 1.8f; val bh = radius * 0.22f
             val bx = cx - bw / 2f; val by = cy + radius * 1.25f
@@ -241,7 +282,6 @@ class Blob(
             canvas.drawRoundRect(RectF(bx, by, bx + bw * ratio, by + bh), bh / 2, bh / 2, fgPaint)
         }
 
-        // HUGE専用: 追加リング
         if (size == BlobSize.HUGE) {
             canvas.drawCircle(cx, cy, radius * 1.7f, p.outerGlow)
             canvas.drawCircle(cx, cy, radius * 1.9f, p.innerGlow)

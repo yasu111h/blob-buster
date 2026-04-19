@@ -430,8 +430,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
         canvas.drawText(heartText, screenWidth - heartBounds.width() - screenWidth * 0.03f, screenHeight * 0.05f, heartPaint)
 
-        // UI: WAVE（中央上）
-        val roundText = "WAVE ${blobManager.wave}"
+        // UI: LEVEL（中央上）
+        val roundText = "LEVEL ${blobManager.level}"
         roundPaint.textSize = scorePaint.textSize
         val roundBounds = Rect()
         roundPaint.getTextBounds(roundText, 0, roundText.length, roundBounds)

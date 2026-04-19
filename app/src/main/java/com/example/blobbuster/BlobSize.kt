@@ -2,6 +2,8 @@ package com.example.blobbuster
 
 import android.graphics.Color
 
+enum class MoveType { STRAIGHT_DOWN, ZIGZAG, RANDOM, CHASE }
+
 enum class BlobSize {
     TINY, SMALL, SPEEDY, MEDIUM, LARGE, HUGE, DRAGON;
 
@@ -26,9 +28,9 @@ enum class BlobSize {
     }
 
     fun speed(screenHeight: Int): Float = screenHeight.toFloat() * when (this) {
-        TINY   -> 0.0030f
-        SMALL  -> 0.0050f
-        SPEEDY -> 0.0100f
+        TINY   -> 0.0050f
+        SMALL  -> 0.0055f
+        SPEEDY -> 0.0110f
         MEDIUM -> 0.0042f
         LARGE  -> 0.0028f
         HUGE   -> 0.0020f
@@ -55,9 +57,14 @@ enum class BlobSize {
         DRAGON -> Color.parseColor("#CC0000")
     }
 
-    fun canShoot(): Boolean = when (this) {
-        TINY, SMALL, SPEEDY -> false
-        else -> true
+    fun moveType(): MoveType = when (this) {
+        TINY   -> MoveType.STRAIGHT_DOWN
+        SMALL  -> MoveType.ZIGZAG
+        SPEEDY -> MoveType.RANDOM
+        MEDIUM -> MoveType.RANDOM
+        LARGE  -> MoveType.ZIGZAG
+        HUGE   -> MoveType.CHASE
+        DRAGON -> MoveType.CHASE
     }
 
     fun spawnCost(): Int = when (this) {
