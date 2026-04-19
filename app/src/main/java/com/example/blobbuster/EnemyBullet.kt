@@ -18,6 +18,7 @@ class EnemyBullet(
 ) {
     val radius: Float = screenWidth * 0.018f
     var isDead: Boolean = false
+    private var ttl: Int = 240  // 最大4秒（60fps）で強制消去
 
     companion object {
         private val paintsMap = HashMap<Int, EnemyBulletPaints>(3)
@@ -41,7 +42,8 @@ class EnemyBullet(
     fun update() {
         x += vx
         y += vy
-        if (y > screenHeight * 0.94f || y < -radius ||
+        ttl--
+        if (ttl <= 0 || y > screenHeight * 0.92f || y < -radius ||
             x < -radius || x > screenWidth + radius) {
             isDead = true
         }

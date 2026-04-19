@@ -353,9 +353,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         bullets.removeAll(bulletsToRemove)
         blobManager.blobs.removeAll(blobsToRemove)
 
-        // 倒した敵からアイテムドロップ
+        // 倒した敵からアイテムドロップ（画面上2個まで）
         for (deadBlob in blobsToRemove) {
-            if (kotlin.random.Random.nextFloat() < deadBlob.size.itemDropChance()) {
+            if (items.size < 2 && kotlin.random.Random.nextFloat() < deadBlob.size.itemDropChance()) {
                 items.add(PowerUpItem(deadBlob.cx, deadBlob.cy, screenWidth, screenHeight))
             }
         }
