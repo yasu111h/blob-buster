@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 private class BlobPaints(
     val outerGlow: Paint, val innerGlow: Paint, val body: Paint,
@@ -55,6 +56,15 @@ class Blob(
 
     private val moveSpeed: Float = size.speed(screenHeight)
 
+    // 敵弾発射（SMALLは撃たない）
+    private val canShoot: Boolean = size != BlobSize.SMALL
+    private val shootInterval: Int = when (size) {
+        BlobSize.LARGE  -> 80 + Random.nextInt(40)
+        BlobSize.MEDIUM -> 110 + Random.nextInt(40)
+        BlobSize.SMALL  -> Int.MAX_VALUE
+    }
+    private var shootTimer: Int = Random.nextInt(60) // 最初の発射タイミングをバラけさせる
+
     companion object {
         private val cache = HashMap<BlobSize, BlobPaints>(4)
         private val flashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(180, 255, 255, 255) }
@@ -76,6 +86,21 @@ class Blob(
             cy += (dy / dist) * moveSpeed
         }
         if (flashTimer > 0) flashTimer--
+    }
+
+    /** プレイヤーに向けて弾を発射。発射タイミングでなければnullを返す */
+    fun tryShoot(playerX: Float, playerY: Float): EnemyBullet? {
+        if (!canShoot) return null
+        shootTimer++
+        if (shootTimer < shootInterval) return null
+        shootTimer = 0
+
+        val dx = playerX - cx
+        val dy = playerY - cy
+        val dist = sqrt(dx * dx + dy * dy)
+        if (dist == 0f) return null
+        val speed = screenHeight * 0.009f
+        return EnemyBullet(cx, cy, (dx / dist) * speed, (dy / dist) * speed, screenWidth, screenHeight)
     }
 
     /** 弾が当たった時に呼ぶ。trueなら死亡 */

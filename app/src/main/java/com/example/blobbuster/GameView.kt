@@ -36,6 +36,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
     private lateinit var player: Player
     private val bullets: MutableList<Bullet> = mutableListOf()
+    private val enemyBullets: MutableList<EnemyBullet> = mutableListOf()
     private lateinit var blobManager: BlobManager
     private val scoreManager = ScoreManager()
 
@@ -106,7 +107,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // 共有PaintとBulletPoolをscreenWidth確定後に1回だけ初期化
         Blob.initSharedPaints(screenWidth)
         Bullet.initSharedPaints(screenWidth)
-        bulletPool = BulletPool(screenWidth, screenHeight)
+        EnemyBullet.initSharedPaints(screenWidth)
+        bulletPool = BulletPool(screenWidth, screenHeight, initialSize = 60)
 
         val textSize = screenWidth * 0.05f
         scorePaint.textSize = textSize
@@ -149,6 +151,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         gameState = GameState.PLAYING
         frameCount = 0
         bgScrollY = 0f
+        enemyBullets.clear()
         dragPointerId = -1
         shootPointerId = -1
         isShooting = false
@@ -258,10 +261,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // プレイヤー更新
         player.update()
 
-        // 常時連射（タップ中はその方向、未タップ時は真上）
+        // 常時連射（5連射扇状・タップ中はその方向、未タップ時は真上）
         val aimX = if (isShooting) shootTargetX else player.x
         val aimY = if (isShooting) shootTargetY else 0f
-        player.shoot(aimX, aimY, bulletPool)?.let { bullets.add(it) }
+        bullets.addAll(player.shootSpread(aimX, aimY, bulletPool))
 
         // UIスレッドで追加された弾をメインリストへ
         synchronized(pendingBullets) {
@@ -282,6 +285,19 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
         // Blob更新（プレイヤー座標を渡す）
         blobManager.update(player.x, player.y)
+
+        // 敵弾発射
+        for (blob in blobManager.blobs) {
+            blob.tryShoot(player.x, player.y)?.let { enemyBullets.add(it) }
+        }
+
+        // 敵弾更新
+        val ebIter = enemyBullets.iterator()
+        while (ebIter.hasNext()) {
+            val eb = ebIter.next()
+            eb.update()
+            if (eb.isDead) ebIter.remove()
+        }
 
         // 弾×Blob当たり判定（toList()コピーなし）
         val bulletsToRemove = mutableListOf<Bullet>()
@@ -325,6 +341,24 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             }
         } else {
             invincibleTimer--
+        }
+
+        // 敵弾×Player当たり判定
+        if (invincibleTimer <= 0) {
+            val ebHitIter = enemyBullets.iterator()
+            while (ebHitIter.hasNext()) {
+                val eb = ebHitIter.next()
+                val dx = player.x - eb.x
+                val dy = player.y - eb.y
+                val r  = player.width / 2f + eb.radius
+                if (dx * dx + dy * dy <= r * r) {
+                    ebHitIter.remove()
+                    hp--
+                    invincibleTimer = invincibleDuration
+                    if (hp <= 0) gameState = GameState.GAME_OVER
+                    break
+                }
+            }
         }
 
         // GAME_OVER判定（念の為）
@@ -377,6 +411,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
 
         // 弾描画
         bullets.forEach { it.draw(canvas) }
+
+        // 敵弾描画
+        enemyBullets.forEach { it.draw(canvas) }
 
         // プレイヤー描画（無敵中は点滅）
         player.draw(canvas, invincibleTimer > 0, frameCount)

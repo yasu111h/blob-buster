@@ -5,6 +5,9 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 class Player(
@@ -61,21 +64,26 @@ class Player(
         if (shootCooldown > 0) shootCooldown--
     }
 
-    fun shoot(targetX: Float, targetY: Float, pool: BulletPool): Bullet? {
-        if (shootCooldown > 0) return null
+    /** 扇状に5発同時発射。クールダウン中は空リストを返す */
+    fun shootSpread(targetX: Float, targetY: Float, pool: BulletPool): List<Bullet> {
+        if (shootCooldown > 0) return emptyList()
         shootCooldown = shootCooldownMax
 
         val startX = x
         val startY = y - width / 2f
         val dx = targetX - startX
         val dy = targetY - startY
-        val dist = sqrt(dx * dx + dy * dy)
-        if (dist == 0f) return null
+        if (dx == 0f && dy == 0f) return emptyList()
 
+        val baseAngle = atan2(dy, dx)
         val speed = screenHeight * 0.025f
-        val vx = (dx / dist) * speed
-        val vy = (dy / dist) * speed
-        return pool.obtain(startX, startY, vx, vy)
+        // 中央・±15°・±32° の5方向
+        val offsets = floatArrayOf(-0.56f, -0.26f, 0f, 0.26f, 0.56f)
+
+        return offsets.map { offset ->
+            val angle = baseAngle + offset
+            pool.obtain(startX, startY, cos(angle) * speed, sin(angle) * speed)
+        }
     }
 
     fun draw(canvas: Canvas, invincible: Boolean, frameCount: Int) {
