@@ -15,7 +15,7 @@ class Player(
     val y: Float = screenHeight * 0.90f
     val width: Float = screenWidth * 0.08f
     private val maxSpeed: Float = screenWidth * 0.018f
-    private val shootCooldownMax: Int = 10
+    private val shootCooldownMax: Int = 5
     private var shootCooldown: Int = 0
 
     // 外側グロー

@@ -245,10 +245,10 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // プレイヤー更新
         player.update()
 
-        // 射撃ホールド中は毎フレーム発射試行（クールダウンはPlayer側で管理）
-        if (isShooting) {
-            player.shoot(shootTargetX, shootTargetY)?.let { bullets.add(it) }
-        }
+        // 常時連射（タップ中はその方向、未タップ時は真上）
+        val aimX = if (isShooting) shootTargetX else player.x
+        val aimY = if (isShooting) shootTargetY else 0f
+        player.shoot(aimX, aimY)?.let { bullets.add(it) }
 
         // UIスレッドで追加された弾をメインリストへ
         synchronized(pendingBullets) {
