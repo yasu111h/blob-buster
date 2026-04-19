@@ -16,10 +16,12 @@ enum class GameState {
 
 class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
 
-    @Volatile
-    var direction: Direction = Direction.NONE
-
     private var gameThread: GameThread? = null
+
+    // マルチタッチ管理
+    private var dragPointerId: Int = -1   // プレイヤー移動用の指
+    private var lastDragX: Float = 0f
+    private val pendingBullets = mutableListOf<Bullet>() // UIスレッドから追加する弾
 
     private var screenWidth: Int = 0
     private var screenHeight: Int = 0
@@ -101,7 +103,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         invincibleTimer = 0
         gameState = GameState.PLAYING
         frameCount = 0
-        direction = Direction.NONE
+        dragPointerId = -1
+        synchronized(pendingBullets) { pendingBullets.clear() }
     }
 
     private fun startThread() {
@@ -133,19 +136,50 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         }
     }
 
+    // 下ゾーン境界: この y 以下はドラッグ操作、以上は射撃操作
+    private val dragZoneTop get() = screenHeight * 0.75f
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.action) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                if (gameState == GameState.GAME_OVER) {
-                    if (event.action == MotionEvent.ACTION_DOWN) {
-                        initGame()
+        if (gameState == GameState.GAME_OVER) {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) initGame()
+            return true
+        }
+
+        val actionIndex = event.actionIndex
+        val pointerId = event.getPointerId(actionIndex)
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                val tapX = event.getX(actionIndex)
+                val tapY = event.getY(actionIndex)
+                if (tapY >= dragZoneTop) {
+                    // 下ゾーン: ドラッグ開始
+                    if (dragPointerId == -1) {
+                        dragPointerId = pointerId
+                        lastDragX = tapX
                     }
-                    return true
+                } else {
+                    // 上ゾーン: 射撃（UIスレッドから安全に追加）
+                    val bullet = player.shoot(tapX, tapY)
+                    if (bullet != null) {
+                        synchronized(pendingBullets) { pendingBullets.add(bullet) }
+                    }
                 }
-                direction = if (event.x < screenWidth / 2f) Direction.LEFT else Direction.RIGHT
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                direction = Direction.NONE
+
+            MotionEvent.ACTION_MOVE -> {
+                if (dragPointerId != -1) {
+                    val idx = event.findPointerIndex(dragPointerId)
+                    if (idx != -1) {
+                        val currentX = event.getX(idx)
+                        player.move(currentX - lastDragX)
+                        lastDragX = currentX
+                    }
+                }
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
+                if (pointerId == dragPointerId) dragPointerId = -1
             }
         }
         return true
@@ -157,10 +191,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         frameCount++
 
         // プレイヤー更新
-        player.update(direction)
+        player.update()
 
-        // 弾の発射
-        player.tryShoot()?.let { bullets.add(it) }
+        // UIスレッドで追加された弾をメインリストへ
+        synchronized(pendingBullets) {
+            bullets.addAll(pendingBullets)
+            pendingBullets.clear()
+        }
 
         // 弾の更新
         bullets.forEach { it.update() }
