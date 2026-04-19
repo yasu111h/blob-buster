@@ -42,7 +42,7 @@ class Bullet(
 
         fun initSharedPaints(@Suppress("UNUSED_PARAMETER") screenWidth: Int) {
             sharedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.argb(230, 255, 220, 80)
+                color = Color.parseColor("#40C4FF")  // プレイヤーと同じシアン
             }
         }
     }

@@ -25,9 +25,9 @@ class EnemyBullet(
         private val paints = arrayOfNulls<Paint>(3)
 
         fun initSharedPaints(screenWidth: Int) {
-            paints[0] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(210, 180, 190, 200) }  // 薄いグレー
-            paints[1] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 150, 160, 170) }  // 中グレー
-            paints[2] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(230, 110, 120, 135) }  // 濃いグレー
+            paints[0] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFD700") }  // 黄色
+            paints[1] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF8C00") }  // オレンジ
+            paints[2] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF2222") }  // 赤
         }
     }
 
