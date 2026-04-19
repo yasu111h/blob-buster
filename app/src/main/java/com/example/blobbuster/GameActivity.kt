@@ -1,14 +1,13 @@
 package com.example.blobbuster
 
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : AppCompatActivity() {
+class GameActivity : AppCompatActivity() {
 
-    private lateinit var titleView: TitleView
+    private lateinit var gameView: GameView
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,20 +32,17 @@ class MainActivity : AppCompatActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        titleView = TitleView(this)
-        titleView.onStartTapped = {
-            startActivity(Intent(this, GameActivity::class.java))
-        }
-        setContentView(titleView)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        titleView.startAnimation()
+        gameView = GameView(this)
+        setContentView(gameView)
     }
 
     override fun onPause() {
         super.onPause()
-        titleView.stopAnimation()
+        gameView.pause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        gameView.resume()
     }
 }

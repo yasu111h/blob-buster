@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -30,6 +31,59 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     // ダッシュダメージ用：前フレームのプレイヤー位置
     private var prevPlayerX: Float = 0f
     private var prevPlayerY: Float = 0f
+
+    // ── デバッグ ─────────────────────────────────────────
+    var debugShowEnemies: Boolean = true      // 敵の描画ON/OFF
+    var debugEnemyCanShoot: Boolean = true    // 敵の攻撃ON/OFF
+    var debugShowInfo: Boolean = false        // デバッグ情報表示
+
+    private var debugPanelOpen: Boolean = false
+    private var debugBtnRect   = RectF()
+    private var debugPanelRect = RectF()
+    private var dbgToggle1Rect = RectF()  // 敵の表示
+    private var dbgToggle2Rect = RectF()  // 敵の攻撃
+    private var dbgToggle3Rect = RectF()  // デバッグ表示
+    private var dbgCloseRect   = RectF()
+
+    // FPS計測
+    private var lastFrameNs: Long = 0L
+    @Volatile var currentFps: Float = 0f
+    @Volatile var currentFrameMs: Float = 0f
+
+    // デバッグUI用Paint（使い回し）
+    private val dbgBtnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(160, 20, 40, 80)
+    }
+    private val dbgBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(180, 64, 196, 255)
+        style = Paint.Style.STROKE; strokeWidth = 1.5f
+    }
+    private val dbgBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(200, 64, 196, 255); isFakeBoldText = true
+    }
+    private val dbgPanelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(220, 5, 15, 35)
+    }
+    private val dbgPanelBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(180, 64, 196, 255)
+        style = Paint.Style.STROKE; strokeWidth = 1.5f
+    }
+    private val dbgLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(210, 180, 220, 255)
+    }
+    private val dbgOnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#00FF88"); isFakeBoldText = true
+    }
+    private val dbgOffPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FF4444"); isFakeBoldText = true
+    }
+    private val dbgInfoBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(170, 0, 8, 20)
+    }
+    private val dbgInfoTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(230, 100, 220, 255)
+    }
+    // ────────────────────────────────────────────────────
 
     private var screenWidth: Int = 0
     private var screenHeight: Int = 0
@@ -136,6 +190,37 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             ))
         }
 
+        // デバッグボタン（右下）
+        val dbgBtnW = screenWidth * 0.13f
+        val dbgBtnH = screenWidth * 0.07f
+        val dbgBtnX = screenWidth - dbgBtnW - screenWidth * 0.02f
+        val dbgBtnY = screenHeight * 0.895f
+        debugBtnRect = RectF(dbgBtnX, dbgBtnY, dbgBtnX + dbgBtnW, dbgBtnY + dbgBtnH)
+        dbgBtnTextPaint.textSize = screenWidth * 0.035f
+
+        // デバッグパネル（右寄り）
+        val panelW = screenWidth * 0.55f
+        val panelH = screenHeight * 0.28f
+        val panelX = screenWidth - panelW - screenWidth * 0.03f
+        val panelY = screenHeight * 0.60f
+        debugPanelRect = RectF(panelX, panelY, panelX + panelW, panelY + panelH)
+        dbgLabelPaint.textSize = screenWidth * 0.034f
+        dbgOnPaint.textSize = screenWidth * 0.034f
+        dbgOffPaint.textSize = screenWidth * 0.034f
+
+        // トグル行の配置
+        val rowH = panelH * 0.22f
+        val rowY1 = panelY + panelH * 0.22f
+        val rowY2 = rowY1 + panelH * 0.25f
+        val rowY3 = rowY2 + panelH * 0.25f
+        dbgToggle1Rect = RectF(panelX + panelW * 0.05f, rowY1 - rowH * 0.8f, panelX + panelW * 0.95f, rowY1 + rowH * 0.2f)
+        dbgToggle2Rect = RectF(panelX + panelW * 0.05f, rowY2 - rowH * 0.8f, panelX + panelW * 0.95f, rowY2 + rowH * 0.2f)
+        dbgToggle3Rect = RectF(panelX + panelW * 0.05f, rowY3 - rowH * 0.8f, panelX + panelW * 0.95f, rowY3 + rowH * 0.2f)
+        dbgCloseRect = RectF(panelX + panelW * 0.75f, panelY + panelH * 0.02f, panelX + panelW * 0.98f, panelY + panelH * 0.16f)
+
+        // デバッグ情報テキスト
+        dbgInfoTextPaint.textSize = screenWidth * 0.030f
+
         initGame()
         startThread()
     }
@@ -201,6 +286,26 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             return true
         }
 
+        // デバッグパネルが開いている場合はパネルのタッチを優先
+        if (debugPanelOpen && event.actionMasked == MotionEvent.ACTION_UP) {
+            val tx = event.x; val ty = event.y
+            when {
+                dbgCloseRect.contains(tx, ty)   -> debugPanelOpen = false
+                dbgToggle1Rect.contains(tx, ty) -> debugShowEnemies = !debugShowEnemies
+                dbgToggle2Rect.contains(tx, ty) -> debugEnemyCanShoot = !debugEnemyCanShoot
+                dbgToggle3Rect.contains(tx, ty) -> debugShowInfo = !debugShowInfo
+                !debugPanelRect.contains(tx, ty) -> debugPanelOpen = false
+            }
+            return true
+        }
+
+        // デバッグボタンタップ（UP時）
+        if (event.actionMasked == MotionEvent.ACTION_UP &&
+            debugBtnRect.contains(event.x, event.y)) {
+            debugPanelOpen = !debugPanelOpen
+            return true
+        }
+
         val actionIndex = event.actionIndex
         val pointerId = event.getPointerId(actionIndex)
 
@@ -243,6 +348,15 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         if (gameState != GameState.PLAYING) return
 
         frameCount++
+
+        // FPS計測
+        val nowNs = System.nanoTime()
+        if (lastFrameNs != 0L) {
+            val elapsedNs = nowNs - lastFrameNs
+            currentFrameMs = elapsedNs / 1_000_000f
+            currentFps = if (elapsedNs > 0) 1_000_000_000f / elapsedNs else 0f
+        }
+        lastFrameNs = nowNs
 
         // 背景スクロール
         bgScrollY += 1.5f
@@ -303,10 +417,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // 発射禁止ライン(0.80f)より下にいる敵は撃たせない。
         // 削除ライン(0.88f)との間にバッファを設けることで、
         // 最速弾でも削除前に地面を越えることが数学上ありえない構造にする。
-        val noFireLine = screenHeight * 0.80f
-        for (blob in blobManager.blobs) {
-            if (blob.cy > noFireLine) continue
-            enemyBullets.addAll(blob.tryShoot(player.x, player.y, enemyBullets.size, maxEnemyBullets))
+        if (debugEnemyCanShoot) {
+            val noFireLine = screenHeight * 0.80f
+            for (blob in blobManager.blobs) {
+                if (blob.cy > noFireLine) continue
+                enemyBullets.addAll(blob.tryShoot(player.x, player.y, enemyBullets.size, maxEnemyBullets))
+            }
         }
 
         // 敵弾更新
@@ -445,8 +561,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // 地面ライン（プレイエリア境界）
         canvas.drawLine(0f, screenHeight * 0.88f, screenWidth.toFloat(), screenHeight * 0.88f, groundLinePaint)
 
-        // Blob描画
-        blobManager.draw(canvas)
+        // Blob描画（デバッグ: 非表示トグル）
+        if (debugShowEnemies) blobManager.draw(canvas)
 
         // 弾描画
         bullets.forEach { it.draw(canvas) }
@@ -476,6 +592,67 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         val roundBounds = Rect()
         roundPaint.getTextBounds(roundText, 0, roundText.length, roundBounds)
         canvas.drawText(roundText, (screenWidth - roundBounds.width()) / 2f, screenHeight * 0.05f, roundPaint)
+
+        // ── デバッグUI ─────────────────────────────────────
+        // デバッグ情報オーバーレイ（左上）
+        if (debugShowInfo) {
+            val totalObjs = blobManager.blobs.size + enemyBullets.size + bullets.size + items.size
+            val lines = listOf(
+                "ENEMIES:   ${blobManager.blobs.size}",
+                "ENEMY BLT: ${enemyBullets.size}",
+                "PLY BLT:   ${bullets.size}",
+                "ITEMS:     ${items.size}",
+                "TOTAL OBJ: $totalObjs",
+                "FPS:       ${"%.1f".format(currentFps)}",
+                "FRAME:     ${"%.1f".format(currentFrameMs)}ms"
+            )
+            val lh = dbgInfoTextPaint.textSize * 1.5f
+            val boxW = screenWidth * 0.38f
+            val boxH = lh * lines.size + lh * 0.5f
+            val boxX = screenWidth * 0.02f
+            val boxY = screenHeight * 0.07f
+            canvas.drawRoundRect(RectF(boxX, boxY, boxX + boxW, boxY + boxH), 8f, 8f, dbgInfoBgPaint)
+            lines.forEachIndexed { i, text ->
+                canvas.drawText(text, boxX + screenWidth * 0.02f, boxY + lh * (i + 1), dbgInfoTextPaint)
+            }
+        }
+
+        // DBGボタン
+        canvas.drawRoundRect(debugBtnRect, 8f, 8f, dbgBtnPaint)
+        canvas.drawRoundRect(debugBtnRect, 8f, 8f, dbgBtnBorderPaint)
+        val dbgLabel = "DBG"
+        val dbgBounds = Rect(); dbgBtnTextPaint.getTextBounds(dbgLabel, 0, dbgLabel.length, dbgBounds)
+        canvas.drawText(dbgLabel,
+            debugBtnRect.centerX() - dbgBounds.width() / 2f,
+            debugBtnRect.centerY() + dbgBounds.height() / 2f,
+            dbgBtnTextPaint)
+
+        // デバッグパネル
+        if (debugPanelOpen) {
+            canvas.drawRoundRect(debugPanelRect, 12f, 12f, dbgPanelBgPaint)
+            canvas.drawRoundRect(debugPanelRect, 12f, 12f, dbgPanelBorderPaint)
+
+            // タイトル
+            canvas.drawText("DEBUG PANEL", debugPanelRect.left + screenWidth * 0.03f,
+                debugPanelRect.top + dbgLabelPaint.textSize * 1.2f, dbgLabelPaint)
+
+            // CLOSEボタン
+            canvas.drawText("[X]", dbgCloseRect.left, dbgCloseRect.bottom, dbgOffPaint)
+
+            // トグル行ヘルパー
+            fun drawToggleRow(rect: RectF, label: String, enabled: Boolean) {
+                val statusPaint = if (enabled) dbgOnPaint else dbgOffPaint
+                val statusText = if (enabled) "ON" else "OFF"
+                canvas.drawText(label, rect.left, rect.bottom, dbgLabelPaint)
+                val sw = Rect(); statusPaint.getTextBounds(statusText, 0, statusText.length, sw)
+                canvas.drawText(statusText, debugPanelRect.right - sw.width() - screenWidth * 0.04f, rect.bottom, statusPaint)
+            }
+
+            drawToggleRow(dbgToggle1Rect, "敵の表示", debugShowEnemies)
+            drawToggleRow(dbgToggle2Rect, "敵の攻撃", debugEnemyCanShoot)
+            drawToggleRow(dbgToggle3Rect, "デバッグ表示", debugShowInfo)
+        }
+        // ────────────────────────────────────────────────────
 
         // GAME OVER オーバーレイ
         if (gameState == GameState.GAME_OVER) {
