@@ -25,9 +25,10 @@ class EnemyBullet(
         private val paints = arrayOfNulls<Paint>(3)
 
         fun initSharedPaints(screenWidth: Int) {
-            paints[0] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FFD700") }  // 黄色
-            paints[1] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF8C00") }  // オレンジ
-            paints[2] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF2222") }  // 赤
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(230, 255, 255, 255) }
+            paints[0] = paint
+            paints[1] = paint
+            paints[2] = paint
         }
     }
 
