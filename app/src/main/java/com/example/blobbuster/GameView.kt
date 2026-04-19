@@ -31,6 +31,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private var screenWidth: Int = 0
     private var screenHeight: Int = 0
 
+    /** Bulletをプールして使い回す。毎回newしないのでGCを抑制 */
+    private lateinit var bulletPool: BulletPool
+
     private lateinit var player: Player
     private val bullets: MutableList<Bullet> = mutableListOf()
     private lateinit var blobManager: BlobManager
@@ -98,6 +101,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     override fun surfaceCreated(holder: SurfaceHolder) {
         screenWidth = width
         screenHeight = height
+
+        // 共有PaintとBulletPoolをscreenWidth確定後に1回だけ初期化
+        Blob.initSharedPaints(screenWidth)
+        Bullet.initSharedPaints(screenWidth)
+        bulletPool = BulletPool(screenWidth, screenHeight)
 
         val textSize = screenWidth * 0.05f
         scorePaint.textSize = textSize
@@ -248,7 +256,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // 常時連射（タップ中はその方向、未タップ時は真上）
         val aimX = if (isShooting) shootTargetX else player.x
         val aimY = if (isShooting) shootTargetY else 0f
-        player.shoot(aimX, aimY)?.let { bullets.add(it) }
+        player.shoot(aimX, aimY, bulletPool)?.let { bullets.add(it) }
 
         // UIスレッドで追加された弾をメインリストへ
         synchronized(pendingBullets) {
@@ -256,25 +264,32 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             pendingBullets.clear()
         }
 
-        // 弾の更新
-        bullets.forEach { it.update() }
-        bullets.removeAll { it.isDead }
+        // 弾の更新（死んだ弾はプールに返却）
+        val bulletIter = bullets.iterator()
+        while (bulletIter.hasNext()) {
+            val b = bulletIter.next()
+            b.update()
+            if (b.isDead) {
+                bulletIter.remove()
+                bulletPool.recycle(b)
+            }
+        }
 
         // Blob更新
         blobManager.update()
 
-        // 弾×Blob当たり判定
+        // 弾×Blob当たり判定（toList()コピーなし）
         val bulletsToRemove = mutableListOf<Bullet>()
-        val blobsToRemove = mutableListOf<Blob>()
-        val blobsToAdd = mutableListOf<Blob>()
+        val blobsToRemove   = mutableListOf<Blob>()
+        val blobsToAdd      = mutableListOf<Blob>()
 
-        for (bullet in bullets.toList()) {
+        for (bullet in bullets) {
             if (bullet.isDead) continue
-            for (blob in blobManager.blobs.toList()) {
+            for (blob in blobManager.blobs) {
                 if (blobsToRemove.contains(blob)) continue
                 val dx = bullet.x - blob.cx
                 val dy = bullet.y - blob.cy
-                val r = bullet.radius + blob.radius
+                val r  = bullet.radius + blob.radius
                 if (dx * dx + dy * dy <= r * r) {
                     bulletsToRemove.add(bullet)
                     blobsToRemove.add(blob)
@@ -285,22 +300,22 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             }
         }
 
+        // 当たった弾をプールに返却
+        bulletsToRemove.forEach { it.isDead = true; bulletPool.recycle(it) }
         bullets.removeAll(bulletsToRemove)
         blobManager.blobs.removeAll(blobsToRemove)
         blobManager.blobs.addAll(blobsToAdd)
 
-        // Player×Blob当たり判定
+        // Player×Blob当たり判定（toList()コピーなし）
         if (invincibleTimer <= 0) {
-            for (blob in blobManager.blobs.toList()) {
+            for (blob in blobManager.blobs) {
                 val dx = player.x - blob.cx
                 val dy = player.y - blob.cy
-                val r = player.width / 2f + blob.radius
+                val r  = player.width / 2f + blob.radius
                 if (dx * dx + dy * dy <= r * r) {
                     hp--
                     invincibleTimer = invincibleDuration
-                    if (hp <= 0) {
-                        gameState = GameState.GAME_OVER
-                    }
+                    if (hp <= 0) gameState = GameState.GAME_OVER
                     break
                 }
             }
@@ -312,6 +327,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         if (blobManager.isEmpty()) {
             blobManager.nextRound()
             scoreManager.round = blobManager.round
+            bullets.forEach { bulletPool.recycle(it) }
             bullets.clear()
         }
 

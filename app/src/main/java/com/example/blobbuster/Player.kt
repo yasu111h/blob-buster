@@ -61,7 +61,7 @@ class Player(
         if (shootCooldown > 0) shootCooldown--
     }
 
-    fun shoot(targetX: Float, targetY: Float): Bullet? {
+    fun shoot(targetX: Float, targetY: Float, pool: BulletPool): Bullet? {
         if (shootCooldown > 0) return null
         shootCooldown = shootCooldownMax
 
@@ -75,7 +75,7 @@ class Player(
         val speed = screenHeight * 0.025f
         val vx = (dx / dist) * speed
         val vy = (dy / dist) * speed
-        return Bullet(startX, startY, screenWidth, screenHeight, vx, vy)
+        return pool.obtain(startX, startY, vx, vy)
     }
 
     fun draw(canvas: Canvas, invincible: Boolean, frameCount: Int) {

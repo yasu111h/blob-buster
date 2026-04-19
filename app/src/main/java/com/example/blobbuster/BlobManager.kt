@@ -53,11 +53,11 @@ class BlobManager(
     }
 
     fun update() {
-        blobs.toList().forEach { it.update() }
+        blobs.forEach { it.update() }
     }
 
     fun draw(canvas: Canvas) {
-        blobs.toList().forEach { it.draw(canvas) }
+        blobs.forEach { it.draw(canvas) }
     }
 
     fun isEmpty(): Boolean = blobs.isEmpty()
