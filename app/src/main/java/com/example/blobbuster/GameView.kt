@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 enum class GameState {
     PLAYING, GAME_OVER
@@ -43,17 +44,34 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private var gameState: GameState = GameState.PLAYING
     private var frameCount: Int = 0
 
-    private val bgPaint = Paint().apply { color = Color.parseColor("#0D1B2A") }
+    // 星空データ: [x, y, radius, alpha]
+    private data class Star(val x: Float, val y: Float, val r: Float, val alpha: Int)
+    private val stars = mutableListOf<Star>()
+    private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // グリッドライン（薄い）
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(18, 64, 160, 255)
+        style = Paint.Style.STROKE
+        strokeWidth = 1f
+    }
+
+    private val bgPaint = Paint().apply { color = Color.parseColor("#080E1A") }
+    private val groundLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(60, 64, 196, 255)
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+    }
     private val scorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = Color.parseColor("#40C4FF")  // ネオンシアン
         textSize = 0f
         isFakeBoldText = true
     }
     private val heartPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.RED
+        color = Color.parseColor("#FF1744")  // ネオンレッド
     }
     private val roundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = Color.parseColor("#FFD740")  // ネオンゴールド
         isFakeBoldText = true
     }
     private val overlayPaint = Paint().apply {
@@ -87,6 +105,20 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         gameOverPaint.textSize = screenWidth * 0.12f
         retryPaint.textSize = screenWidth * 0.06f
         gameOverScorePaint.textSize = screenWidth * 0.07f
+
+        // 星空を生成
+        val rng = Random(42)
+        stars.clear()
+        repeat(90) {
+            val alpha = rng.nextInt(120) + 60
+            val radius = rng.nextFloat() * 2.2f + 0.4f
+            stars.add(Star(
+                x = rng.nextFloat() * screenWidth,
+                y = rng.nextFloat() * (screenHeight * 0.88f),
+                r = radius,
+                alpha = alpha
+            ))
+        }
 
         initGame()
         startThread()
@@ -301,6 +333,28 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private fun drawInternal(canvas: Canvas) {
         // 背景
         canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), bgPaint)
+
+        // グリッドライン
+        val gridSpacing = screenWidth * 0.12f
+        var gx = 0f
+        while (gx <= screenWidth) {
+            canvas.drawLine(gx, 0f, gx, screenHeight * 0.88f, gridPaint)
+            gx += gridSpacing
+        }
+        var gy = 0f
+        while (gy <= screenHeight * 0.88f) {
+            canvas.drawLine(0f, gy, screenWidth.toFloat(), gy, gridPaint)
+            gy += gridSpacing
+        }
+
+        // 星空
+        for (star in stars) {
+            starPaint.color = Color.argb(star.alpha, 200, 220, 255)
+            canvas.drawCircle(star.x, star.y, star.r, starPaint)
+        }
+
+        // 地面ライン（プレイエリア境界）
+        canvas.drawLine(0f, screenHeight * 0.88f, screenWidth.toFloat(), screenHeight * 0.88f, groundLinePaint)
 
         // Blob描画
         blobManager.draw(canvas)

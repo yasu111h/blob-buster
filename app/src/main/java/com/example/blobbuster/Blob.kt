@@ -14,9 +14,54 @@ class Blob(
     private val screenWidth: Int,
     private val screenHeight: Int
 ) {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val eyePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
-    private val pupilPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
+    private val baseColor = size.color()
+    private val r = (baseColor shr 16) and 0xFF
+    private val g = (baseColor shr 8) and 0xFF
+    private val b = baseColor and 0xFF
+
+    // 外側グロー（大）
+    private val outerGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(40, r, g, b)
+    }
+    // 内側グロー（中）
+    private val innerGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(75, r, g, b)
+    }
+    // メインボディ
+    private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = baseColor
+    }
+    // リムハイライト
+    private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(110, 255, 255, 255)
+        style = Paint.Style.STROKE
+    }
+    // 下半分の影
+    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(55, 0, 0, 0)
+    }
+    // 目のグロー
+    private val eyeGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(85, 255, 40, 40)
+    }
+    // 白目
+    private val eyeWhitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFF9E7")
+    }
+    // 瞳（赤く光る）
+    private val pupilPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FF1744")
+    }
+    // 瞳ハイライト
+    private val pupilHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+    }
+    // 眉毛
+    private val eyebrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#1A0000")
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
 
     val radius: Float get() = size.radius(screenWidth)
 
@@ -28,22 +73,18 @@ class Blob(
         cx += vx
         cy += vy
 
-        // 地面バウンス
         if (cy + radius >= groundY) {
             cy = groundY - radius
             vy = -abs(vy)
         }
-        // 天井バウンス
         if (cy - radius <= 0f) {
             cy = radius
             vy = abs(vy)
         }
-        // 左壁バウンス
         if (cx - radius <= 0f) {
             cx = radius
             vx = abs(vx)
         }
-        // 右壁バウンス
         if (cx + radius >= screenWidth) {
             cx = screenWidth - radius
             vx = -abs(vx)
@@ -67,19 +108,60 @@ class Blob(
     }
 
     fun draw(canvas: Canvas) {
-        paint.color = size.color()
-        canvas.drawCircle(cx, cy, radius, paint)
+        rimPaint.strokeWidth = radius * 0.055f
+        eyebrowPaint.strokeWidth = radius * 0.09f
 
-        // 目の描画（白目）
-        val eyeOffsetX = radius * 0.3f
-        val eyeOffsetY = radius * 0.2f
-        val eyeRadius = radius * 0.22f
-        canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, eyeRadius, eyePaint)
-        canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, eyeRadius, eyePaint)
+        // --- グロー ---
+        canvas.drawCircle(cx, cy, radius * 1.45f, outerGlowPaint)
+        canvas.drawCircle(cx, cy, radius * 1.18f, innerGlowPaint)
 
-        // 瞳
-        val pupilRadius = eyeRadius * 0.55f
+        // --- メインボディ ---
+        canvas.drawCircle(cx, cy, radius, bodyPaint)
+
+        // --- リムハイライト（上部が明るい）---
+        canvas.drawCircle(cx, cy, radius * 0.91f, rimPaint)
+
+        // --- 下半分を暗くして立体感を出す ---
+        canvas.save()
+        canvas.clipRect(cx - radius, cy, cx + radius, cy + radius)
+        canvas.drawCircle(cx, cy + radius * 0.12f, radius * 0.82f, shadowPaint)
+        canvas.restore()
+
+        // --- 目 ---
+        val eyeOffsetX = radius * 0.33f
+        val eyeOffsetY = radius * 0.12f
+        val eyeRadius = radius * 0.25f
+
+        // 目グロー
+        canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, eyeRadius * 1.6f, eyeGlowPaint)
+        canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, eyeRadius * 1.6f, eyeGlowPaint)
+
+        // 白目
+        canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, eyeRadius, eyeWhitePaint)
+        canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, eyeRadius, eyeWhitePaint)
+
+        // 赤い瞳
+        val pupilRadius = eyeRadius * 0.62f
         canvas.drawCircle(cx - eyeOffsetX, cy - eyeOffsetY, pupilRadius, pupilPaint)
         canvas.drawCircle(cx + eyeOffsetX, cy - eyeOffsetY, pupilRadius, pupilPaint)
+
+        // 瞳ハイライト（小さな白点）
+        val hlr = pupilRadius * 0.28f
+        canvas.drawCircle(cx - eyeOffsetX - pupilRadius * 0.28f, cy - eyeOffsetY - pupilRadius * 0.28f, hlr, pupilHighlightPaint)
+        canvas.drawCircle(cx + eyeOffsetX - pupilRadius * 0.28f, cy - eyeOffsetY - pupilRadius * 0.28f, hlr, pupilHighlightPaint)
+
+        // --- 怒り眉毛（内側が上がるV字） ---
+        // 左眉: 外（低）→ 内（高）
+        canvas.drawLine(
+            cx - eyeOffsetX - eyeRadius * 1.0f, cy - eyeOffsetY - eyeRadius * 0.7f,
+            cx - eyeOffsetX + eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f,
+            eyebrowPaint
+        )
+        // 右眉: 内（高）→ 外（低）
+        canvas.drawLine(
+            cx + eyeOffsetX - eyeRadius * 0.65f, cy - eyeOffsetY - eyeRadius * 1.4f,
+            cx + eyeOffsetX + eyeRadius * 1.0f, cy - eyeOffsetY - eyeRadius * 0.7f,
+            eyebrowPaint
+        )
     }
 }
