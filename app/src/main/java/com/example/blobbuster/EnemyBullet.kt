@@ -21,21 +21,13 @@ class EnemyBullet(
     private var ttl: Int = 240  // 最大4秒（60fps）で強制消去
 
     companion object {
-        private val paintsMap = HashMap<Int, EnemyBulletPaints>(3)
+        // 丸1つ描画用（tint別）
+        private val paints = arrayOfNulls<Paint>(3)
 
         fun initSharedPaints(screenWidth: Int) {
-            paintsMap[0] = EnemyBulletPaints.create(screenWidth,
-                glowColor = Color.argb(80, 50, 255, 80),
-                coreColor = Color.argb(220, 150, 255, 100),
-                tipColor  = Color.parseColor("#AAFFAA"))
-            paintsMap[1] = EnemyBulletPaints.create(screenWidth,
-                glowColor = Color.argb(80, 255, 140, 0),
-                coreColor = Color.argb(220, 255, 200, 50),
-                tipColor  = Color.parseColor("#FFDD88"))
-            paintsMap[2] = EnemyBulletPaints.create(screenWidth,
-                glowColor = Color.argb(110, 255, 30, 30),
-                coreColor = Color.argb(220, 255, 80, 80),
-                tipColor  = Color.parseColor("#FF5555"))
+            paints[0] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 100, 255, 100) }
+            paints[1] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 255, 180, 50) }
+            paints[2] = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 255, 80, 80) }
         }
     }
 
@@ -51,40 +43,7 @@ class EnemyBullet(
 
     fun draw(canvas: Canvas) {
         if (isDead) return
-        val p = paintsMap[tint] ?: paintsMap[0] ?: return
-
-        val speed = screenWidth * 0.01f
-        val nx = if (speed > 0f) vx / speed else 0f
-        val ny = if (speed > 0f) vy / speed else 1f
-
-        val headLen = radius * 5f
-        val tailLen = radius * 2.5f
-        val hx = x + nx * headLen
-        val hy = y + ny * headLen
-        val tx = x - nx * tailLen
-        val ty = y - ny * tailLen
-
-        canvas.drawLine(tx, ty, hx, hy, p.glow)
-        canvas.drawLine(tx, ty, hx, hy, p.core)
-        canvas.drawCircle(hx, hy, radius * 0.6f, p.tip)
-    }
-}
-
-private class EnemyBulletPaints(val glow: Paint, val core: Paint, val tip: Paint) {
-    companion object {
-        fun create(screenWidth: Int, glowColor: Int, coreColor: Int, tipColor: Int): EnemyBulletPaints {
-            val r = screenWidth * 0.018f
-            return EnemyBulletPaints(
-                glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = glowColor; style = Paint.Style.STROKE
-                    strokeCap = Paint.Cap.ROUND; strokeWidth = r * 2.8f
-                },
-                core = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = coreColor; style = Paint.Style.STROKE
-                    strokeCap = Paint.Cap.ROUND; strokeWidth = r * 1.2f
-                },
-                tip = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = tipColor }
-            )
-        }
+        val p = paints[tint] ?: paints[0] ?: return
+        canvas.drawCircle(x, y, radius, p)
     }
 }
