@@ -12,7 +12,7 @@ class BlobManager(
     var level: Int = 1
         private set
 
-    private val maxBlobs = 22
+    private val maxBlobs = 12
     private var spawnBudget: Float = 0f
     private var targetSize: BlobSize? = null
 
