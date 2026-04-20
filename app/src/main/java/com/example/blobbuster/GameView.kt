@@ -774,7 +774,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             // 中央再開ボタン
             canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBgPaint)
             canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBorderPaint)
-            val rLabel = "▶  再開"
+            val rLabel = "▶  Resume"
             val rBounds = Rect()
             resumeBtnTextPaint.getTextBounds(rLabel, 0, rLabel.length, rBounds)
             canvas.drawText(rLabel,

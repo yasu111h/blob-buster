@@ -27,7 +27,7 @@ class Blob(
     private val screenWidth: Int,
     private val screenHeight: Int
 ) {
-    val radius: Float = size.radius(screenWidth)
+    val radius: Float = size.radius(screenWidth) * size.displayScale()
     var hp: Int = size.maxHp()
     private val maxHp: Int = size.maxHp()
     var isDead: Boolean = false
@@ -79,7 +79,7 @@ class Blob(
             bitmaps.clear()
             for (size in BlobSize.values()) {
                 val raw = rawMap[size] ?: continue
-                val d = (size.radius(screenWidth) * 2).toInt().coerceAtLeast(4)
+                val d = (size.radius(screenWidth) * size.displayScale() * 2).toInt().coerceAtLeast(4)
                 bitmaps[size] = Bitmap.createScaledBitmap(raw, d, d, true)
                 raw.recycle()
             }

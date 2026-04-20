@@ -87,6 +87,17 @@ enum class BlobSize {
         DRAGON -> 0.375f
     }
 
+    /** 画像表示サイズ倍率（当たり判定にも反映） */
+    fun displayScale(): Float = when (this) {
+        TINY   -> 2.0f
+        SMALL  -> 2.0f
+        SPEEDY -> 2.0f
+        MEDIUM -> 2.0f
+        LARGE  -> 2.0f
+        HUGE   -> 2.0f
+        DRAGON -> 2.0f
+    }
+
     /** この敵が出現するのに必要な最低レベル */
     fun minLevel(): Int = when (this) {
         TINY   -> 1
