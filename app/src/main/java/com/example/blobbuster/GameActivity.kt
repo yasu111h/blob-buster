@@ -35,7 +35,6 @@ class GameActivity : AppCompatActivity() {
 
         soundManager = SoundManager()
         gameView = GameView(this, soundManager)
-        soundManager.startBgm()
         setContentView(gameView)
     }
 

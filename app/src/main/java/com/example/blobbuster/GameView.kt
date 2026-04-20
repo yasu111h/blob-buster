@@ -294,7 +294,8 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     }
 
     private fun initGame() {
-        soundManager.resumeBgmByUser()
+        soundManager.startBgm()         // 初回のみ有効（bgmRunning=trueなら即return）
+        soundManager.resumeBgmByUser()  // ゲームオーバー後の再開時にポーズ解除
         player = Player(screenWidth, screenHeight)
         bullets.clear()
         blobManager = BlobManager(screenWidth, screenHeight)
@@ -540,6 +541,8 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             if (bullet.isDead) continue
             for (blob in blobManager.blobs) {
                 if (blob.isDead) continue   // O(1) フラグチェック（旧: O(n) contains）
+                // 画面上部（まだほぼ見えていない敵）は当たり判定をスキップ
+                if (blob.cy < blob.radius) continue
                 val dx = bullet.x - blob.cx
                 val dy = bullet.y - blob.cy
                 val r  = bullet.radius + blob.radius
