@@ -1,8 +1,12 @@
 package com.example.blobbuster
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -28,6 +32,18 @@ class Player(
 
     private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#40C4FF")
+    }
+    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+    companion object {
+        private var playerBitmap: Bitmap? = null
+
+        fun initBitmap(context: Context, playerWidth: Float) {
+            val raw = BitmapFactory.decodeResource(context.resources, R.drawable.player_ship)
+            val size = playerWidth.toInt().coerceAtLeast(4)
+            playerBitmap = Bitmap.createScaledBitmap(raw, size, size, true)
+            raw.recycle()
+        }
     }
 
     fun move(deltaX: Float) {
@@ -86,7 +102,13 @@ class Player(
 
     fun draw(canvas: Canvas, invincible: Boolean, frameCount: Int) {
         if (invincible && frameCount % 4 < 2) return
-        canvas.drawCircle(x, y, width / 2f, bodyPaint)
+        val bmp = playerBitmap
+        if (bmp != null) {
+            val half = width / 2f
+            canvas.drawBitmap(bmp, null, RectF(x - half, y - half, x + half, y + half), bitmapPaint)
+        } else {
+            canvas.drawCircle(x, y, width / 2f, bodyPaint)
+        }
     }
 }
 

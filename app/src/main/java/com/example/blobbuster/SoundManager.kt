@@ -3,100 +3,96 @@ package com.example.blobbuster
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import java.util.concurrent.Semaphore
 import kotlin.math.PI
 import kotlin.math.sin
 
 /**
- * SFX (敵撃破・ダメージ) + BGM (チップチューン生成) を管理するクラス。
+ * SFX + BGM を管理するクラス。
  *
- * BGM は Am→G→F→E のコード進行をスクエアウェーブのアルペジオで4秒ループ再生。
- * AudioTrack MODE_STATIC + setLoopPoints でシームレスループ。
+ * 【SE設計】
+ * Thread生成+Semaphoreによる旧方式は「3本上限で音がドロップする」問題があった。
+ * AudioTrack MODE_STATIC を事前にN本プール（キル音12本、ダメージ3本、アイテム3本）して
+ * ラウンドロビンで再生。Thread生成なし、生成音は1回だけ計算。常に鳴る。
  *
- * 一時停止 2フラグ方式:
- *   - bgmUserPaused   : ゲーム内ポーズボタン
- *   - bgmActivityPaused: Activityのライフサイクル（バックグラウンド）
- * どちらか一方でも true ならBGMが止まる。
+ * 【BGM設計】
+ * Am→G→F→E コード進行のチップチューン4秒ループ。
+ * AudioTrack MODE_STATIC + setLoopPoints(-1)でシームレスループ。
+ * ポーズ2フラグ方式: bgmUserPaused / bgmActivityPaused
  */
 class SoundManager {
 
     private val sampleRate = 22050
 
-    // BGM スレッド管理
-    @Volatile private var bgmRunning = false
-    @Volatile private var bgmUserPaused = false
+    // ── SFXプール ──────────────────────────────────────────────────
+    // BGMスレッド内で初期化 → sfxReady=trueになってから play が有効
+    @Volatile private var sfxReady = false
+    private val killPool   = arrayOfNulls<AudioTrack>(12)  // キル音12本（最大12敵同時撃破に対応）
+    private val damagePool = arrayOfNulls<AudioTrack>(3)
+    private val itemPool   = arrayOfNulls<AudioTrack>(3)
+    private var killIdx   = 0
+    private var damageIdx = 0
+    private var itemIdx   = 0
+
+    // ── BGM ───────────────────────────────────────────────────────
+    @Volatile private var bgmRunning        = false
+    @Volatile private var bgmUserPaused     = false
     @Volatile private var bgmActivityPaused = false
     private var bgmThread: Thread? = null
 
-    // SFX 同時再生上限 (3本まで)
-    private val sfxSemaphore = Semaphore(3)
-
-    // ── BGM データ ──────────────────────────────────────────────
-    // Am - G - F - E 進行（各8ノート、125ms/ノート = 1小節1秒 × 4小節 = 4秒ループ）
     private val bgmNotes = listOf(
-        // Bar 1: Am arpeggio
         220.00 to 125, 261.63 to 125, 329.63 to 125, 440.00 to 125,
         329.63 to 125, 261.63 to 125, 220.00 to 125,   0.00 to 125,
-        // Bar 2: G arpeggio
         196.00 to 125, 246.94 to 125, 293.66 to 125, 392.00 to 125,
         293.66 to 125, 246.94 to 125, 196.00 to 125,   0.00 to 125,
-        // Bar 3: F arpeggio
         174.61 to 125, 220.00 to 125, 261.63 to 125, 349.23 to 125,
         261.63 to 125, 220.00 to 125, 174.61 to 125,   0.00 to 125,
-        // Bar 4: E (V chord - 解決前のテンション)
         164.81 to 125, 246.94 to 125, 329.63 to 125, 415.30 to 125,
         329.63 to 125, 246.94 to 125, 164.81 to 125,   0.00 to 125
     )
-    // 各小節のベース音: A2, G2, F2, E2
     private val bgmBassFreqs = listOf(110.0, 98.0, 87.31, 82.41)
-    // ────────────────────────────────────────────────────────────
 
-    // ── SFX ─────────────────────────────────────────────────────
+    // ── SE バッファ生成 ────────────────────────────────────────────
 
-    /** 敵撃破SE: 高音→低音スイープ (120ms) */
-    fun playEnemyKilled() {
-        if (!sfxSemaphore.tryAcquire()) return
-        Thread {
-            try {
-                val durationMs = 120
-                val n = sampleRate * durationMs / 1000
-                val buf = ShortArray(n)
-                val startFreq = 880.0; val endFreq = 200.0
-                for (i in 0 until n) {
-                    val t = i.toDouble() / sampleRate
-                    val freq = startFreq + (endFreq - startFreq) * i.toDouble() / n
-                    val env = 1.0 - i.toDouble() / n
-                    buf[i] = (sin(2 * PI * freq * t) * env * 0.6 * Short.MAX_VALUE).toInt()
-                        .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-                }
-                playOnce(buf)
-            } finally { sfxSemaphore.release() }
-        }.also { it.isDaemon = true }.start()
+    /** 敵撃破音: 880Hz→200Hz スイープ */
+    private fun genKillBuf(): ShortArray {
+        val n = sampleRate * 120 / 1000
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / sampleRate
+            val freq = 880.0 + (200.0 - 880.0) * i.toDouble() / n
+            val env = 1.0 - i.toDouble() / n
+            (sin(2 * PI * freq * t) * env * 0.6 * Short.MAX_VALUE).toInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
     }
 
-    /** ダメージSE: 低音スクエアウェーブバズ (200ms) */
-    fun playPlayerDamaged() {
-        if (!sfxSemaphore.tryAcquire()) return
-        Thread {
-            try {
-                val durationMs = 200
-                val n = sampleRate * durationMs / 1000
-                val buf = ShortArray(n)
-                val freq = 110.0
-                for (i in 0 until n) {
-                    val t = i.toDouble() / sampleRate
-                    val square = if (sin(2 * PI * freq * t) >= 0) 1.0 else -1.0
-                    val env = (1.0 - i.toDouble() / n).let { it * it } // 二乗で急速フェード
-                    buf[i] = (square * env * 0.55 * Short.MAX_VALUE).toInt()
-                        .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-                }
-                playOnce(buf)
-            } finally { sfxSemaphore.release() }
-        }.also { it.isDaemon = true }.start()
+    /** ダメージ音: 110Hz スクエアウェーブ */
+    private fun genDamageBuf(): ShortArray {
+        val n = sampleRate * 200 / 1000
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / sampleRate
+            val sq = if (sin(2 * PI * 110.0 * t) >= 0) 1.0 else -1.0
+            val env = (1.0 - i.toDouble() / n).let { it * it }
+            (sq * env * 0.55 * Short.MAX_VALUE).toInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
     }
 
-    private fun playOnce(buf: ShortArray) {
-        val minBuf = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+    /** アイテム取得音: 上昇スイープ（パワーアップ感） */
+    private fun genItemBuf(): ShortArray {
+        val n = sampleRate * 180 / 1000
+        return ShortArray(n) { i ->
+            val t = i.toDouble() / sampleRate
+            val freq = 300.0 + (900.0 - 300.0) * i.toDouble() / n
+            val env = if (i < n * 0.1) i.toDouble() / (n * 0.1)
+                      else 1.0 - (i.toDouble() - n * 0.1) / (n * 0.9)
+            (sin(2 * PI * freq * t) * env * 0.5 * Short.MAX_VALUE).toInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
+    }
+
+    // ── AudioTrack ファクトリ ──────────────────────────────────────
+
+    private fun makeStaticTrack(buf: ShortArray): AudioTrack {
         val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_GAME)
@@ -107,37 +103,49 @@ class SoundManager {
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                 .build())
-            .setBufferSizeInBytes(maxOf(minBuf, buf.size * 2))
-            .setTransferMode(AudioTrack.MODE_STREAM)
+            .setBufferSizeInBytes(buf.size * 2)
+            .setTransferMode(AudioTrack.MODE_STATIC)
             .build()
-        try {
-            track.play()
-            track.write(buf, 0, buf.size)
-            track.stop()
-        } finally { track.release() }
+        track.write(buf, 0, buf.size)
+        return track
     }
 
-    // ── BGM ─────────────────────────────────────────────────────
+    private fun playFromPool(pool: Array<AudioTrack?>, idxRef: IntArray): Boolean {
+        if (!sfxReady) return false
+        val idx = idxRef[0] % pool.size
+        idxRef[0]++
+        val track = pool[idx] ?: return false
+        return try {
+            if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
+            track.reloadStaticData()
+            track.play()
+            true
+        } catch (_: Exception) { false }
+    }
 
-    /** BGMループバッファをプログラムで生成（スクエアウェーブ + サインベース） */
+    // ── 公開SFX API ───────────────────────────────────────────────
+
+    fun playEnemyKilled()  { playFromPool(killPool,   intArrayOf(killIdx++  )) }
+    fun playPlayerDamaged(){ playFromPool(damagePool, intArrayOf(damageIdx++)) }
+    fun playItemPickup()   { playFromPool(itemPool,   intArrayOf(itemIdx++  )) }
+
+    // ── BGM ───────────────────────────────────────────────────────
+
     private fun generateBgmLoop(): ShortArray {
         val totalSamples = bgmNotes.sumOf { (_, ms) -> sampleRate * ms / 1000 }
         val buf = ShortArray(totalSamples)
         var offset = 0
-        for ((noteIndex, noteData) in bgmNotes.withIndex()) {
-            val (freq, durationMs) = noteData
-            val barIndex = (noteIndex / 8).coerceAtMost(bgmBassFreqs.size - 1)
-            val bassFreq = bgmBassFreqs[barIndex]
-            val n = sampleRate * durationMs / 1000
+        for ((ni, nd) in bgmNotes.withIndex()) {
+            val (freq, ms) = nd
+            val bassFreq = bgmBassFreqs[(ni / 8).coerceAtMost(bgmBassFreqs.size - 1)]
+            val n = sampleRate * ms / 1000
             for (i in 0 until n) {
                 val t = (offset + i).toDouble() / sampleRate
-                // Lead: スクエアウェーブ（チップチューン感）+ ノート末尾フェード
                 val lead = if (freq > 0.0) {
                     val sq = if (sin(2 * PI * freq * t) >= 0) 1.0 else -1.0
                     val env = if (i > n * 0.8) (1.0 - (i - n * 0.8) / (n * 0.2)) else 1.0
                     sq * env * 0.28
                 } else 0.0
-                // Bass: サイン波（低音感）
                 val bass = sin(2 * PI * bassFreq * t) * 0.18
                 buf[offset + i] = ((lead + bass).coerceIn(-1.0, 1.0) * Short.MAX_VALUE).toInt().toShort()
             }
@@ -146,11 +154,18 @@ class SoundManager {
         return buf
     }
 
-    /** BGM開始（既に実行中なら何もしない） */
     fun startBgm() {
         if (bgmRunning) return
         bgmRunning = true
         bgmThread = Thread {
+            // SFXプール初期化（BGMスレッドでまとめて実行）
+            val kb = genKillBuf(); val db = genDamageBuf(); val ib = genItemBuf()
+            for (i in killPool.indices)   killPool[i]   = makeStaticTrack(kb)
+            for (i in damagePool.indices) damagePool[i] = makeStaticTrack(db)
+            for (i in itemPool.indices)   itemPool[i]   = makeStaticTrack(ib)
+            sfxReady = true
+
+            // BGM生成と再生
             val loopBuf = generateBgmLoop()
             val track = AudioTrack.Builder()
                 .setAudioAttributes(AudioAttributes.Builder()
@@ -166,7 +181,7 @@ class SoundManager {
                 .setTransferMode(AudioTrack.MODE_STATIC)
                 .build()
             track.write(loopBuf, 0, loopBuf.size)
-            track.setLoopPoints(0, loopBuf.size, -1) // 無限ループ
+            track.setLoopPoints(0, loopBuf.size, -1)
             track.play()
             try {
                 while (bgmRunning) {
@@ -179,27 +194,24 @@ class SoundManager {
                 }
             } catch (_: InterruptedException) {
             } finally {
-                track.stop()
-                track.release()
+                track.stop(); track.release()
             }
         }.also { it.isDaemon = true }
         bgmThread!!.start()
     }
 
-    /** ゲーム内ポーズボタンによる一時停止 */
-    fun pauseBgmByUser() { bgmUserPaused = true }
-    /** ゲーム内ポーズボタンによる再開 */
-    fun resumeBgmByUser() { bgmUserPaused = false }
-
-    /** Activityのライフサイクルによる一時停止 */
-    fun pauseBgmBySystem() { bgmActivityPaused = true }
-    /** Activityのライフサイクルによる再開 */
+    fun pauseBgmByUser()    { bgmUserPaused     = true  }
+    fun resumeBgmByUser()   { bgmUserPaused     = false }
+    fun pauseBgmBySystem()  { bgmActivityPaused = true  }
     fun resumeBgmBySystem() { bgmActivityPaused = false }
 
-    /** リソース解放（onDestroy時に呼ぶ） */
     fun release() {
         bgmRunning = false
         bgmThread?.interrupt()
         bgmThread = null
+        sfxReady = false
+        for (pool in arrayOf(killPool, damagePool, itemPool)) {
+            for (t in pool) { try { t?.stop(); t?.release() } catch (_: Exception) {} }
+        }
     }
 }

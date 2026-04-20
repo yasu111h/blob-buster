@@ -87,6 +87,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
 
     // ── 一時停止ボタン ─────────────────────────────────────
     private var pauseBtnRect = RectF()
+    private var resumeBtnRect = RectF()  // PAUSEDオーバーレイ中央の再開ボタン
     private val pauseBtnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(160, 20, 80, 40)
     }
@@ -100,6 +101,22 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     private val pauseOverlayPaint = Paint().apply { color = Color.argb(180, 0, 0, 0) }
     private val pauseLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE; isFakeBoldText = true
+    }
+    private val resumeBtnBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(220, 30, 140, 60)
+    }
+    private val resumeBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(255, 64, 255, 128)
+        style = Paint.Style.STROKE; strokeWidth = 3f
+    }
+    private val resumeBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE; isFakeBoldText = true
+    }
+    // ── アイテム取得エフェクト ────────────────────────────
+    private var powerUpFlashTimer = 0
+    private val powerUpAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFD740")
+        style = Paint.Style.STROKE
     }
     // ────────────────────────────────────────────────────
 
@@ -181,7 +198,8 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         screenHeight = height
 
         // 共有PaintとBulletPoolをscreenWidth確定後に1回だけ初期化
-        Blob.initSharedPaints(screenWidth)
+        Blob.initSharedPaints(screenWidth, context)
+        Player.initBitmap(context, screenWidth * 0.08f)
         Bullet.initSharedPaints(screenWidth)
         EnemyBullet.initSharedPaints(screenWidth)
         PowerUpItem.initPaints(screenWidth)
@@ -248,6 +266,18 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         )
         pauseBtnTextPaint.textSize = screenWidth * 0.040f
 
+        // 中央再開ボタン（PAUSEDオーバーレイ用）
+        val rBtnW = screenWidth * 0.55f
+        val rBtnH = screenHeight * 0.10f
+        resumeBtnRect = RectF(
+            (screenWidth - rBtnW) / 2f, screenHeight * 0.58f,
+            (screenWidth + rBtnW) / 2f, screenHeight * 0.58f + rBtnH
+        )
+        resumeBtnTextPaint.textSize = screenWidth * 0.07f
+
+        // アイテム取得オーラ
+        powerUpAuraPaint.strokeWidth = screenWidth * 0.018f
+
         initGame()
         startThread()
     }
@@ -258,7 +288,13 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         stopThread()
     }
 
+    private fun triggerGameOver() {
+        gameState = GameState.GAME_OVER
+        soundManager.pauseBgmByUser()
+    }
+
     private fun initGame() {
+        soundManager.resumeBgmByUser()
         player = Player(screenWidth, screenHeight)
         bullets.clear()
         blobManager = BlobManager(screenWidth, screenHeight)
@@ -319,8 +355,14 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             return true
         }
 
-        // PAUSED中は他のタッチを無視
-        if (gameState == GameState.PAUSED) return true
+        // PAUSED中: 中央再開ボタンのみ有効、他は無視
+        if (gameState == GameState.PAUSED) {
+            if (event.actionMasked == MotionEvent.ACTION_UP && resumeBtnRect.contains(event.x, event.y)) {
+                gameState = GameState.PLAYING
+                soundManager.resumeBgmByUser()
+            }
+            return true
+        }
 
         if (gameState == GameState.GAME_OVER) {
             if (event.actionMasked == MotionEvent.ACTION_DOWN) initGame()
@@ -389,6 +431,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         if (gameState != GameState.PLAYING) return
 
         frameCount++
+        if (powerUpFlashTimer > 0) powerUpFlashTimer--
 
         // FPS計測
         val nowNs = System.nanoTime()
@@ -426,7 +469,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 hp--
                 invincibleTimer = invincibleDuration
                 soundManager.playPlayerDamaged()
-                if (hp <= 0) gameState = GameState.GAME_OVER
+                if (hp <= 0) triggerGameOver()
             }
         }
         prevPlayerX = player.x
@@ -484,6 +527,8 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 player.increaseBulletLevel()
                 item.isDead = true
                 itemIter.remove()
+                powerUpFlashTimer = 30
+                soundManager.playItemPickup()
             } else if (item.isDead) {
                 itemIter.remove()
             }
@@ -534,7 +579,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     hp--
                     invincibleTimer = invincibleDuration
                     soundManager.playPlayerDamaged()
-                    if (hp <= 0) gameState = GameState.GAME_OVER
+                    if (hp <= 0) triggerGameOver()
                     break
                 }
             }
@@ -555,7 +600,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     hp--
                     invincibleTimer = invincibleDuration
                     soundManager.playPlayerDamaged()
-                    if (hp <= 0) gameState = GameState.GAME_OVER
+                    if (hp <= 0) triggerGameOver()
                     break
                 }
             }
@@ -563,7 +608,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
 
         // GAME_OVER判定（念の為）
         if (hp <= 0 && gameState == GameState.PLAYING) {
-            gameState = GameState.GAME_OVER
+            triggerGameOver()
         }
     }
 
@@ -617,6 +662,14 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
 
         // アイテム描画
         items.forEach { it.draw(canvas) }
+
+        // アイテム取得オーラ（プレイヤーの周囲に黄金リング）
+        if (powerUpFlashTimer > 0) {
+            val progress = powerUpFlashTimer.toFloat() / 30f
+            powerUpAuraPaint.alpha = (progress * 200).toInt()
+            val auraR = player.width * (0.8f + (1f - progress) * 1.2f)
+            canvas.drawCircle(player.x, player.y, auraR, powerUpAuraPaint)
+        }
 
         // プレイヤー描画（無敵中は点滅）
         player.draw(canvas, invincibleTimer > 0, frameCount)
@@ -712,16 +765,22 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         // PAUSED オーバーレイ
         if (gameState == GameState.PAUSED) {
             canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), pauseOverlayPaint)
+            // "PAUSED" テキスト
             pauseLabelPaint.textSize = screenWidth * 0.12f
             val pausedText = "PAUSED"
             val pausedBounds = Rect()
             pauseLabelPaint.getTextBounds(pausedText, 0, pausedText.length, pausedBounds)
-            canvas.drawText(pausedText, (screenWidth - pausedBounds.width()) / 2f, screenHeight * 0.44f, pauseLabelPaint)
-            pauseLabelPaint.textSize = screenWidth * 0.05f
-            val resumeText = "▶ ボタンで再開"
-            val resumeBounds = Rect()
-            pauseLabelPaint.getTextBounds(resumeText, 0, resumeText.length, resumeBounds)
-            canvas.drawText(resumeText, (screenWidth - resumeBounds.width()) / 2f, screenHeight * 0.57f, pauseLabelPaint)
+            canvas.drawText(pausedText, (screenWidth - pausedBounds.width()) / 2f, screenHeight * 0.42f, pauseLabelPaint)
+            // 中央再開ボタン
+            canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBgPaint)
+            canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBorderPaint)
+            val rLabel = "▶  再開"
+            val rBounds = Rect()
+            resumeBtnTextPaint.getTextBounds(rLabel, 0, rLabel.length, rBounds)
+            canvas.drawText(rLabel,
+                resumeBtnRect.centerX() - rBounds.width() / 2f,
+                resumeBtnRect.centerY() + rBounds.height() / 2f,
+                resumeBtnTextPaint)
         }
 
         // GAME OVER オーバーレイ
