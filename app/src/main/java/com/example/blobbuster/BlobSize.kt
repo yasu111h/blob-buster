@@ -87,15 +87,19 @@ enum class BlobSize {
         DRAGON -> 0.375f
     }
 
-    /** 画像表示サイズ倍率（当たり判定にも反映） */
+    /**
+     * 画像表示サイズ倍率（当たり判定にも反映）。
+     * SurfaceView はソフトウェアキャンバスのため、大型敵の倍率を下げて
+     * bitmap描画コストを抑える（DRAGON 2.0→1.0 で描画コスト1/4）。
+     */
     fun displayScale(): Float = when (this) {
         TINY   -> 2.0f
         SMALL  -> 2.0f
         SPEEDY -> 2.0f
         MEDIUM -> 2.0f
-        LARGE  -> 2.0f
-        HUGE   -> 2.0f
-        DRAGON -> 2.0f
+        LARGE  -> 1.5f   // 2.0→1.5（性能改善）
+        HUGE   -> 1.3f   // 2.0→1.3（性能改善・baseRadiusが既に大きい）
+        DRAGON -> 1.0f   // 2.0→1.0（性能改善・baseRadius=0.15*w で十分大きい）
     }
 
     /** この敵が出現するのに必要な最低レベル */

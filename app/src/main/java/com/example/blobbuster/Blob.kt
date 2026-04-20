@@ -135,9 +135,14 @@ class Blob(
 
     /**
      * @param bulletCount 現在画面上の敵弾数
-     * @param maxBullets  敵弾の上限。上限に達していたら発射しない
+     * @param maxBullets  敵弾の上限。上限に達していたら通常弾を発射しない
+     * @param shockwaves  衝撃波リスト（LARGE/HUGE/DRAGONが追加する。弾上限とは独立）
      */
-    fun tryShoot(playerX: Float, playerY: Float, bulletCount: Int, maxBullets: Int): List<EnemyBullet> {
+    fun tryShoot(
+        playerX: Float, playerY: Float,
+        bulletCount: Int, maxBullets: Int,
+        shockwaves: MutableList<Shockwave>
+    ): List<EnemyBullet> {
         if (bulletCount >= maxBullets) return emptyList()
 
         // 混雑度に応じて攻撃間隔を延ばす（弾が多いほど遅くなる）
@@ -172,29 +177,37 @@ class Blob(
                 }
             }
             BlobSize.LARGE -> {
+                // スプレッド → 衝撃波に置き換え（弾数削減・パフォーマンス改善）
                 atkTimer1++
                 if (atkTimer1 >= (100 * congestion).toInt()) { atkTimer1 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 3, spread = 0.35f, tint = 0))
+                    if (shockwaves.size < 3)
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.LARGE.color()))
                 }
             }
             BlobSize.HUGE -> {
+                // スプレッド5発 → 衝撃波に置き換え
                 atkTimer1++
                 if (atkTimer1 >= (85 * congestion).toInt()) { atkTimer1 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.45f, tint = 1))
+                    if (shockwaves.size < 3)
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.HUGE.color()))
                 }
+                // 速い単発弾は残す
                 atkTimer2++
                 if (atkTimer2 >= (55 * congestion).toInt()) { atkTimer2 = 0
                     aimShot(playerX, playerY, tint = 1, speedMult = 1.6f)?.let { result.add(it) }
                 }
             }
             BlobSize.DRAGON -> {
+                // スプレッド5発を「一部残す」多段攻撃として保持
                 atkTimer1++
                 if (atkTimer1 >= (120 * congestion).toInt()) { atkTimer1 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.30f, tint = 2, speedMult = 1.6f))
                 }
+                // 単発弾 → 衝撃波に置き換え（180フレーム=3秒間隔）
                 atkTimer2++
-                if (atkTimer2 >= (60 * congestion).toInt()) { atkTimer2 = 0
-                    aimShot(playerX, playerY, tint = 2, speedMult = 2.0f)?.let { result.add(it) }
+                if (atkTimer2 >= 180) { atkTimer2 = 0
+                    if (shockwaves.size < 3)
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.DRAGON.color()))
                 }
             }
         }

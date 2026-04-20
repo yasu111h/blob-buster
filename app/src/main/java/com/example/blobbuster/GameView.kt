@@ -28,6 +28,9 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     // 敵弾の上限
     private val maxEnemyBullets = 35
 
+    // 衝撃波リスト
+    private val shockwaves = mutableListOf<Shockwave>()
+
     // ダッシュダメージ用：前フレームのプレイヤー位置
     private var prevPlayerX: Float = 0f
     private var prevPlayerY: Float = 0f
@@ -307,6 +310,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         bgScrollY = 0f
         enemyBullets.clear()
         items.clear()
+        shockwaves.clear()
         dragPointerId = -1
         synchronized(pendingBullets) { pendingBullets.clear() }
         prevPlayerX = screenWidth / 2f
@@ -507,7 +511,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             val noFireLine = screenHeight * 0.80f
             for (blob in blobManager.blobs) {
                 if (blob.cy > noFireLine) continue
-                enemyBullets.addAll(blob.tryShoot(player.x, player.y, enemyBullets.size, maxEnemyBullets))
+                enemyBullets.addAll(blob.tryShoot(player.x, player.y, enemyBullets.size, maxEnemyBullets, shockwaves))
             }
         }
 
@@ -590,6 +594,20 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             invincibleTimer--
         }
 
+        // 衝撃波 更新・プレイヤー被弾判定
+        val swIter = shockwaves.iterator()
+        while (swIter.hasNext()) {
+            val sw = swIter.next()
+            sw.update()
+            if (sw.isDead) { swIter.remove(); continue }
+            if (invincibleTimer <= 0 && sw.hitsPlayer(player.x, player.y, player.width / 2f)) {
+                hp--
+                invincibleTimer = invincibleDuration
+                soundManager.playPlayerDamaged()
+                if (hp <= 0) triggerGameOver()
+            }
+        }
+
         // 敵弾×Player当たり判定
         if (invincibleTimer <= 0) {
             val ebHitIter = enemyBullets.iterator()
@@ -656,6 +674,9 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
 
         // Blob描画（デバッグ: 非表示トグル）
         if (debugShowEnemies) blobManager.draw(canvas)
+
+        // 衝撃波描画（敵の後ろ・弾の前）
+        shockwaves.forEach { it.draw(canvas) }
 
         // 弾描画
         bullets.forEach { it.draw(canvas) }
