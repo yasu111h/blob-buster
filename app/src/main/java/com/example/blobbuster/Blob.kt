@@ -172,7 +172,7 @@ class Blob(
         val dx = playerX - cx; val dy = playerY - cy
         val dist = sqrt(dx * dx + dy * dy)
         if (dist == 0f) return null
-        val speed = screenHeight * 0.009f * speedMult
+        val speed = screenHeight * 0.009f * speedMult * GameConfig.ENEMY_BULLET_SPEED_MULT
         return EnemyBullet(cx, cy, (dx / dist) * speed, (dy / dist) * speed, screenWidth, screenHeight, tint)
     }
 
@@ -181,7 +181,7 @@ class Blob(
         val dist = sqrt(dx * dx + dy * dy)
         if (dist == 0f) return emptyList()
         val base = atan2(dy, dx)
-        val speed = screenHeight * 0.009f * speedMult
+        val speed = screenHeight * 0.009f * speedMult * GameConfig.ENEMY_BULLET_SPEED_MULT
         val step = if (count > 1) spread * 2f / (count - 1) else 0f
         return (0 until count).map { i ->
             val a = base - spread + i * step

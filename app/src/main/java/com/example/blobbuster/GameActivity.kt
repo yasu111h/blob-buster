@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 class GameActivity : AppCompatActivity() {
 
     private lateinit var gameView: GameView
+    private lateinit var soundManager: SoundManager
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,17 +33,26 @@ class GameActivity : AppCompatActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        gameView = GameView(this)
+        soundManager = SoundManager()
+        gameView = GameView(this, soundManager)
+        soundManager.startBgm()
         setContentView(gameView)
     }
 
     override fun onPause() {
         super.onPause()
         gameView.pause()
+        soundManager.pauseBgmBySystem()
     }
 
     override fun onResume() {
         super.onResume()
         gameView.resume()
+        soundManager.resumeBgmBySystem()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        soundManager.release()
     }
 }

@@ -13,10 +13,10 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 enum class GameState {
-    PLAYING, GAME_OVER
+    PLAYING, PAUSED, GAME_OVER
 }
 
-class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
+class GameView(context: Context, private val soundManager: SoundManager) : SurfaceView(context), SurfaceHolder.Callback {
 
     private var gameThread: GameThread? = null
 
@@ -82,6 +82,24 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
     private val dbgInfoTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(230, 100, 220, 255)
+    }
+    // ────────────────────────────────────────────────────
+
+    // ── 一時停止ボタン ─────────────────────────────────────
+    private var pauseBtnRect = RectF()
+    private val pauseBtnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(160, 20, 80, 40)
+    }
+    private val pauseBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(180, 64, 255, 128)
+        style = Paint.Style.STROKE; strokeWidth = 1.5f
+    }
+    private val pauseBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(220, 64, 255, 128); isFakeBoldText = true
+    }
+    private val pauseOverlayPaint = Paint().apply { color = Color.argb(180, 0, 0, 0) }
+    private val pauseLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE; isFakeBoldText = true
     }
     // ────────────────────────────────────────────────────
 
@@ -221,6 +239,15 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // デバッグ情報テキスト
         dbgInfoTextPaint.textSize = screenWidth * 0.030f
 
+        // 一時停止ボタン（左下）
+        pauseBtnRect = RectF(
+            screenWidth * 0.02f,
+            screenHeight * 0.895f,
+            screenWidth * 0.02f + screenWidth * 0.13f,
+            screenHeight * 0.895f + screenWidth * 0.07f
+        )
+        pauseBtnTextPaint.textSize = screenWidth * 0.040f
+
         initGame()
         startThread()
     }
@@ -281,6 +308,20 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     private val dragZoneTop get() = screenHeight * 0.75f  // 後方互換のため残す
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // 一時停止ボタン（GAME_OVER以外で有効）
+        if (event.actionMasked == MotionEvent.ACTION_UP &&
+            pauseBtnRect.contains(event.x, event.y)) {
+            when (gameState) {
+                GameState.PLAYING -> { gameState = GameState.PAUSED; soundManager.pauseBgmByUser() }
+                GameState.PAUSED  -> { gameState = GameState.PLAYING; soundManager.resumeBgmByUser() }
+                else -> {}
+            }
+            return true
+        }
+
+        // PAUSED中は他のタッチを無視
+        if (gameState == GameState.PAUSED) return true
+
         if (gameState == GameState.GAME_OVER) {
             if (event.actionMasked == MotionEvent.ACTION_DOWN) initGame()
             return true
@@ -384,6 +425,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             if (dashHit) {
                 hp--
                 invincibleTimer = invincibleDuration
+                soundManager.playPlayerDamaged()
                 if (hp <= 0) gameState = GameState.GAME_OVER
             }
         }
@@ -463,6 +505,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                         scoreManager.addScore(blob.size.score())
                         blobManager.onKill()
                         deadBlobsForDrop.add(blob)
+                        soundManager.playEnemyKilled()
                     }
                     break
                 }
@@ -490,6 +533,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                 if (dx * dx + dy * dy <= r * r) {
                     hp--
                     invincibleTimer = invincibleDuration
+                    soundManager.playPlayerDamaged()
                     if (hp <= 0) gameState = GameState.GAME_OVER
                     break
                 }
@@ -510,6 +554,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                     ebHitIter.remove()
                     hp--
                     invincibleTimer = invincibleDuration
+                    soundManager.playPlayerDamaged()
                     if (hp <= 0) gameState = GameState.GAME_OVER
                     break
                 }
@@ -653,6 +698,31 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
             drawToggleRow(dbgToggle3Rect, "デバッグ表示", debugShowInfo)
         }
         // ────────────────────────────────────────────────────
+
+        // 一時停止ボタン（左下）
+        canvas.drawRoundRect(pauseBtnRect, 8f, 8f, pauseBtnPaint)
+        canvas.drawRoundRect(pauseBtnRect, 8f, 8f, pauseBtnBorderPaint)
+        val plabel = if (gameState == GameState.PAUSED) "▶" else "||"
+        val plBounds = Rect(); pauseBtnTextPaint.getTextBounds(plabel, 0, plabel.length, plBounds)
+        canvas.drawText(plabel,
+            pauseBtnRect.centerX() - plBounds.width() / 2f,
+            pauseBtnRect.centerY() + plBounds.height() / 2f,
+            pauseBtnTextPaint)
+
+        // PAUSED オーバーレイ
+        if (gameState == GameState.PAUSED) {
+            canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), pauseOverlayPaint)
+            pauseLabelPaint.textSize = screenWidth * 0.12f
+            val pausedText = "PAUSED"
+            val pausedBounds = Rect()
+            pauseLabelPaint.getTextBounds(pausedText, 0, pausedText.length, pausedBounds)
+            canvas.drawText(pausedText, (screenWidth - pausedBounds.width()) / 2f, screenHeight * 0.44f, pauseLabelPaint)
+            pauseLabelPaint.textSize = screenWidth * 0.05f
+            val resumeText = "▶ ボタンで再開"
+            val resumeBounds = Rect()
+            pauseLabelPaint.getTextBounds(resumeText, 0, resumeText.length, resumeBounds)
+            canvas.drawText(resumeText, (screenWidth - resumeBounds.width()) / 2f, screenHeight * 0.57f, pauseLabelPaint)
+        }
 
         // GAME OVER オーバーレイ
         if (gameState == GameState.GAME_OVER) {
