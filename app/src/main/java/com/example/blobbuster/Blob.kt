@@ -64,22 +64,25 @@ class Blob(
             cache.clear()
             for (size in BlobSize.values()) cache[size] = BlobPaints.create(size)
 
-            // 敵画像を読み込む
-            // TINY/SMALL/SPEEDY → enemy1 (UFO系)
-            // MEDIUM/LARGE/HUGE/DRAGON → enemy2 (ファイアボール系)
-            val raw1 = BitmapFactory.decodeResource(context.resources, R.drawable.enemy1)
-            val raw2 = BitmapFactory.decodeResource(context.resources, R.drawable.enemy2)
+            // 敵画像を読み込む（7種類・BlobSizeに1対1対応）
+            // TINY→enemy1, SMALL→enemy2, SPEEDY→enemy3, MEDIUM→enemy4,
+            // LARGE→enemy5, HUGE→enemy6, DRAGON→enemy7
+            val rawMap = mapOf(
+                BlobSize.TINY   to BitmapFactory.decodeResource(context.resources, R.drawable.enemy1),
+                BlobSize.SMALL  to BitmapFactory.decodeResource(context.resources, R.drawable.enemy2),
+                BlobSize.SPEEDY to BitmapFactory.decodeResource(context.resources, R.drawable.enemy3),
+                BlobSize.MEDIUM to BitmapFactory.decodeResource(context.resources, R.drawable.enemy4),
+                BlobSize.LARGE  to BitmapFactory.decodeResource(context.resources, R.drawable.enemy5),
+                BlobSize.HUGE   to BitmapFactory.decodeResource(context.resources, R.drawable.enemy6),
+                BlobSize.DRAGON to BitmapFactory.decodeResource(context.resources, R.drawable.enemy7)
+            )
             bitmaps.clear()
             for (size in BlobSize.values()) {
-                val raw = when (size) {
-                    BlobSize.TINY, BlobSize.SMALL, BlobSize.SPEEDY -> raw1
-                    else -> raw2
-                }
+                val raw = rawMap[size] ?: continue
                 val d = (size.radius(screenWidth) * 2).toInt().coerceAtLeast(4)
                 bitmaps[size] = Bitmap.createScaledBitmap(raw, d, d, true)
+                raw.recycle()
             }
-            raw1.recycle()
-            raw2.recycle()
         }
     }
 
