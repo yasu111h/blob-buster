@@ -205,20 +205,19 @@ class Blob(
             }
             BlobSize.ENEMY8 -> {
                 // Leviathan: 3種類の攻撃
-                // 攻撃1: 5方向弾（約1.5秒間隔）
+                // 攻撃1: 5方向弾（約1.3秒間隔）
                 atkTimer1++
-                if (atkTimer1 >= (90 * attackIntervalMult * congestion).toInt()) { atkTimer1 = 0
+                if (atkTimer1 >= (78 * attackIntervalMult * congestion).toInt()) { atkTimer1 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.35f, tint = 2, speedMult = 1.5f))
                 }
-                // 攻撃2: 高速照準弾×2（約1.2秒間隔）
+                // 攻撃2: 高速照準弾×5（約1.1秒間隔）
                 atkTimer2++
-                if (atkTimer2 >= (72 * attackIntervalMult * congestion).toInt()) { atkTimer2 = 0
-                    aimShot(playerX, playerY, tint = 1, speedMult = 1.8f)?.let { result.add(it) }
-                    aimShot(playerX, playerY, tint = 1, speedMult = 1.5f)?.let { result.add(it) }
+                if (atkTimer2 >= (66 * attackIntervalMult * congestion).toInt()) { atkTimer2 = 0
+                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.15f, tint = 1, speedMult = 1.8f))
                 }
-                // 攻撃3: 衝撃波（約2.5秒間隔）
+                // 攻撃3: 衝撃波（約2秒間隔）
                 atkTimer3++
-                if (atkTimer3 >= (150 * attackIntervalMult).toInt()) { atkTimer3 = 0
+                if (atkTimer3 >= (120 * attackIntervalMult).toInt()) { atkTimer3 = 0
                     if (shockwaves.size < 3) {
                         val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
                         shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 10f))

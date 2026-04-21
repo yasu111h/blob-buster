@@ -50,7 +50,7 @@ enum class BlobSize {
         LARGE  -> 150
         HUGE   -> 500
         DRAGON -> 1200
-        ENEMY8 -> 2000  // Leviathan
+        ENEMY8 -> 2300  // Leviathan
     }
 
     fun color(): Int = when (this) {
