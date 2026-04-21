@@ -848,22 +848,24 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         // プレイヤー描画（無敵中は点滅）
         player.draw(canvas, invincibleTimer > 0, frameCount)
 
-        // UI: スコア（左上）
-        canvas.drawText("SCORE: ${scoreManager.score}", screenWidth * 0.03f, screenHeight * 0.05f, scorePaint)
+        // UI: スコア（左上）・LEVEL（スコアの右隣、スコア幅に連動）
+        val scoreText = "SCORE: ${scoreManager.score}"
+        val scoreX = screenWidth * 0.03f
+        val uiY = screenHeight * 0.05f
+        canvas.drawText(scoreText, scoreX, uiY, scorePaint)
+        val scoreBounds = Rect()
+        scorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
+        val roundText = "LEVEL ${blobManager.level}"
+        roundPaint.textSize = scorePaint.textSize
+        val levelX = scoreX + scoreBounds.width() + screenWidth * 0.03f
+        canvas.drawText(roundText, levelX, uiY, roundPaint)
 
         // UI: HP（右上・赤ハート）
         val heartText = "HP: " + "♥".repeat(hp.coerceAtLeast(0))
         heartPaint.textSize = scorePaint.textSize
         val heartBounds = Rect()
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
-        canvas.drawText(heartText, screenWidth - heartBounds.width() - screenWidth * 0.03f, screenHeight * 0.05f, heartPaint)
-
-        // UI: LEVEL（中央・2行目）
-        val roundText = "LEVEL ${blobManager.level}"
-        roundPaint.textSize = scorePaint.textSize
-        val roundBounds = Rect()
-        roundPaint.getTextBounds(roundText, 0, roundText.length, roundBounds)
-        canvas.drawText(roundText, (screenWidth - roundBounds.width()) / 2f, screenHeight * 0.10f, roundPaint)
+        canvas.drawText(heartText, screenWidth - heartBounds.width() - screenWidth * 0.03f, uiY, heartPaint)
 
         // ── デバッグUI ─────────────────────────────────────
         // デバッグ情報オーバーレイ（左上）
