@@ -5,7 +5,7 @@ import android.graphics.Color
 enum class MoveType { STRAIGHT_DOWN, ZIGZAG, RANDOM, CHASE }
 
 // TINY=UFO, SMALL=Sun, SPEEDY=SpeedyBlade, MEDIUM=MediumUFO,
-// LARGE=Spider, HUGE=RedEye, DRAGON=Dragon, ENEMY8=（未定）
+// LARGE=Spider, HUGE=RedEye, DRAGON=Dragon, ENEMY8=Leviathan
 enum class BlobSize {
     TINY, SMALL, SPEEDY, MEDIUM, LARGE, HUGE, DRAGON, ENEMY8;
 
@@ -17,7 +17,7 @@ enum class BlobSize {
         LARGE  -> 6
         HUGE   -> 12
         DRAGON -> 25
-        ENEMY8 -> 50
+        ENEMY8 -> 30   // Leviathan
     }
 
     fun radius(screenWidth: Int): Float = screenWidth.toFloat() * when (this) {
@@ -28,7 +28,7 @@ enum class BlobSize {
         LARGE  -> 0.085f
         HUGE   -> 0.115f
         DRAGON -> 0.150f
-        ENEMY8 -> 0.110f
+        ENEMY8 -> 0.180f  // Leviathan: 最大サイズ
     }
 
     fun speed(screenHeight: Int): Float = screenHeight.toFloat() * when (this) {
@@ -38,8 +38,8 @@ enum class BlobSize {
         MEDIUM -> 0.0042f
         LARGE  -> 0.0028f
         HUGE   -> 0.0020f
-        DRAGON -> 0.0015f
-        ENEMY8 -> 0.0025f
+        DRAGON -> 0.0020f  // 遅い(0.20%)
+        ENEMY8 -> 0.0015f  // Leviathan: 最遅(0.15%)
     }
 
     fun score(): Int = when (this) {
@@ -50,7 +50,7 @@ enum class BlobSize {
         LARGE  -> 150
         HUGE   -> 350
         DRAGON -> 800
-        ENEMY8 -> 1500
+        ENEMY8 -> 1500  // Leviathan
     }
 
     fun color(): Int = when (this) {
@@ -61,7 +61,7 @@ enum class BlobSize {
         LARGE  -> Color.parseColor("#39FF14")
         HUGE   -> Color.parseColor("#7B00CC")
         DRAGON -> Color.parseColor("#CC0000")
-        ENEMY8 -> Color.parseColor("#FF8C00")
+        ENEMY8 -> Color.parseColor("#FF8C00")  // Leviathan: 濃オレンジ
     }
 
     fun moveType(): MoveType = when (this) {
@@ -72,7 +72,7 @@ enum class BlobSize {
         LARGE  -> MoveType.ZIGZAG
         HUGE   -> MoveType.CHASE
         DRAGON -> MoveType.CHASE
-        ENEMY8 -> MoveType.CHASE
+        ENEMY8 -> MoveType.CHASE  // Leviathan
     }
 
     fun spawnCost(): Int = when (this) {
@@ -83,7 +83,7 @@ enum class BlobSize {
         LARGE  -> 10
         HUGE   -> 20
         DRAGON -> 35
-        ENEMY8 -> 50
+        ENEMY8 -> 50  // Leviathan
     }
 
     fun itemDropChance(): Float = when (this) {
@@ -94,14 +94,9 @@ enum class BlobSize {
         LARGE  -> 0.105f
         HUGE   -> 0.210f
         DRAGON -> 0.375f
-        ENEMY8 -> 0.500f
+        ENEMY8 -> 0.500f  // Leviathan
     }
 
-    /**
-     * 画像表示サイズ倍率（当たり判定にも反映）。
-     * SurfaceView はソフトウェアキャンバスのため、大型敵の倍率を下げて
-     * bitmap描画コストを抑える（DRAGON 2.0→1.0 で描画コスト1/4）。
-     */
     fun displayScale(): Float = when (this) {
         TINY   -> 2.0f
         SMALL  -> 2.0f
@@ -110,7 +105,7 @@ enum class BlobSize {
         LARGE  -> 1.5f
         HUGE   -> 1.3f
         DRAGON -> 1.0f
-        ENEMY8 -> 1.2f
+        ENEMY8 -> 1.0f  // Leviathan: radius=18%で既に最大
     }
 
     /** この敵が出現するのに必要な最低レベル（実際の出現レベルと一致） */
@@ -119,10 +114,10 @@ enum class BlobSize {
         SMALL  -> 3
         SPEEDY -> 5
         MEDIUM -> 7
-        LARGE  -> 9
-        HUGE   -> 12
-        DRAGON -> 17
-        ENEMY8 -> 50
+        LARGE  -> 10
+        HUGE   -> 15
+        DRAGON -> 22
+        ENEMY8 -> 50   // Leviathan
     }
 
     /** この敵が最大出現重みに達するレベル */
@@ -134,7 +129,7 @@ enum class BlobSize {
         LARGE  -> 30
         HUGE   -> 50
         DRAGON -> 80
-        ENEMY8 -> 100
+        ENEMY8 -> 100  // Leviathan
     }
 
     /** ピーク時の出現重み（最大値） */
@@ -146,7 +141,7 @@ enum class BlobSize {
         LARGE  -> 80
         HUGE   -> 70
         DRAGON -> 60
-        ENEMY8 -> 50
+        ENEMY8 -> 50   // Leviathan
     }
 
     /** グローバルティアに応じた攻撃ダメージ（将来用） */

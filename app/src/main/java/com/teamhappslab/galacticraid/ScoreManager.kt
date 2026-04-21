@@ -9,6 +9,10 @@ class ScoreManager {
         score += points
     }
 
+    fun setScore(value: Int) {
+        score = value.coerceAtLeast(0)
+    }
+
     fun reset() {
         score = 0
         round = 1

@@ -464,10 +464,10 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     debugPanelOpen && dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
                     debugPanelOpen && dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
                     debugPanelOpen && dbgInvincibleRect.contains(tx, ty)  -> debugInvincible = !debugInvincible
-                    debugPanelOpen && dbgLvlMinus10Rect.contains(tx, ty) -> blobManager.setLevel(blobManager.level - 10)
-                    debugPanelOpen && dbgLvlMinusRect.contains(tx, ty)   -> blobManager.setLevel(blobManager.level - 1)
-                    debugPanelOpen && dbgLvlPlusRect.contains(tx, ty)    -> blobManager.setLevel(blobManager.level + 1)
-                    debugPanelOpen && dbgLvlPlus10Rect.contains(tx, ty)  -> blobManager.setLevel(blobManager.level + 10)
+                    debugPanelOpen && dbgLvlMinus10Rect.contains(tx, ty) -> { blobManager.setLevel(blobManager.level - 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                    debugPanelOpen && dbgLvlMinusRect.contains(tx, ty)   -> { blobManager.setLevel(blobManager.level - 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                    debugPanelOpen && dbgLvlPlusRect.contains(tx, ty)    -> { blobManager.setLevel(blobManager.level + 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                    debugPanelOpen && dbgLvlPlus10Rect.contains(tx, ty)  -> { blobManager.setLevel(blobManager.level + 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
                     debugPanelOpen && dbgBullet1Rect.contains(tx, ty)    -> player.setBulletLevel(1)
                     debugPanelOpen && dbgBullet3Rect.contains(tx, ty)    -> player.setBulletLevel(3)
                     debugPanelOpen && dbgBullet5Rect.contains(tx, ty)    -> player.setBulletLevel(5)
@@ -509,10 +509,10 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
                 dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
                 dbgInvincibleRect.contains(tx, ty)  -> debugInvincible = !debugInvincible
-                dbgLvlMinus10Rect.contains(tx, ty) -> blobManager.setLevel(blobManager.level - 10)
-                dbgLvlMinusRect.contains(tx, ty)   -> blobManager.setLevel(blobManager.level - 1)
-                dbgLvlPlusRect.contains(tx, ty)    -> blobManager.setLevel(blobManager.level + 1)
-                dbgLvlPlus10Rect.contains(tx, ty)  -> blobManager.setLevel(blobManager.level + 10)
+                dbgLvlMinus10Rect.contains(tx, ty) -> { blobManager.setLevel(blobManager.level - 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                dbgLvlMinusRect.contains(tx, ty)   -> { blobManager.setLevel(blobManager.level - 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                dbgLvlPlusRect.contains(tx, ty)    -> { blobManager.setLevel(blobManager.level + 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                dbgLvlPlus10Rect.contains(tx, ty)  -> { blobManager.setLevel(blobManager.level + 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
                 dbgBullet1Rect.contains(tx, ty)    -> player.setBulletLevel(1)
                 dbgBullet3Rect.contains(tx, ty)    -> player.setBulletLevel(3)
                 dbgBullet5Rect.contains(tx, ty)    -> player.setBulletLevel(5)

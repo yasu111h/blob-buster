@@ -14,8 +14,17 @@ class BlobManager(
 
     private val maxBlobs = 12
 
-    // グローバルティア（level50, 100, 150...で強化）
+    // グローバルティア（level50, 100, 150...で節目）
     val globalTier: Int get() = level / 50 + 1
+
+    // Lv100〜から能力アップが始まるティア数（Lv50=tier2は変動なし）
+    private val statTierCount: Int get() = (globalTier - 2).coerceAtLeast(0)
+
+    // 攻撃間隔倍率（Lv100〜で0.9倍ずつ短縮→攻撃が速くなる）
+    val attackIntervalMult: Float get() = 0.9.pow(statTierCount.toDouble()).toFloat()
+
+    // 敵移動速度倍率（Lv100〜で1.1倍ずつ加速）
+    val enemySpeedMult: Float get() = 1.1.pow(statTierCount.toDouble()).toFloat()
 
     // スポーンバジェット
     private var spawnBudget: Float = 0f
@@ -31,8 +40,8 @@ class BlobManager(
     // ティアアップフラグ（GameViewがこれを見てエフェクト表示）
     var tierUpEvent: Boolean = false
 
-    // スコアベースのレベル閾値
-    private fun levelThreshold(n: Int): Int = 80 * (n - 1) * n / 2
+    // スコアベースのレベル閾値（公開: デバッグ用スコア同期に使用）
+    fun levelThreshold(n: Int): Int = 80 * (n - 1) * n / 2
 
     fun update(playerX: Float, playerY: Float, score: Int) {
         // スコアベースでlevel更新
@@ -123,7 +132,7 @@ class BlobManager(
         val margin = screenWidth * 0.08f
         val cx = margin + Random.nextFloat() * (screenWidth - margin * 2)
         val cy = -screenWidth * 0.15f
-        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight, globalTier))
+        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight, enemySpeedMult, attackIntervalMult))
     }
 
     fun onKill() {}
@@ -133,7 +142,7 @@ class BlobManager(
         level = newLevel.coerceAtLeast(1)
         spawnBudget = 0f
         spawnQueue.clear()
-        prevTier = globalTier  // ティアをリセット
+        prevTier = globalTier
     }
 
     fun draw(canvas: Canvas) {
