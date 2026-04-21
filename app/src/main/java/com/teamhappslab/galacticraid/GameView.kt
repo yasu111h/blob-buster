@@ -18,6 +18,11 @@ enum class GameState {
 
 class GameView(context: Context, private val soundManager: SoundManager) : SurfaceView(context), SurfaceHolder.Callback {
 
+    companion object {
+        /** false にするとデバッグボタン・パネルが完全無効化される（リリース用） */
+        const val DEBUG_MODE = false
+    }
+
     private var gameThread: GameThread? = null
 
     // マルチタッチ管理
@@ -389,8 +394,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     }
 
     private fun initGame() {
-        soundManager.startBgm(context)   // 初回のみ有効（bgmRunning=trueなら即return）
-        soundManager.resumeBgmByUser()  // ゲームオーバー後の再開時にポーズ解除
+        soundManager.restartBgm(context)  // 初回は起動、リトライ時は先頭から再生
         player = Player(screenWidth, screenHeight)
         bullets.clear()
         blobManager = BlobManager(screenWidth, screenHeight)
@@ -476,7 +480,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     debugPanelOpen && dbgHp3Rect.contains(tx, ty)        -> hp = 3
                     debugPanelOpen && !debugPanelRect.contains(tx, ty)   -> debugPanelOpen = false
                     // DBGボタン
-                    debugBtnRect.contains(tx, ty) -> debugPanelOpen = !debugPanelOpen
+                    DEBUG_MODE && debugBtnRect.contains(tx, ty) -> debugPanelOpen = !debugPanelOpen
                     // 再開ボタン
                     resumeBtnRect.contains(tx, ty) -> {
                         gameState = GameState.PLAYING
@@ -525,7 +529,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         }
 
         // デバッグボタンタップ（UP時）
-        if (event.actionMasked == MotionEvent.ACTION_UP &&
+        if (DEBUG_MODE && event.actionMasked == MotionEvent.ACTION_UP &&
             debugBtnRect.contains(event.x, event.y)) {
             debugPanelOpen = !debugPanelOpen
             return true

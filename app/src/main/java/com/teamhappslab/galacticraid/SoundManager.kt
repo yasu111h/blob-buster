@@ -152,6 +152,21 @@ class SoundManager {
         }
     }
 
+    /** リトライ時など: BGMを先頭からやり直す */
+    fun restartBgm(context: Context) {
+        if (!bgmRunning || mediaPlayer == null) {
+            startBgm(context)
+        } else {
+            bgmUserPaused = false
+            if (bgmEnabled) {
+                try {
+                    mediaPlayer?.seekTo(0)
+                    if (!bgmActivityPaused) mediaPlayer?.start()
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     fun pauseBgmByUser() {
         bgmUserPaused = true
         try { mediaPlayer?.pause() } catch (_: Exception) {}
