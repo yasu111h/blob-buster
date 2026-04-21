@@ -3,10 +3,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 android {
-    namespace = "com.example.blobbuster"
+    namespace = "com.teamhappslab.galacticraid"
     compileSdk = 34
     defaultConfig {
-        applicationId = "com.example.blobbuster"
+        applicationId = "com.teamhappslab.galacticraid"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

@@ -1,14 +1,14 @@
-package com.example.blobbuster
+package com.teamhappslab.galacticraid
 
-import android.app.Activity
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 
-class SettingsActivity : AppCompatActivity() {
+class GameActivity : AppCompatActivity() {
 
-    private lateinit var settingsView: SettingsView
+    private lateinit var gameView: GameView
+    private lateinit var soundManager: SoundManager
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,21 +33,28 @@ class SettingsActivity : AppCompatActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        settingsView = SettingsView(this)
-        settingsView.onBack = { finish() }
-        settingsView.onResetScores = {
-            setResult(Activity.RESULT_OK)
-        }
-        setContentView(settingsView)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        settingsView.startAnimation()
+        soundManager = SoundManager()
+        soundManager.bgmEnabled = AppPrefs.isBgmEnabled(this)
+        soundManager.sfxEnabled = AppPrefs.isSfxEnabled(this)
+        gameView = GameView(this, soundManager)
+        gameView.onGoHome = { finish() }
+        setContentView(gameView)
     }
 
     override fun onPause() {
         super.onPause()
-        settingsView.stopAnimation()
+        gameView.pause()
+        soundManager.pauseBgmBySystem()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        gameView.resume()
+        soundManager.resumeBgmBySystem()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        soundManager.release()
     }
 }

@@ -1,4 +1,4 @@
-package com.example.blobbuster
+package com.teamhappslab.galacticraid
 
 class GameThread(private val gameView: GameView) : Thread() {
     @Volatile

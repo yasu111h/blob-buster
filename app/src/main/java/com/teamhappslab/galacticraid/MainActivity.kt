@@ -1,4 +1,4 @@
-package com.example.blobbuster
+package com.teamhappslab.galacticraid
 
 import android.app.Activity
 import android.content.Intent

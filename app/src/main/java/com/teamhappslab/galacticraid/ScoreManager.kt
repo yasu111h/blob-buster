@@ -1,4 +1,4 @@
-package com.example.blobbuster
+package com.teamhappslab.galacticraid
 
 class ScoreManager {
     var score: Int = 0
