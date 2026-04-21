@@ -921,18 +921,34 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 tierUpBgPaint.color = Color.argb(flashA, 255, 215, 0)
                 canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), tierUpBgPaint)
             }
-            // テキスト表示
-            tierUpTextPaint.textSize = screenWidth * 0.10f
             val alpha = (progress * 255).toInt().coerceIn(0, 255)
-            tierUpTextPaint.alpha = alpha
+            val hasEnemyPowerUp = tierUpNumber >= 3  // Lv100〜から敵強化
+
+            // TIER N
+            tierUpTextPaint.textSize = screenWidth * 0.10f
+            tierUpTextPaint.color = Color.argb(alpha, 255, 215, 0)
             val line1 = "TIER $tierUpNumber"
-            val line2 = "POWER UP!"
             val b1 = android.graphics.Rect(); tierUpTextPaint.getTextBounds(line1, 0, line1.length, b1)
-            val b2 = android.graphics.Rect(); tierUpTextPaint.getTextBounds(line2, 0, line2.length, b2)
-            canvas.drawText(line1, (screenWidth - b1.width()) / 2f, screenHeight * 0.35f, tierUpTextPaint)
-            tierUpTextPaint.textSize = screenWidth * 0.08f
-            tierUpTextPaint.color = Color.argb(alpha, 255, 100, 100)
-            canvas.drawText(line2, (screenWidth - b2.width()) / 2f, screenHeight * 0.45f, tierUpTextPaint)
+            val baseY = if (hasEnemyPowerUp) screenHeight * 0.30f else screenHeight * 0.35f
+            canvas.drawText(line1, (screenWidth - b1.width()) / 2f, baseY, tierUpTextPaint)
+
+            // ENEMY POWER UP（Lv100〜のみ）
+            if (hasEnemyPowerUp) {
+                tierUpTextPaint.textSize = screenWidth * 0.08f
+                tierUpTextPaint.color = Color.argb(alpha, 255, 100, 100)
+                val line2 = "ENEMY POWER UP"
+                val b2 = android.graphics.Rect(); tierUpTextPaint.getTextBounds(line2, 0, line2.length, b2)
+                canvas.drawText(line2, (screenWidth - b2.width()) / 2f, baseY + screenHeight * 0.10f, tierUpTextPaint)
+            }
+
+            // HP +1 回復（毎回表示）
+            tierUpTextPaint.textSize = screenWidth * 0.075f
+            tierUpTextPaint.color = Color.argb(alpha, 100, 255, 150)
+            val lineHp = "♥  HP +1"
+            val bHp = android.graphics.Rect(); tierUpTextPaint.getTextBounds(lineHp, 0, lineHp.length, bHp)
+            val hpY = if (hasEnemyPowerUp) baseY + screenHeight * 0.20f else baseY + screenHeight * 0.12f
+            canvas.drawText(lineHp, (screenWidth - bHp.width()) / 2f, hpY, tierUpTextPaint)
+
             // 色をリセット
             tierUpTextPaint.color = Color.parseColor("#FFD740")
         }
