@@ -177,19 +177,23 @@ class Blob(
                 }
             }
             BlobSize.LARGE -> {
-                // スプレッド → 衝撃波に置き換え（弾数削減・パフォーマンス改善）
+                // スプレッド → 扇形衝撃波（70度）に置き換え
                 atkTimer1++
                 if (atkTimer1 >= (100 * congestion).toInt()) { atkTimer1 = 0
-                    if (shockwaves.size < 3)
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.LARGE.color()))
+                    if (shockwaves.size < 3) {
+                        val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.LARGE.color(), angleDeg, 70f))
+                    }
                 }
             }
             BlobSize.HUGE -> {
-                // スプレッド5発 → 衝撃波に置き換え
+                // スプレッド5発 → 扇形衝撃波（100度）に置き換え
                 atkTimer1++
                 if (atkTimer1 >= (85 * congestion).toInt()) { atkTimer1 = 0
-                    if (shockwaves.size < 3)
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.HUGE.color()))
+                    if (shockwaves.size < 3) {
+                        val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.HUGE.color(), angleDeg, 100f))
+                    }
                 }
                 // 速い単発弾は残す
                 atkTimer2++
@@ -203,11 +207,13 @@ class Blob(
                 if (atkTimer1 >= (120 * congestion).toInt()) { atkTimer1 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.30f, tint = 2, speedMult = 1.6f))
                 }
-                // 単発弾 → 衝撃波に置き換え（180フレーム=3秒間隔）
+                // 単発弾 → 扇形衝撃波（130度・3秒間隔）に置き換え
                 atkTimer2++
                 if (atkTimer2 >= 180) { atkTimer2 = 0
-                    if (shockwaves.size < 3)
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.DRAGON.color()))
+                    if (shockwaves.size < 3) {
+                        val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.DRAGON.color(), angleDeg, 130f))
+                    }
                 }
             }
         }

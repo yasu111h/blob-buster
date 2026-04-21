@@ -47,6 +47,13 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     private var dbgToggle2Rect = RectF()  // 敵の攻撃
     private var dbgToggle3Rect = RectF()  // デバッグ表示
     private var dbgCloseRect   = RectF()
+    // レベル操作ボタン
+    private var dbgLvlMinusRect = RectF()
+    private var dbgLvlPlusRect  = RectF()
+    // 弾段数ボタン
+    private var dbgBullet1Rect  = RectF()
+    private var dbgBullet3Rect  = RectF()
+    private var dbgBullet5Rect  = RectF()
 
     // FPS計測
     private var lastFrameNs: Long = 0L
@@ -238,24 +245,38 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         dbgBtnTextPaint.textSize = screenWidth * 0.035f
 
         // デバッグパネル（右寄り）
-        val panelW = screenWidth * 0.55f
-        val panelH = screenHeight * 0.28f
+        val panelW = screenWidth * 0.60f
+        val panelH = screenHeight * 0.48f  // 行数増加のため拡張
         val panelX = screenWidth - panelW - screenWidth * 0.03f
-        val panelY = screenHeight * 0.60f
+        val panelY = screenHeight * 0.42f
         debugPanelRect = RectF(panelX, panelY, panelX + panelW, panelY + panelH)
         dbgLabelPaint.textSize = screenWidth * 0.034f
         dbgOnPaint.textSize = screenWidth * 0.034f
         dbgOffPaint.textSize = screenWidth * 0.034f
 
-        // トグル行の配置
-        val rowH = panelH * 0.22f
-        val rowY1 = panelY + panelH * 0.22f
-        val rowY2 = rowY1 + panelH * 0.25f
-        val rowY3 = rowY2 + panelH * 0.25f
+        // トグル行の配置（3行）
+        val rowH = panelH * 0.14f
+        val rowY1 = panelY + panelH * 0.16f
+        val rowY2 = rowY1 + panelH * 0.15f
+        val rowY3 = rowY2 + panelH * 0.15f
         dbgToggle1Rect = RectF(panelX + panelW * 0.05f, rowY1 - rowH * 0.8f, panelX + panelW * 0.95f, rowY1 + rowH * 0.2f)
         dbgToggle2Rect = RectF(panelX + panelW * 0.05f, rowY2 - rowH * 0.8f, panelX + panelW * 0.95f, rowY2 + rowH * 0.2f)
         dbgToggle3Rect = RectF(panelX + panelW * 0.05f, rowY3 - rowH * 0.8f, panelX + panelW * 0.95f, rowY3 + rowH * 0.2f)
-        dbgCloseRect = RectF(panelX + panelW * 0.75f, panelY + panelH * 0.02f, panelX + panelW * 0.98f, panelY + panelH * 0.16f)
+        dbgCloseRect = RectF(panelX + panelW * 0.75f, panelY + panelH * 0.01f, panelX + panelW * 0.98f, panelY + panelH * 0.10f)
+
+        // レベル操作ボタン（LVL − / +）
+        val btnH = panelH * 0.13f
+        val lvlRowY = rowY3 + panelH * 0.18f
+        val btnW = panelW * 0.18f
+        dbgLvlMinusRect = RectF(panelX + panelW * 0.50f, lvlRowY, panelX + panelW * 0.50f + btnW, lvlRowY + btnH)
+        dbgLvlPlusRect  = RectF(panelX + panelW * 0.72f, lvlRowY, panelX + panelW * 0.72f + btnW, lvlRowY + btnH)
+
+        // 弾段数ボタン（1 / 3 / 5）
+        val bltRowY = lvlRowY + panelH * 0.16f
+        val bltBtnW = panelW * 0.16f
+        dbgBullet1Rect = RectF(panelX + panelW * 0.38f, bltRowY, panelX + panelW * 0.38f + bltBtnW, bltRowY + btnH)
+        dbgBullet3Rect = RectF(panelX + panelW * 0.57f, bltRowY, panelX + panelW * 0.57f + bltBtnW, bltRowY + btnH)
+        dbgBullet5Rect = RectF(panelX + panelW * 0.76f, bltRowY, panelX + panelW * 0.76f + bltBtnW, bltRowY + btnH)
 
         // デバッグ情報テキスト
         dbgInfoTextPaint.textSize = screenWidth * 0.030f
@@ -297,7 +318,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     }
 
     private fun initGame() {
-        soundManager.startBgm()         // 初回のみ有効（bgmRunning=trueなら即return）
+        soundManager.startBgm(context)   // 初回のみ有効（bgmRunning=trueなら即return）
         soundManager.resumeBgmByUser()  // ゲームオーバー後の再開時にポーズ解除
         player = Player(screenWidth, screenHeight)
         bullets.clear()
@@ -360,11 +381,30 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             return true
         }
 
-        // PAUSED中: 中央再開ボタンのみ有効、他は無視
+        // PAUSED中: 再開・DBGボタン・デバッグパネル操作を受け付ける
         if (gameState == GameState.PAUSED) {
-            if (event.actionMasked == MotionEvent.ACTION_UP && resumeBtnRect.contains(event.x, event.y)) {
-                gameState = GameState.PLAYING
-                soundManager.resumeBgmByUser()
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                val tx = event.x; val ty = event.y
+                when {
+                    // デバッグパネルが開いている場合の操作
+                    debugPanelOpen && dbgCloseRect.contains(tx, ty)    -> debugPanelOpen = false
+                    debugPanelOpen && dbgToggle1Rect.contains(tx, ty)  -> debugShowEnemies = !debugShowEnemies
+                    debugPanelOpen && dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
+                    debugPanelOpen && dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
+                    debugPanelOpen && dbgLvlMinusRect.contains(tx, ty) -> blobManager.setLevel(blobManager.level - 1)
+                    debugPanelOpen && dbgLvlPlusRect.contains(tx, ty)  -> blobManager.setLevel(blobManager.level + 1)
+                    debugPanelOpen && dbgBullet1Rect.contains(tx, ty)  -> player.setBulletLevel(1)
+                    debugPanelOpen && dbgBullet3Rect.contains(tx, ty)  -> player.setBulletLevel(3)
+                    debugPanelOpen && dbgBullet5Rect.contains(tx, ty)  -> player.setBulletLevel(5)
+                    debugPanelOpen && !debugPanelRect.contains(tx, ty) -> debugPanelOpen = false
+                    // DBGボタン
+                    debugBtnRect.contains(tx, ty) -> debugPanelOpen = !debugPanelOpen
+                    // 再開ボタン
+                    resumeBtnRect.contains(tx, ty) -> {
+                        gameState = GameState.PLAYING
+                        soundManager.resumeBgmByUser()
+                    }
+                }
             }
             return true
         }
@@ -378,10 +418,15 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         if (debugPanelOpen && event.actionMasked == MotionEvent.ACTION_UP) {
             val tx = event.x; val ty = event.y
             when {
-                dbgCloseRect.contains(tx, ty)   -> debugPanelOpen = false
-                dbgToggle1Rect.contains(tx, ty) -> debugShowEnemies = !debugShowEnemies
-                dbgToggle2Rect.contains(tx, ty) -> debugEnemyCanShoot = !debugEnemyCanShoot
-                dbgToggle3Rect.contains(tx, ty) -> debugShowInfo = !debugShowInfo
+                dbgCloseRect.contains(tx, ty)    -> debugPanelOpen = false
+                dbgToggle1Rect.contains(tx, ty)  -> debugShowEnemies = !debugShowEnemies
+                dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
+                dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
+                dbgLvlMinusRect.contains(tx, ty) -> blobManager.setLevel(blobManager.level - 1)
+                dbgLvlPlusRect.contains(tx, ty)  -> blobManager.setLevel(blobManager.level + 1)
+                dbgBullet1Rect.contains(tx, ty)  -> player.setBulletLevel(1)
+                dbgBullet3Rect.contains(tx, ty)  -> player.setBulletLevel(3)
+                dbgBullet5Rect.contains(tx, ty)  -> player.setBulletLevel(5)
                 !debugPanelRect.contains(tx, ty) -> debugPanelOpen = false
             }
             return true
@@ -749,31 +794,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             debugBtnRect.centerY() + dbgBounds.height() / 2f,
             dbgBtnTextPaint)
 
-        // デバッグパネル
-        if (debugPanelOpen) {
-            canvas.drawRoundRect(debugPanelRect, 12f, 12f, dbgPanelBgPaint)
-            canvas.drawRoundRect(debugPanelRect, 12f, 12f, dbgPanelBorderPaint)
-
-            // タイトル
-            canvas.drawText("DEBUG PANEL", debugPanelRect.left + screenWidth * 0.03f,
-                debugPanelRect.top + dbgLabelPaint.textSize * 1.2f, dbgLabelPaint)
-
-            // CLOSEボタン
-            canvas.drawText("[X]", dbgCloseRect.left, dbgCloseRect.bottom, dbgOffPaint)
-
-            // トグル行ヘルパー
-            fun drawToggleRow(rect: RectF, label: String, enabled: Boolean) {
-                val statusPaint = if (enabled) dbgOnPaint else dbgOffPaint
-                val statusText = if (enabled) "ON" else "OFF"
-                canvas.drawText(label, rect.left, rect.bottom, dbgLabelPaint)
-                val sw = Rect(); statusPaint.getTextBounds(statusText, 0, statusText.length, sw)
-                canvas.drawText(statusText, debugPanelRect.right - sw.width() - screenWidth * 0.04f, rect.bottom, statusPaint)
-            }
-
-            drawToggleRow(dbgToggle1Rect, "敵の表示", debugShowEnemies)
-            drawToggleRow(dbgToggle2Rect, "敵の攻撃", debugEnemyCanShoot)
-            drawToggleRow(dbgToggle3Rect, "デバッグ表示", debugShowInfo)
-        }
+        // デバッグパネルは PAUSEオーバーレイの後に描画（後で移動）
         // ────────────────────────────────────────────────────
 
         // 一時停止ボタン（左下）
@@ -844,6 +865,45 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 retryPaint
             )
         }
+
+        // ── デバッグパネル（全ステートで最前面に描画）──────────────
+        if (debugPanelOpen) {
+            canvas.drawRoundRect(debugPanelRect, 12f, 12f, dbgPanelBgPaint)
+            canvas.drawRoundRect(debugPanelRect, 12f, 12f, dbgPanelBorderPaint)
+
+            canvas.drawText("DEBUG PANEL", debugPanelRect.left + screenWidth * 0.03f,
+                debugPanelRect.top + dbgLabelPaint.textSize * 1.2f, dbgLabelPaint)
+            canvas.drawText("[X]", dbgCloseRect.left, dbgCloseRect.bottom, dbgOffPaint)
+
+            fun drawToggleRow(rect: RectF, label: String, enabled: Boolean) {
+                val statusPaint = if (enabled) dbgOnPaint else dbgOffPaint
+                val statusText = if (enabled) "ON" else "OFF"
+                canvas.drawText(label, rect.left, rect.bottom, dbgLabelPaint)
+                val sw = Rect(); statusPaint.getTextBounds(statusText, 0, statusText.length, sw)
+                canvas.drawText(statusText, debugPanelRect.right - sw.width() - screenWidth * 0.04f, rect.bottom, statusPaint)
+            }
+            drawToggleRow(dbgToggle1Rect, "敵の表示", debugShowEnemies)
+            drawToggleRow(dbgToggle2Rect, "敵の攻撃", debugEnemyCanShoot)
+            drawToggleRow(dbgToggle3Rect, "デバッグ表示", debugShowInfo)
+
+            // LVL操作
+            val lvlLabelY = dbgLvlMinusRect.centerY() + dbgLabelPaint.textSize * 0.4f
+            canvas.drawText("LVL: ${blobManager.level}", debugPanelRect.left + screenWidth * 0.03f, lvlLabelY, dbgLabelPaint)
+            canvas.drawRoundRect(dbgLvlMinusRect, 6f, 6f, dbgBtnPaint)
+            canvas.drawText("−", dbgLvlMinusRect.centerX() - screenWidth * 0.02f, lvlLabelY, dbgOffPaint)
+            canvas.drawRoundRect(dbgLvlPlusRect, 6f, 6f, dbgBtnPaint)
+            canvas.drawText("+", dbgLvlPlusRect.centerX() - screenWidth * 0.015f, lvlLabelY, dbgOnPaint)
+
+            // 弾段数操作
+            val bltLabelY = dbgBullet1Rect.centerY() + dbgLabelPaint.textSize * 0.4f
+            canvas.drawText("BLT:", debugPanelRect.left + screenWidth * 0.03f, bltLabelY, dbgLabelPaint)
+            listOf(dbgBullet1Rect to "1", dbgBullet3Rect to "3", dbgBullet5Rect to "5").forEach { (rect, label) ->
+                val active = (label.toInt() == player.bulletLevel)
+                canvas.drawRoundRect(rect, 6f, 6f, dbgBtnPaint)
+                canvas.drawText(label, rect.centerX() - screenWidth * 0.012f, bltLabelY, if (active) dbgOnPaint else dbgOffPaint)
+            }
+        }
+        // ────────────────────────────────────────────────────────
     }
 
     /**

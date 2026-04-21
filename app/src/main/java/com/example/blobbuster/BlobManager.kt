@@ -77,6 +77,12 @@ class BlobManager(
 
     fun onKill() {}  // スコアベースに変更したため不要
 
+    /** デバッグ用: レベルを直接設定 */
+    fun setLevel(newLevel: Int) {
+        level = newLevel.coerceAtLeast(1)
+        spawnBudget = 0f
+    }
+
     fun draw(canvas: Canvas) {
         blobs.forEach { it.draw(canvas) }
     }

@@ -65,6 +65,20 @@ class Player(
         }
     }
 
+    /** デバッグ用: 弾段数を直接設定（1/3/5のみ） */
+    fun setBulletLevel(newLevel: Int) {
+        bulletLevel = when {
+            newLevel <= 1 -> 1
+            newLevel <= 3 -> 3
+            else -> 5
+        }
+        bulletLevelTimer = when (bulletLevel) {
+            3 -> level3Duration
+            5 -> level5Duration
+            else -> 0
+        }
+    }
+
     /** アイテム取得時に呼ぶ */
     fun increaseBulletLevel() {
         when (bulletLevel) {

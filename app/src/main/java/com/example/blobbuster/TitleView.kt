@@ -13,6 +13,7 @@ class TitleView(context: Context) : View(context) {
 
     var onStartTapped: (() -> Unit)? = null
 
+    private var isLoading = false  // STARTタップ後のローディング状態
     private var animTick = 0
     private val handler = Handler(Looper.getMainLooper())
     private val updateRunnable = object : Runnable {
@@ -204,9 +205,14 @@ class TitleView(context: Context) : View(context) {
         btnBorderPaint.alpha = (180 * pulse + 75).toInt().coerceIn(0, 255)
         canvas.drawRoundRect(startButtonRect, 20f, 20f, btnBorderPaint)
 
-        val startText = "▶  START"
+        val startText = if (isLoading) "Now Loading..." else "▶  START"
         val startBounds = Rect(); btnTextPaint.getTextBounds(startText, 0, startText.length, startBounds)
-        btnTextPaint.alpha = (190 * pulse + 65).toInt().coerceIn(0, 255)
+        btnTextPaint.alpha = if (isLoading) {
+            // ローディング中はゆっくり点滅
+            (sin(animTick * 0.08f) * 60 + 160).toInt().coerceIn(80, 220)
+        } else {
+            (190 * pulse + 65).toInt().coerceIn(0, 255)
+        }
         canvas.drawText(
             startText,
             (screenW - startBounds.width()) / 2f,
@@ -219,8 +225,10 @@ class TitleView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_UP) {
+        if (event.actionMasked == MotionEvent.ACTION_UP && !isLoading) {
             if (startButtonRect.contains(event.x, event.y)) {
+                isLoading = true
+                invalidate()
                 onStartTapped?.invoke()
             }
         }

@@ -1,8 +1,10 @@
 package com.example.blobbuster
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.MediaPlayer
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -10,13 +12,11 @@ import kotlin.math.sin
  * SFX + BGM を管理するクラス。
  *
  * 【SE設計】
- * Thread生成+Semaphoreによる旧方式は「3本上限で音がドロップする」問題があった。
- * AudioTrack MODE_STATIC を事前にN本プール（キル音12本、ダメージ3本、アイテム3本）して
- * ラウンドロビンで再生。Thread生成なし、生成音は1回だけ計算。常に鳴る。
+ * AudioTrack MODE_STATIC プールをバックグラウンドスレッドで事前生成。
+ * killPool=12本, damagePool=3本, itemPool=3本 のラウンドロビン再生。
  *
  * 【BGM設計】
- * Am→G→F→E コード進行のチップチューン4秒ループ。
- * AudioTrack MODE_STATIC + setLoopPoints(-1)でシームレスループ。
+ * MediaPlayer で res/raw/bgm.mp3 を再生（isLooping=true）。
  * ポーズ2フラグ方式: bgmUserPaused / bgmActivityPaused
  */
 class SoundManager {
@@ -24,9 +24,8 @@ class SoundManager {
     private val sampleRate = 22050
 
     // ── SFXプール ──────────────────────────────────────────────────
-    // BGMスレッド内で初期化 → sfxReady=trueになってから play が有効
     @Volatile private var sfxReady = false
-    private val killPool   = arrayOfNulls<AudioTrack>(12)  // キル音12本（最大12敵同時撃破に対応）
+    private val killPool   = arrayOfNulls<AudioTrack>(12)
     private val damagePool = arrayOfNulls<AudioTrack>(3)
     private val itemPool   = arrayOfNulls<AudioTrack>(3)
     private var killIdx   = 0
@@ -37,19 +36,7 @@ class SoundManager {
     @Volatile private var bgmRunning        = false
     @Volatile private var bgmUserPaused     = false
     @Volatile private var bgmActivityPaused = false
-    private var bgmThread: Thread? = null
-
-    private val bgmNotes = listOf(
-        220.00 to 125, 261.63 to 125, 329.63 to 125, 440.00 to 125,
-        329.63 to 125, 261.63 to 125, 220.00 to 125,   0.00 to 125,
-        196.00 to 125, 246.94 to 125, 293.66 to 125, 392.00 to 125,
-        293.66 to 125, 246.94 to 125, 196.00 to 125,   0.00 to 125,
-        174.61 to 125, 220.00 to 125, 261.63 to 125, 349.23 to 125,
-        261.63 to 125, 220.00 to 125, 174.61 to 125,   0.00 to 125,
-        164.81 to 125, 246.94 to 125, 329.63 to 125, 415.30 to 125,
-        329.63 to 125, 246.94 to 125, 164.81 to 125,   0.00 to 125
-    )
-    private val bgmBassFreqs = listOf(110.0, 98.0, 87.31, 82.41)
+    private var mediaPlayer: MediaPlayer? = null
 
     // ── SE バッファ生成 ────────────────────────────────────────────
 
@@ -77,7 +64,7 @@ class SoundManager {
         }
     }
 
-    /** アイテム取得音: 上昇スイープ（パワーアップ感） */
+    /** アイテム取得音: 上昇スイープ */
     private fun genItemBuf(): ShortArray {
         val n = sampleRate * 180 / 1000
         return ShortArray(n) { i ->
@@ -131,84 +118,55 @@ class SoundManager {
 
     // ── BGM ───────────────────────────────────────────────────────
 
-    private fun generateBgmLoop(): ShortArray {
-        val totalSamples = bgmNotes.sumOf { (_, ms) -> sampleRate * ms / 1000 }
-        val buf = ShortArray(totalSamples)
-        var offset = 0
-        for ((ni, nd) in bgmNotes.withIndex()) {
-            val (freq, ms) = nd
-            val bassFreq = bgmBassFreqs[(ni / 8).coerceAtMost(bgmBassFreqs.size - 1)]
-            val n = sampleRate * ms / 1000
-            for (i in 0 until n) {
-                val t = (offset + i).toDouble() / sampleRate
-                val lead = if (freq > 0.0) {
-                    val sq = if (sin(2 * PI * freq * t) >= 0) 1.0 else -1.0
-                    val env = if (i > n * 0.8) (1.0 - (i - n * 0.8) / (n * 0.2)) else 1.0
-                    sq * env * 0.28
-                } else 0.0
-                val bass = sin(2 * PI * bassFreq * t) * 0.18
-                buf[offset + i] = ((lead + bass).coerceIn(-1.0, 1.0) * Short.MAX_VALUE).toInt().toShort()
-            }
-            offset += n
-        }
-        return buf
-    }
-
-    fun startBgm() {
+    /**
+     * BGMを開始する。初回のみ有効（bgmRunning=trueなら即return）。
+     * SFXプールはバックグラウンドスレッドで初期化。
+     * BGMはMediaPlayerで res/raw/bgm.mp3 を再生。
+     */
+    fun startBgm(context: Context) {
         if (bgmRunning) return
         bgmRunning = true
-        bgmThread = Thread {
-            // SFXプール初期化（BGMスレッドでまとめて実行）
+
+        // SFXプールをバックグラウンドスレッドで初期化（UIをブロックしない）
+        Thread {
             val kb = genKillBuf(); val db = genDamageBuf(); val ib = genItemBuf()
             for (i in killPool.indices)   killPool[i]   = makeStaticTrack(kb)
             for (i in damagePool.indices) damagePool[i] = makeStaticTrack(db)
             for (i in itemPool.indices)   itemPool[i]   = makeStaticTrack(ib)
             sfxReady = true
+        }.apply { isDaemon = true; start() }
 
-            // BGM生成と再生
-            val loopBuf = generateBgmLoop()
-            val track = AudioTrack.Builder()
-                .setAudioAttributes(AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build())
-                .setAudioFormat(AudioFormat.Builder()
-                    .setSampleRate(sampleRate)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build())
-                .setBufferSizeInBytes(loopBuf.size * 2)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .build()
-            track.write(loopBuf, 0, loopBuf.size)
-            track.setLoopPoints(0, loopBuf.size, -1)
-            track.play()
-            try {
-                while (bgmRunning) {
-                    val shouldPause = bgmUserPaused || bgmActivityPaused
-                    when {
-                        shouldPause && track.playState == AudioTrack.PLAYSTATE_PLAYING -> track.pause()
-                        !shouldPause && track.playState == AudioTrack.PLAYSTATE_PAUSED -> track.play()
-                    }
-                    Thread.sleep(50)
-                }
-            } catch (_: InterruptedException) {
-            } finally {
-                track.stop(); track.release()
+        // BGM: MediaPlayer で MP3再生
+        try {
+            mediaPlayer = MediaPlayer.create(context, R.raw.bgm)?.apply {
+                isLooping = true
+                setVolume(0.75f, 0.75f)
+                if (!bgmUserPaused && !bgmActivityPaused) start()
             }
-        }.also { it.isDaemon = true }
-        bgmThread!!.start()
+        } catch (_: Exception) { /* BGM失敗しても続行 */ }
     }
 
-    fun pauseBgmByUser()    { bgmUserPaused     = true  }
-    fun resumeBgmByUser()   { bgmUserPaused     = false }
-    fun pauseBgmBySystem()  { bgmActivityPaused = true  }
-    fun resumeBgmBySystem() { bgmActivityPaused = false }
+    fun pauseBgmByUser() {
+        bgmUserPaused = true
+        try { mediaPlayer?.pause() } catch (_: Exception) {}
+    }
+    fun resumeBgmByUser() {
+        bgmUserPaused = false
+        if (!bgmActivityPaused) try { mediaPlayer?.start() } catch (_: Exception) {}
+    }
+    fun pauseBgmBySystem() {
+        bgmActivityPaused = true
+        try { mediaPlayer?.pause() } catch (_: Exception) {}
+    }
+    fun resumeBgmBySystem() {
+        bgmActivityPaused = false
+        if (!bgmUserPaused) try { mediaPlayer?.start() } catch (_: Exception) {}
+    }
 
     fun release() {
+        try { mediaPlayer?.stop(); mediaPlayer?.release() } catch (_: Exception) {}
+        mediaPlayer = null
         bgmRunning = false
-        bgmThread?.interrupt()
-        bgmThread = null
         sfxReady = false
         for (pool in arrayOf(killPool, damagePool, itemPool)) {
             for (t in pool) { try { t?.stop(); t?.release() } catch (_: Exception) {} }
