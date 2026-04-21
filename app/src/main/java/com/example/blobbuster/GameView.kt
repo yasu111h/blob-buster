@@ -140,6 +140,15 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     }
     // ────────────────────────────────────────────────────
 
+    // ── ティアアップエフェクト ────────────────────────────
+    private var tierUpTimer: Int = 0  // ティアアップエフェクトの残りフレーム
+    private var tierUpNumber: Int = 0 // 何ティアになったか
+    private val tierUpBgPaint = Paint().apply { color = Color.argb(0, 0, 0, 0) }  // 動的に変更
+    private val tierUpTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFD740"); isFakeBoldText = true
+    }
+    // ────────────────────────────────────────────────────
+
     private var screenWidth: Int = 0
     private var screenHeight: Int = 0
 
@@ -582,6 +591,14 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         // Blob更新（プレイヤー座標とスコアを渡す）
         blobManager.update(player.x, player.y, scoreManager.score)
 
+        // ティアアップ検知
+        if (blobManager.tierUpEvent) {
+            blobManager.tierUpEvent = false
+            tierUpTimer = 180  // 3秒間エフェクト
+            tierUpNumber = blobManager.globalTier
+        }
+        if (tierUpTimer > 0) tierUpTimer--
+
         // 敵弾発射（上限チェック・混雑度による間隔制御込み）
         // 発射禁止ライン(0.80f)より下にいる敵は撃たせない。
         // 削除ライン(0.88f)との間にバッファを設けることで、
@@ -840,6 +857,31 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             pauseBtnRect.centerX() - plBounds.width() / 2f,
             pauseBtnRect.centerY() + plBounds.height() / 2f,
             pauseBtnTextPaint)
+
+        // ティアアップエフェクト
+        if (tierUpTimer > 0) {
+            val progress = tierUpTimer.toFloat() / 180f
+            // フラッシュ効果（最初の30フレームは白くフラッシュ）
+            if (tierUpTimer > 150) {
+                val flashA = ((tierUpTimer - 150).toFloat() / 30f * 120).toInt()
+                tierUpBgPaint.color = Color.argb(flashA, 255, 215, 0)
+                canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), tierUpBgPaint)
+            }
+            // テキスト表示
+            tierUpTextPaint.textSize = screenWidth * 0.10f
+            val alpha = (progress * 255).toInt().coerceIn(0, 255)
+            tierUpTextPaint.alpha = alpha
+            val line1 = "TIER $tierUpNumber"
+            val line2 = "POWER UP!"
+            val b1 = android.graphics.Rect(); tierUpTextPaint.getTextBounds(line1, 0, line1.length, b1)
+            val b2 = android.graphics.Rect(); tierUpTextPaint.getTextBounds(line2, 0, line2.length, b2)
+            canvas.drawText(line1, (screenWidth - b1.width()) / 2f, screenHeight * 0.35f, tierUpTextPaint)
+            tierUpTextPaint.textSize = screenWidth * 0.08f
+            tierUpTextPaint.color = Color.argb(alpha, 255, 100, 100)
+            canvas.drawText(line2, (screenWidth - b2.width()) / 2f, screenHeight * 0.45f, tierUpTextPaint)
+            // 色をリセット
+            tierUpTextPaint.color = Color.parseColor("#FFD740")
+        }
 
         // PAUSED オーバーレイ
         if (gameState == GameState.PAUSED) {
