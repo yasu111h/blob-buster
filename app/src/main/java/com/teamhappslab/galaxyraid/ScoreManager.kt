@@ -1,4 +1,4 @@
-package com.teamhappslab.galacticraid
+package com.teamhappslab.galaxyraid
 
 class ScoreManager {
     var score: Int = 0

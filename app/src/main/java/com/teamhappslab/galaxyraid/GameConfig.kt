@@ -1,4 +1,4 @@
-package com.teamhappslab.galacticraid
+package com.teamhappslab.galaxyraid
 
 object GameConfig {
     /** 敵弾スピード倍率（1.0f = デフォルト、大きいほど速い） */

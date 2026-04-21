@@ -1,4 +1,4 @@
-package com.teamhappslab.galacticraid
+package com.teamhappslab.galaxyraid
 
 class GameThread(private val gameView: GameView) : Thread() {
     @Volatile

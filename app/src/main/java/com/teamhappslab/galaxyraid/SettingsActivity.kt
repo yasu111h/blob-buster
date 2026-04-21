@@ -1,14 +1,14 @@
-package com.teamhappslab.galacticraid
+package com.teamhappslab.galaxyraid
 
+import android.app.Activity
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 
-class GameActivity : AppCompatActivity() {
+class SettingsActivity : AppCompatActivity() {
 
-    private lateinit var gameView: GameView
-    private lateinit var soundManager: SoundManager
+    private lateinit var settingsView: SettingsView
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,28 +33,21 @@ class GameActivity : AppCompatActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        soundManager = SoundManager()
-        soundManager.bgmEnabled = AppPrefs.isBgmEnabled(this)
-        soundManager.sfxEnabled = AppPrefs.isSfxEnabled(this)
-        gameView = GameView(this, soundManager)
-        gameView.onGoHome = { finish() }
-        setContentView(gameView)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        gameView.pause()
-        soundManager.pauseBgmBySystem()
+        settingsView = SettingsView(this)
+        settingsView.onBack = { finish() }
+        settingsView.onResetScores = {
+            setResult(Activity.RESULT_OK)
+        }
+        setContentView(settingsView)
     }
 
     override fun onResume() {
         super.onResume()
-        gameView.resume()
-        soundManager.resumeBgmBySystem()
+        settingsView.startAnimation()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        soundManager.release()
+    override fun onPause() {
+        super.onPause()
+        settingsView.stopAnimation()
     }
 }

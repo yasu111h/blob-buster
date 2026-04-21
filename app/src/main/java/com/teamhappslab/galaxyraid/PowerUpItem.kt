@@ -1,4 +1,4 @@
-package com.teamhappslab.galacticraid
+package com.teamhappslab.galaxyraid
 
 import android.graphics.Canvas
 import android.graphics.Color

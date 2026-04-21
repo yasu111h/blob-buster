@@ -3,10 +3,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 android {
-    namespace = "com.teamhappslab.galacticraid"
+    namespace = "com.teamhappslab.galaxyraid"
     compileSdk = 34
     defaultConfig {
-        applicationId = "com.teamhappslab.galacticraid"
+        applicationId = "com.teamhappslab.galaxyraid"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
