@@ -230,6 +230,16 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         color = Color.WHITE
         isFakeBoldText = true
     }
+    private val rankInBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(220, 180, 120, 0)
+    }
+    private val rankInBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFD740")
+        style = Paint.Style.STROKE; strokeWidth = 3f
+    }
+    private val rankInTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFD740"); isFakeBoldText = true
+    }
 
     init {
         holder.addCallback(this)
@@ -370,10 +380,12 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         stopThread()
     }
 
+    private var rankAchieved: Int = 0  // 0=ランクインなし、1〜3=ランク順位
+
     private fun triggerGameOver() {
         gameState = GameState.GAME_OVER
         soundManager.pauseBgmByUser()
-        HighScoreManager.saveScore(context, scoreManager.score)
+        rankAchieved = HighScoreManager.saveScore(context, scoreManager.score)
     }
 
     private fun initGame() {
@@ -386,6 +398,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         hp = maxHp
         invincibleTimer = 0
         gameState = GameState.PLAYING
+        rankAchieved = 0
         frameCount = 0
         bgScrollY = 0f
         enemyBullets.clear()
@@ -934,7 +947,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             // 中央再開ボタン
             canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBgPaint)
             canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBorderPaint)
-            val rLabel = "▶  Resume"
+            val rLabel = "▶  Play"
             val rBounds = Rect()
             resumeBtnTextPaint.getTextBounds(rLabel, 0, rLabel.length, rBounds)
             canvas.drawText(rLabel,
@@ -980,14 +993,34 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 gameOverScorePaint
             )
 
+            // ランクイン表示
+            if (rankAchieved in 1..3) {
+                val medal = when (rankAchieved) { 1 -> "★ #1"; 2 -> "★ #2"; else -> "★ #3" }
+                rankInTextPaint.textSize = screenWidth * 0.075f
+                val rankBounds = Rect(); rankInTextPaint.getTextBounds(medal, 0, medal.length, rankBounds)
+                val rankW = rankBounds.width() + screenWidth * 0.12f
+                val rankH = rankBounds.height() + screenHeight * 0.04f
+                val rankRect = RectF(
+                    (screenWidth - rankW) / 2f, screenHeight * 0.56f,
+                    (screenWidth + rankW) / 2f, screenHeight * 0.56f + rankH
+                )
+                canvas.drawRoundRect(rankRect, 16f, 16f, rankInBgPaint)
+                canvas.drawRoundRect(rankRect, 16f, 16f, rankInBorderPaint)
+                canvas.drawText(medal,
+                    rankRect.centerX() - rankBounds.width() / 2f,
+                    rankRect.centerY() + rankBounds.height() / 2f,
+                    rankInTextPaint)
+            }
+
             // タップリトライ
+            val retryY = if (rankAchieved in 1..3) screenHeight * 0.69f else screenHeight * 0.65f
             val retryText = "TAP TO RETRY"
             val retryBounds = Rect()
             retryPaint.getTextBounds(retryText, 0, retryText.length, retryBounds)
             canvas.drawText(
                 retryText,
                 (screenWidth - retryBounds.width()) / 2f,
-                screenHeight * 0.65f,
+                retryY,
                 retryPaint
             )
 

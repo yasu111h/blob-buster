@@ -265,32 +265,15 @@ class TitleView(context: Context) : View(context) {
         btnBorderPaint.alpha = (180 * pulse + 75).toInt().coerceIn(0, 255)
         canvas.drawRoundRect(startButtonRect, 20f, 20f, btnBorderPaint)
 
-        val startText = if (isLoading) "Now Loading..." else "▶  START"
+        val startText = "▶  START"
         val startBounds = Rect(); btnTextPaint.getTextBounds(startText, 0, startText.length, startBounds)
-        btnTextPaint.alpha = if (isLoading) {
-            (sin(animTick * 0.08f) * 60 + 160).toInt().coerceIn(80, 220)
-        } else {
-            (190 * pulse + 65).toInt().coerceIn(0, 255)
-        }
+        btnTextPaint.alpha = (190 * pulse + 65).toInt().coerceIn(0, 255)
         canvas.drawText(
             startText,
             (screenW - startBounds.width()) / 2f,
             startButtonRect.centerY() + startBounds.height() / 2f,
             btnTextPaint
         )
-
-        // ローディングスピナー
-        if (isLoading) {
-            val spinR = screenW * 0.055f
-            val spinCX = screenW / 2f
-            val spinCY = startButtonRect.bottom + spinR * 1.8f
-            spinPaint.strokeWidth = screenW * 0.008f
-            val spinStart = (animTick * 6f) % 360f
-            canvas.drawArc(
-                RectF(spinCX - spinR, spinCY - spinR, spinCX + spinR, spinCY + spinR),
-                spinStart, 270f, false, spinPaint
-            )
-        }
 
         // SETTINGS button
         canvas.drawRoundRect(settingsButtonRect, 20f, 20f, btnBgPaint)
