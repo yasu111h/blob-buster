@@ -198,7 +198,7 @@ class Blob(
                 if (atkTimer1 >= (85 * congestion).toInt()) { atkTimer1 = 0
                     if (shockwaves.size < 3) {
                         val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 15f))
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 70f))
                     }
                 }
                 // 速い単発弾は残す
@@ -218,7 +218,7 @@ class Blob(
                 if (atkTimer2 >= 180) { atkTimer2 = 0
                     if (shockwaves.size < 3) {
                         val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 20f))
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 50f))
                     }
                 }
             }
@@ -233,7 +233,7 @@ class Blob(
                 if (atkTimer2 >= 150) { atkTimer2 = 0
                     if (shockwaves.size < 3) {
                         val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 25f))
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 30f))
                     }
                 }
             }
@@ -247,7 +247,7 @@ class Blob(
                 if (atkTimer2 >= 130) { atkTimer2 = 0
                     if (shockwaves.size < 3) {
                         val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 35f))
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 100f))
                     }
                     aimShot(playerX, playerY, tint = 2, speedMult = 2.0f)?.let { result.add(it) }
                 }

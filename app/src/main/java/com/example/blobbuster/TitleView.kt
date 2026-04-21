@@ -78,6 +78,11 @@ class TitleView(context: Context) : View(context) {
     private val versionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(70, 100, 150, 200)
     }
+    private val spinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#40C4FF")
+        style = Paint.Style.STROKE
+        strokeCap = android.graphics.Paint.Cap.ROUND
+    }
 
     fun startAnimation() { handler.post(updateRunnable) }
     fun stopAnimation() { handler.removeCallbacks(updateRunnable) }
@@ -219,6 +224,19 @@ class TitleView(context: Context) : View(context) {
             startButtonRect.centerY() + startBounds.height() / 2f,
             btnTextPaint
         )
+
+        // ローディングスピナー
+        if (isLoading) {
+            val spinR = screenW * 0.06f
+            val spinCX = screenW / 2f
+            val spinCY = startButtonRect.bottom + spinR * 2.0f
+            spinPaint.strokeWidth = screenW * 0.008f
+            val spinStart = (animTick * 6f) % 360f
+            canvas.drawArc(
+                android.graphics.RectF(spinCX - spinR, spinCY - spinR, spinCX + spinR, spinCY + spinR),
+                spinStart, 270f, false, spinPaint
+            )
+        }
 
         // Version
         canvas.drawText("v0.1.0", screenW * 0.04f, screenH * 0.97f, versionPaint)

@@ -26,7 +26,7 @@ class Shockwave(
     val cx: Float,
     val cy: Float,
     private val screenWidth: Int,
-    screenHeight: Int,
+    private val screenHeight: Int,  // フィールドとして保持（下部境界チェックに使用）
     /** 扇の中心方向（Androidキャンバス座標系: 東=0, 時計回り, degrees） */
     private val directionAngle: Float,
     /** 扇の総開き角度（degrees）。中心から ±sweepAngle/2 の範囲に判定あり */
@@ -60,6 +60,8 @@ class Shockwave(
         frameCount++
         if (durationFrames != Int.MAX_VALUE && frameCount >= durationFrames) isDead = true
         if (radius > maxRadius) isDead = true
+        // 発生源から広がった波が地面ラインより下に完全に出たら消滅（下部蓄積防止）
+        if (cy + radius > screenHeight * 0.96f) isDead = true
     }
 
     /** プレイヤーが扇形の波面に触れているか */
