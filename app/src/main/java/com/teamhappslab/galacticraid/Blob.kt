@@ -218,10 +218,12 @@ class Blob(
                 if (atkTimer1 >= (78 * attackIntervalMult * congestion).toInt()) { atkTimer1 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.35f, tint = 2, speedMult = 1.5f))
                 }
-                // 攻撃2: 高速照準弾×5（約1.1秒間隔）
+                // 攻撃2: 高速照準弾×5（約1.1秒間隔）速度差で縦に連なる
                 atkTimer2++
                 if (atkTimer2 >= (66 * attackIntervalMult * congestion).toInt()) { atkTimer2 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.15f, tint = 1, speedMult = 1.8f))
+                    listOf(2.0f, 1.75f, 1.5f, 1.25f, 1.0f).forEach { s ->
+                        aimShot(playerX, playerY, tint = 1, speedMult = s)?.let { result.add(it) }
+                    }
                 }
                 // 攻撃3: 衝撃波（約2秒間隔）
                 atkTimer3++
