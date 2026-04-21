@@ -136,10 +136,10 @@ class TitleView(context: Context) : View(context) {
         screenW = w.toFloat()
         screenH = h.toFloat()
 
-        titlePaint.textSize  = w * 0.17f
-        titleGlowPaint.textSize = w * 0.17f
-        title2Paint.textSize = w * 0.15f
-        title2GlowPaint.textSize = w * 0.15f
+        titlePaint.textSize  = w * 0.12f   // "GALACTIC" は文字数が多いので少し小さく
+        titleGlowPaint.textSize = w * 0.12f
+        title2Paint.textSize = w * 0.20f   // "RAID" は大きく迫力を出す
+        title2GlowPaint.textSize = w * 0.20f
         taglinePaint.textSize = w * 0.032f
         btnTextPaint.textSize = w * 0.065f
         settingsBtnTextPaint.textSize = w * 0.052f
@@ -224,27 +224,27 @@ class TitleView(context: Context) : View(context) {
             canvas.drawCircle(b.x, b.y, b.radius * pulse, blobBodyPaint)
         }
 
-        // Title "BLOB"
+        // Title "GALACTIC"
         val glowA = (sin(animTick * 0.05f) * 35 + 65).toInt()
-        val blobText = "BLOB"
+        val blobText = "GALACTIC"
         val blobBounds = Rect(); titlePaint.getTextBounds(blobText, 0, blobText.length, blobBounds)
         val blobX = (screenW - blobBounds.width()) / 2f
         val blobY = screenH * 0.27f
         titleGlowPaint.color = Color.argb(glowA, 64, 196, 255)
-        for (ox in listOf(-5f, 0f, 5f)) for (oy in listOf(-5f, 0f, 5f)) canvas.drawText(blobText, blobX + ox, blobY + oy, titleGlowPaint)
+        for (ox in listOf(-4f, 0f, 4f)) for (oy in listOf(-4f, 0f, 4f)) canvas.drawText(blobText, blobX + ox, blobY + oy, titleGlowPaint)
         canvas.drawText(blobText, blobX, blobY, titlePaint)
 
-        // Title "BUSTER"
-        val busterText = "BUSTER"
+        // Title "RAID"
+        val busterText = "RAID"
         val busterBounds = Rect(); title2Paint.getTextBounds(busterText, 0, busterText.length, busterBounds)
-        val busterX = (screenW - busterBounds.width()) / 2f + screenW * 0.05f
-        val busterY = blobY + screenH * 0.100f
+        val busterX = (screenW - busterBounds.width()) / 2f
+        val busterY = blobY + screenH * 0.110f
         title2GlowPaint.color = Color.argb(glowA, 255, 64, 128)
-        for (ox in listOf(-4f, 0f, 4f)) for (oy in listOf(-4f, 0f, 4f)) canvas.drawText(busterText, busterX + ox, busterY + oy, title2GlowPaint)
+        for (ox in listOf(-5f, 0f, 5f)) for (oy in listOf(-5f, 0f, 5f)) canvas.drawText(busterText, busterX + ox, busterY + oy, title2GlowPaint)
         canvas.drawText(busterText, busterX, busterY, title2Paint)
 
         // Tagline
-        val tag = "— SURVIVE THE BLOB INVASION —"
+        val tag = "— SURVIVE THE GALACTIC RAID —"
         val tagBounds = Rect(); taglinePaint.getTextBounds(tag, 0, tag.length, tagBounds)
         canvas.drawText(tag, (screenW - tagBounds.width()) / 2f, busterY + screenH * 0.055f, taglinePaint)
 
