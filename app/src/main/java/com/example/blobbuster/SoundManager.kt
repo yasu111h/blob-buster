@@ -23,6 +23,10 @@ class SoundManager {
 
     private val sampleRate = 22050
 
+    // ── BGM/SE ON/OFFフラグ ─────────────────────────────────────────
+    var bgmEnabled: Boolean = true
+    var sfxEnabled: Boolean = true
+
     // ── SFXプール ──────────────────────────────────────────────────
     @Volatile private var sfxReady = false
     private val killPool   = arrayOfNulls<AudioTrack>(12)
@@ -112,9 +116,9 @@ class SoundManager {
 
     // ── 公開SFX API ───────────────────────────────────────────────
 
-    fun playEnemyKilled()  { playFromPool(killPool,   intArrayOf(killIdx++  )) }
-    fun playPlayerDamaged(){ playFromPool(damagePool, intArrayOf(damageIdx++)) }
-    fun playItemPickup()   { playFromPool(itemPool,   intArrayOf(itemIdx++  )) }
+    fun playEnemyKilled()  { if (sfxEnabled) playFromPool(killPool,   intArrayOf(killIdx++  )) }
+    fun playPlayerDamaged(){ if (sfxEnabled) playFromPool(damagePool, intArrayOf(damageIdx++)) }
+    fun playItemPickup()   { if (sfxEnabled) playFromPool(itemPool,   intArrayOf(itemIdx++  )) }
 
     // ── BGM ───────────────────────────────────────────────────────
 
@@ -136,14 +140,16 @@ class SoundManager {
             sfxReady = true
         }.apply { isDaemon = true; start() }
 
-        // BGM: MediaPlayer で MP3再生
-        try {
-            mediaPlayer = MediaPlayer.create(context, R.raw.bgm)?.apply {
-                isLooping = true
-                setVolume(1.0f, 1.0f)
-                if (!bgmUserPaused && !bgmActivityPaused) start()
-            }
-        } catch (_: Exception) { /* BGM失敗しても続行 */ }
+        // BGM: MediaPlayer で MP3再生（bgmEnabledがtrueのときのみ）
+        if (bgmEnabled) {
+            try {
+                mediaPlayer = MediaPlayer.create(context, R.raw.bgm)?.apply {
+                    isLooping = true
+                    setVolume(1.0f, 1.0f)
+                    if (!bgmUserPaused && !bgmActivityPaused) start()
+                }
+            } catch (_: Exception) { /* BGM失敗しても続行 */ }
+        }
     }
 
     fun pauseBgmByUser() {
@@ -152,7 +158,7 @@ class SoundManager {
     }
     fun resumeBgmByUser() {
         bgmUserPaused = false
-        if (!bgmActivityPaused) try { mediaPlayer?.start() } catch (_: Exception) {}
+        if (bgmEnabled && !bgmActivityPaused) try { mediaPlayer?.start() } catch (_: Exception) {}
     }
     fun pauseBgmBySystem() {
         bgmActivityPaused = true
@@ -160,7 +166,7 @@ class SoundManager {
     }
     fun resumeBgmBySystem() {
         bgmActivityPaused = false
-        if (!bgmUserPaused) try { mediaPlayer?.start() } catch (_: Exception) {}
+        if (bgmEnabled && !bgmUserPaused) try { mediaPlayer?.start() } catch (_: Exception) {}
     }
 
     fun release() {

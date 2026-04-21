@@ -1,14 +1,25 @@
 package com.example.blobbuster
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.WindowManager
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var titleView: TitleView
+
+    private val settingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        // 設定画面から戻ったとき（ハイスコアリセットされた可能性あり）
+        titleView.updateHighScores(HighScoreManager.getTopScores(this))
+    }
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,7 +46,12 @@ class MainActivity : AppCompatActivity() {
 
         titleView = TitleView(this)
         titleView.onStartTapped = {
-            startActivity(Intent(this, GameActivity::class.java))
+            Handler(Looper.getMainLooper()).postDelayed({
+                startActivity(Intent(this, GameActivity::class.java))
+            }, 600L)
+        }
+        titleView.onSettingsTapped = {
+            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
         }
         setContentView(titleView)
     }
@@ -43,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         titleView.startAnimation()
+        titleView.resetLoading()
+        titleView.updateHighScores(HighScoreManager.getTopScores(this))
     }
 
     override fun onPause() {

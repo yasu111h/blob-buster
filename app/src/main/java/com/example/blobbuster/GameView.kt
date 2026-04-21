@@ -106,8 +106,11 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     // ────────────────────────────────────────────────────
 
     // ── 一時停止ボタン ─────────────────────────────────────
-    private var pauseBtnRect = RectF()
+    private var pauseBtnRect  = RectF()
     private var resumeBtnRect = RectF()  // PAUSEDオーバーレイ中央の再開ボタン
+    private var homeBtnRect   = RectF()  // PAUSEDオーバーレイのHomeボタン
+    var onGoHome: (() -> Unit)? = null   // ホーム画面へ戻るコールバック
+
     private val pauseBtnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(160, 20, 80, 40)
     }
@@ -131,6 +134,16 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     }
     private val resumeBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE; isFakeBoldText = true
+    }
+    private val homeBtnBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(200, 50, 30, 10)
+    }
+    private val homeBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(255, 255, 180, 0)
+        style = Paint.Style.STROKE; strokeWidth = 3f
+    }
+    private val homeBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(230, 255, 210, 60); isFakeBoldText = true
     }
     // ── アイテム取得エフェクト ────────────────────────────
     private var powerUpFlashTimer = 0
@@ -323,12 +336,19 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
 
         // 中央再開ボタン（PAUSEDオーバーレイ用）
         val rBtnW = screenWidth * 0.55f
-        val rBtnH = screenHeight * 0.10f
+        val rBtnH = screenHeight * 0.095f
         resumeBtnRect = RectF(
-            (screenWidth - rBtnW) / 2f, screenHeight * 0.58f,
-            (screenWidth + rBtnW) / 2f, screenHeight * 0.58f + rBtnH
+            (screenWidth - rBtnW) / 2f, screenHeight * 0.50f,
+            (screenWidth + rBtnW) / 2f, screenHeight * 0.50f + rBtnH
         )
         resumeBtnTextPaint.textSize = screenWidth * 0.07f
+
+        // Homeボタン（PAUSEDオーバーレイ用）
+        homeBtnRect = RectF(
+            (screenWidth - rBtnW) / 2f, screenHeight * 0.62f,
+            (screenWidth + rBtnW) / 2f, screenHeight * 0.62f + rBtnH
+        )
+        homeBtnTextPaint.textSize = screenWidth * 0.065f
 
         // アイテム取得オーラ
         powerUpAuraPaint.strokeWidth = screenWidth * 0.018f
@@ -346,6 +366,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     private fun triggerGameOver() {
         gameState = GameState.GAME_OVER
         soundManager.pauseBgmByUser()
+        HighScoreManager.saveScore(context, scoreManager.score)
     }
 
     private fun initGame() {
@@ -440,6 +461,16 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     resumeBtnRect.contains(tx, ty) -> {
                         gameState = GameState.PLAYING
                         soundManager.resumeBgmByUser()
+                    }
+                    // Homeボタン
+                    homeBtnRect.contains(tx, ty) -> {
+                        post {
+                            android.app.AlertDialog.Builder(context)
+                                .setMessage("Return to home?\nYour progress will be lost.")
+                                .setPositiveButton("Yes") { _, _ -> onGoHome?.invoke() }
+                                .setNegativeButton("Cancel", null)
+                                .show()
+                        }
                     }
                 }
             }
@@ -905,6 +936,17 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 resumeBtnRect.centerX() - rBounds.width() / 2f,
                 resumeBtnRect.centerY() + rBounds.height() / 2f,
                 resumeBtnTextPaint)
+
+            // Homeボタン
+            canvas.drawRoundRect(homeBtnRect, 24f, 24f, homeBtnBgPaint)
+            canvas.drawRoundRect(homeBtnRect, 24f, 24f, homeBtnBorderPaint)
+            val hLabel = "⌂  Home"
+            val hBounds = Rect()
+            homeBtnTextPaint.getTextBounds(hLabel, 0, hLabel.length, hBounds)
+            canvas.drawText(hLabel,
+                homeBtnRect.centerX() - hBounds.width() / 2f,
+                homeBtnRect.centerY() + hBounds.height() / 2f,
+                homeBtnTextPaint)
         }
 
         // GAME OVER オーバーレイ
