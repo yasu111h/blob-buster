@@ -151,10 +151,18 @@ class Blob(
 
         when (size) {
             BlobSize.TINY -> {
-                // UFO: 攻撃なし
+                // UFO: 照準弾（約6秒間隔）
+                atkTimer1++
+                if (atkTimer1 >= (360 * attackIntervalMult * congestion).toInt()) { atkTimer1 = 0
+                    aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
+                }
             }
             BlobSize.SMALL -> {
-                // Sun: 攻撃なし
+                // Sun: 照準弾（約5秒間隔）
+                atkTimer1++
+                if (atkTimer1 >= (300 * attackIntervalMult * congestion).toInt()) { atkTimer1 = 0
+                    aimShot(playerX, playerY, tint = 0)?.let { result.add(it) }
+                }
             }
             BlobSize.SPEEDY -> {
                 atkTimer1++
