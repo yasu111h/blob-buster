@@ -58,6 +58,12 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     private var dbgHp1Rect = RectF()
     private var dbgHp2Rect = RectF()
     private var dbgHp3Rect = RectF()
+    // 無敵モードトグル
+    var debugInvincible: Boolean = false
+    private var dbgInvincibleRect = RectF()
+    // レベル±10ボタン
+    private var dbgLvlMinus10Rect = RectF()
+    private var dbgLvlPlus10Rect  = RectF()
 
     // FPS計測
     private var lastFrameNs: Long = 0L
@@ -249,41 +255,47 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         dbgBtnTextPaint.textSize = screenWidth * 0.035f
 
         // デバッグパネル（右寄り）
-        val panelW = screenWidth * 0.60f
-        val panelH = screenHeight * 0.56f  // HP行追加のためさらに拡張
+        val panelW = screenWidth * 0.64f
+        val panelH = screenHeight * 0.66f
         val panelX = screenWidth - panelW - screenWidth * 0.03f
-        val panelY = screenHeight * 0.33f
+        val panelY = screenHeight * 0.24f
         debugPanelRect = RectF(panelX, panelY, panelX + panelW, panelY + panelH)
         dbgLabelPaint.textSize = screenWidth * 0.034f
         dbgOnPaint.textSize = screenWidth * 0.034f
         dbgOffPaint.textSize = screenWidth * 0.034f
 
-        // トグル行の配置（3行）
-        val rowH = panelH * 0.14f
-        val rowY1 = panelY + panelH * 0.16f
-        val rowY2 = rowY1 + panelH * 0.15f
-        val rowY3 = rowY2 + panelH * 0.15f
-        dbgToggle1Rect = RectF(panelX + panelW * 0.05f, rowY1 - rowH * 0.8f, panelX + panelW * 0.95f, rowY1 + rowH * 0.2f)
-        dbgToggle2Rect = RectF(panelX + panelW * 0.05f, rowY2 - rowH * 0.8f, panelX + panelW * 0.95f, rowY2 + rowH * 0.2f)
-        dbgToggle3Rect = RectF(panelX + panelW * 0.05f, rowY3 - rowH * 0.8f, panelX + panelW * 0.95f, rowY3 + rowH * 0.2f)
-        dbgCloseRect = RectF(panelX + panelW * 0.75f, panelY + panelH * 0.01f, panelX + panelW * 0.98f, panelY + panelH * 0.10f)
+        // 閉じるボタン（パネル上端・右寄り・十分な余白）
+        dbgCloseRect = RectF(panelX + panelW * 0.74f, panelY + panelH * 0.01f, panelX + panelW * 0.98f, panelY + panelH * 0.07f)
 
-        // レベル操作ボタン（LVL − / +）
-        val btnH = panelH * 0.13f
-        val lvlRowY = rowY3 + panelH * 0.18f
-        val btnW = panelW * 0.18f
-        dbgLvlMinusRect = RectF(panelX + panelW * 0.50f, lvlRowY, panelX + panelW * 0.50f + btnW, lvlRowY + btnH)
-        dbgLvlPlusRect  = RectF(panelX + panelW * 0.72f, lvlRowY, panelX + panelW * 0.72f + btnW, lvlRowY + btnH)
+        // トグル行の配置（4行）: 敵の表示 / 敵の攻撃 / デバッグ表示 / 無敵モード
+        val rowH = panelH * 0.10f
+        val rowY1 = panelY + panelH * 0.17f
+        val rowY2 = rowY1 + panelH * 0.10f
+        val rowY3 = rowY2 + panelH * 0.10f
+        val rowY4 = rowY3 + panelH * 0.10f
+        dbgToggle1Rect    = RectF(panelX + panelW * 0.05f, rowY1 - rowH * 0.8f, panelX + panelW * 0.95f, rowY1 + rowH * 0.2f)
+        dbgToggle2Rect    = RectF(panelX + panelW * 0.05f, rowY2 - rowH * 0.8f, panelX + panelW * 0.95f, rowY2 + rowH * 0.2f)
+        dbgToggle3Rect    = RectF(panelX + panelW * 0.05f, rowY3 - rowH * 0.8f, panelX + panelW * 0.95f, rowY3 + rowH * 0.2f)
+        dbgInvincibleRect = RectF(panelX + panelW * 0.05f, rowY4 - rowH * 0.8f, panelX + panelW * 0.95f, rowY4 + rowH * 0.2f)
+
+        // レベル操作ボタン（LVL −10 / − / + / +10）
+        val btnH  = panelH * 0.09f
+        val btnW  = panelW * 0.14f
+        val lvlRowY = rowY4 + panelH * 0.14f
+        dbgLvlMinus10Rect = RectF(panelX + panelW * 0.34f, lvlRowY, panelX + panelW * 0.34f + btnW, lvlRowY + btnH)
+        dbgLvlMinusRect   = RectF(panelX + panelW * 0.50f, lvlRowY, panelX + panelW * 0.50f + btnW, lvlRowY + btnH)
+        dbgLvlPlusRect    = RectF(panelX + panelW * 0.65f, lvlRowY, panelX + panelW * 0.65f + btnW, lvlRowY + btnH)
+        dbgLvlPlus10Rect  = RectF(panelX + panelW * 0.80f, lvlRowY, panelX + panelW * 0.80f + btnW, lvlRowY + btnH)
 
         // 弾段数ボタン（1 / 3 / 5）
-        val bltRowY = lvlRowY + panelH * 0.16f
+        val bltRowY = lvlRowY + panelH * 0.13f
         val bltBtnW = panelW * 0.16f
         dbgBullet1Rect = RectF(panelX + panelW * 0.38f, bltRowY, panelX + panelW * 0.38f + bltBtnW, bltRowY + btnH)
         dbgBullet3Rect = RectF(panelX + panelW * 0.57f, bltRowY, panelX + panelW * 0.57f + bltBtnW, bltRowY + btnH)
         dbgBullet5Rect = RectF(panelX + panelW * 0.76f, bltRowY, panelX + panelW * 0.76f + bltBtnW, bltRowY + btnH)
 
         // HP操作ボタン（1 / 2 / 3）
-        val hpRowY = bltRowY + panelH * 0.14f
+        val hpRowY = bltRowY + panelH * 0.12f
         dbgHp1Rect = RectF(panelX + panelW * 0.38f, hpRowY, panelX + panelW * 0.38f + bltBtnW, hpRowY + btnH)
         dbgHp2Rect = RectF(panelX + panelW * 0.57f, hpRowY, panelX + panelW * 0.57f + bltBtnW, hpRowY + btnH)
         dbgHp3Rect = RectF(panelX + panelW * 0.76f, hpRowY, panelX + panelW * 0.76f + bltBtnW, hpRowY + btnH)
@@ -401,15 +413,18 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     debugPanelOpen && dbgToggle1Rect.contains(tx, ty)  -> debugShowEnemies = !debugShowEnemies
                     debugPanelOpen && dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
                     debugPanelOpen && dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
-                    debugPanelOpen && dbgLvlMinusRect.contains(tx, ty) -> blobManager.setLevel(blobManager.level - 1)
-                    debugPanelOpen && dbgLvlPlusRect.contains(tx, ty)  -> blobManager.setLevel(blobManager.level + 1)
-                    debugPanelOpen && dbgBullet1Rect.contains(tx, ty)  -> player.setBulletLevel(1)
-                    debugPanelOpen && dbgBullet3Rect.contains(tx, ty)  -> player.setBulletLevel(3)
-                    debugPanelOpen && dbgBullet5Rect.contains(tx, ty)  -> player.setBulletLevel(5)
-                    debugPanelOpen && dbgHp1Rect.contains(tx, ty)      -> hp = 1
-                    debugPanelOpen && dbgHp2Rect.contains(tx, ty)      -> hp = 2
-                    debugPanelOpen && dbgHp3Rect.contains(tx, ty)      -> hp = 3
-                    debugPanelOpen && !debugPanelRect.contains(tx, ty) -> debugPanelOpen = false
+                    debugPanelOpen && dbgInvincibleRect.contains(tx, ty)  -> debugInvincible = !debugInvincible
+                    debugPanelOpen && dbgLvlMinus10Rect.contains(tx, ty) -> blobManager.setLevel(blobManager.level - 10)
+                    debugPanelOpen && dbgLvlMinusRect.contains(tx, ty)   -> blobManager.setLevel(blobManager.level - 1)
+                    debugPanelOpen && dbgLvlPlusRect.contains(tx, ty)    -> blobManager.setLevel(blobManager.level + 1)
+                    debugPanelOpen && dbgLvlPlus10Rect.contains(tx, ty)  -> blobManager.setLevel(blobManager.level + 10)
+                    debugPanelOpen && dbgBullet1Rect.contains(tx, ty)    -> player.setBulletLevel(1)
+                    debugPanelOpen && dbgBullet3Rect.contains(tx, ty)    -> player.setBulletLevel(3)
+                    debugPanelOpen && dbgBullet5Rect.contains(tx, ty)    -> player.setBulletLevel(5)
+                    debugPanelOpen && dbgHp1Rect.contains(tx, ty)        -> hp = 1
+                    debugPanelOpen && dbgHp2Rect.contains(tx, ty)        -> hp = 2
+                    debugPanelOpen && dbgHp3Rect.contains(tx, ty)        -> hp = 3
+                    debugPanelOpen && !debugPanelRect.contains(tx, ty)   -> debugPanelOpen = false
                     // DBGボタン
                     debugBtnRect.contains(tx, ty) -> debugPanelOpen = !debugPanelOpen
                     // 再開ボタン
@@ -435,15 +450,18 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 dbgToggle1Rect.contains(tx, ty)  -> debugShowEnemies = !debugShowEnemies
                 dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
                 dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
-                dbgLvlMinusRect.contains(tx, ty) -> blobManager.setLevel(blobManager.level - 1)
-                dbgLvlPlusRect.contains(tx, ty)  -> blobManager.setLevel(blobManager.level + 1)
-                dbgBullet1Rect.contains(tx, ty)  -> player.setBulletLevel(1)
-                dbgBullet3Rect.contains(tx, ty)  -> player.setBulletLevel(3)
-                dbgBullet5Rect.contains(tx, ty)  -> player.setBulletLevel(5)
-                dbgHp1Rect.contains(tx, ty)      -> hp = 1
-                dbgHp2Rect.contains(tx, ty)      -> hp = 2
-                dbgHp3Rect.contains(tx, ty)      -> hp = 3
-                !debugPanelRect.contains(tx, ty) -> debugPanelOpen = false
+                dbgInvincibleRect.contains(tx, ty)  -> debugInvincible = !debugInvincible
+                dbgLvlMinus10Rect.contains(tx, ty) -> blobManager.setLevel(blobManager.level - 10)
+                dbgLvlMinusRect.contains(tx, ty)   -> blobManager.setLevel(blobManager.level - 1)
+                dbgLvlPlusRect.contains(tx, ty)    -> blobManager.setLevel(blobManager.level + 1)
+                dbgLvlPlus10Rect.contains(tx, ty)  -> blobManager.setLevel(blobManager.level + 10)
+                dbgBullet1Rect.contains(tx, ty)    -> player.setBulletLevel(1)
+                dbgBullet3Rect.contains(tx, ty)    -> player.setBulletLevel(3)
+                dbgBullet5Rect.contains(tx, ty)    -> player.setBulletLevel(5)
+                dbgHp1Rect.contains(tx, ty)        -> hp = 1
+                dbgHp2Rect.contains(tx, ty)        -> hp = 2
+                dbgHp3Rect.contains(tx, ty)        -> hp = 3
+                !debugPanelRect.contains(tx, ty)   -> debugPanelOpen = false
             }
             return true
         }
@@ -531,7 +549,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                         <= eb.radius + player.width / 2f) { dashHit = true; break }
                 }
             }
-            if (dashHit) {
+            if (dashHit && !debugInvincible) {
                 hp--
                 invincibleTimer = invincibleDuration
                 soundManager.playPlayerDamaged()
@@ -638,7 +656,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         }
 
         // Player×Blob当たり判定（toList()コピーなし）
-        if (invincibleTimer <= 0) {
+        if (invincibleTimer <= 0 && !debugInvincible) {
             for (blob in blobManager.blobs) {
                 val dx = player.x - blob.cx
                 val dy = player.y - blob.cy
@@ -661,7 +679,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             val sw = swIter.next()
             sw.update()
             if (sw.isDead) { swIter.remove(); continue }
-            if (invincibleTimer <= 0 && sw.hitsPlayer(player.x, player.y, player.width / 2f)) {
+            if (invincibleTimer <= 0 && !debugInvincible && sw.hitsPlayer(player.x, player.y, player.width / 2f)) {
                 hp--
                 invincibleTimer = invincibleDuration
                 soundManager.playPlayerDamaged()
@@ -670,7 +688,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         }
 
         // 敵弾×Player当たり判定
-        if (invincibleTimer <= 0) {
+        if (invincibleTimer <= 0 && !debugInvincible) {
             val ebHitIter = enemyBullets.iterator()
             while (ebHitIter.hasNext()) {
                 val eb = ebHitIter.next()
@@ -901,14 +919,23 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             drawToggleRow(dbgToggle1Rect, "敵の表示", debugShowEnemies)
             drawToggleRow(dbgToggle2Rect, "敵の攻撃", debugEnemyCanShoot)
             drawToggleRow(dbgToggle3Rect, "デバッグ表示", debugShowInfo)
+            drawToggleRow(dbgInvincibleRect, "無敵モード", debugInvincible)
 
-            // LVL操作
+            // LVL操作（−10 / − / + / +10）
             val lvlLabelY = dbgLvlMinusRect.centerY() + dbgLabelPaint.textSize * 0.4f
             canvas.drawText("LVL: ${blobManager.level}", debugPanelRect.left + screenWidth * 0.03f, lvlLabelY, dbgLabelPaint)
-            canvas.drawRoundRect(dbgLvlMinusRect, 6f, 6f, dbgBtnPaint)
-            canvas.drawText("−", dbgLvlMinusRect.centerX() - screenWidth * 0.02f, lvlLabelY, dbgOffPaint)
-            canvas.drawRoundRect(dbgLvlPlusRect, 6f, 6f, dbgBtnPaint)
-            canvas.drawText("+", dbgLvlPlusRect.centerX() - screenWidth * 0.015f, lvlLabelY, dbgOnPaint)
+            listOf(
+                dbgLvlMinus10Rect to "−10",
+                dbgLvlMinusRect   to "−",
+                dbgLvlPlusRect    to "+",
+                dbgLvlPlus10Rect  to "+10"
+            ).forEach { (rect, label) ->
+                canvas.drawRoundRect(rect, 6f, 6f, dbgBtnPaint)
+                val isPlus = label.startsWith("+")
+                val lbounds = android.graphics.Rect()
+                (if (isPlus) dbgOnPaint else dbgOffPaint).getTextBounds(label, 0, label.length, lbounds)
+                canvas.drawText(label, rect.centerX() - lbounds.width() / 2f, lvlLabelY, if (isPlus) dbgOnPaint else dbgOffPaint)
+            }
 
             // 弾段数操作
             val bltLabelY = dbgBullet1Rect.centerY() + dbgLabelPaint.textSize * 0.4f

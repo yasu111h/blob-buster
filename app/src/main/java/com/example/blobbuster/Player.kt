@@ -27,8 +27,8 @@ class Player(
 
     // バレットレベルタイマー（1以上ならカウントダウン中、0なら非アクティブ）
     private var bulletLevelTimer: Int = 0
-    private val level3Duration: Int = 360  // lv3: 6秒 @ 60fps
-    private val level5Duration: Int = 150  // lv5: 2.5秒 @ 60fps（早めに終わる）
+    private val level3Duration: Int = 540  // lv3: 9秒 @ 60fps（×1.5）
+    private val level5Duration: Int = 225  // lv5: 3.75秒 @ 60fps（×1.5）
 
     private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#40C4FF")

@@ -182,7 +182,7 @@ class Blob(
                 if (atkTimer1 >= (100 * congestion).toInt()) { atkTimer1 = 0
                     if (shockwaves.size < 3) {
                         val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.LARGE.color(), angleDeg, sweepAngle = 10f, durationFrames = 60))
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 10f))
                     }
                 }
             }
@@ -192,7 +192,7 @@ class Blob(
                 if (atkTimer1 >= (85 * congestion).toInt()) { atkTimer1 = 0
                     if (shockwaves.size < 3) {
                         val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.HUGE.color(), angleDeg, sweepAngle = 15f, durationFrames = 70))
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 15f))
                     }
                 }
                 // 速い単発弾は残す
@@ -212,7 +212,7 @@ class Blob(
                 if (atkTimer2 >= 180) { atkTimer2 = 0
                     if (shockwaves.size < 3) {
                         val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, BlobSize.DRAGON.color(), angleDeg, sweepAngle = 20f, durationFrames = 80))
+                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 20f))
                     }
                 }
             }

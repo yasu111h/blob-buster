@@ -12,21 +12,25 @@ import kotlin.math.sqrt
 /**
  * 衝撃波（扇形）攻撃。
  * 発生源 (cx, cy) から directionAngle 方向へ、sweepAngle 度の扇形に広がる。
- * durationFrames フレーム経過 or 画面外到達で消滅。
- * プレイヤーが波面（角度 + 距離）に触れるとダメージ。
+ *
+ * 持続時間は sweepAngle から自動計算:
+ *   ≤10° → 消えない（画面外で自動消滅）
+ *   ≤30° → 2.5秒（150f）
+ *   ≤50° → 2.0秒（120f）
+ *   ≤70° → 1.0秒（60f）
+ *   100°+ → 1.0秒（60f）
+ *
+ * 色は統一（電気シアン）。フェードなし、時間切れで即消滅。
  */
 class Shockwave(
     val cx: Float,
     val cy: Float,
     private val screenWidth: Int,
     screenHeight: Int,
-    baseColor: Int,
     /** 扇の中心方向（Androidキャンバス座標系: 東=0, 時計回り, degrees） */
     private val directionAngle: Float,
     /** 扇の総開き角度（degrees）。中心から ±sweepAngle/2 の範囲に判定あり */
-    private val sweepAngle: Float,
-    /** 生存フレーム数。60fps換算で 60=1秒、120=2秒 */
-    private val durationFrames: Int
+    private val sweepAngle: Float
 ) {
     private val maxRadius = hypot(screenWidth.toDouble(), screenHeight.toDouble()).toFloat()
     private val speed = screenWidth * 0.015f
@@ -36,9 +40,17 @@ class Shockwave(
     var isDead = false
     private var frameCount = 0
 
-    private val r = Color.red(baseColor)
-    private val g = Color.green(baseColor)
-    private val b = Color.blue(baseColor)
+    // 角度に基づいて持続時間を自動計算
+    private val durationFrames: Int = when {
+        sweepAngle <= 10f -> Int.MAX_VALUE  // 消えない（画面外で自動消滅）
+        sweepAngle <= 30f -> 150            // 2.5秒
+        sweepAngle <= 50f -> 120            // 2.0秒
+        sweepAngle <= 70f -> 60             // 1.0秒
+        else              -> 60             // 1.0秒（100°以上）
+    }
+
+    // 統一カラー（電気シアン）
+    private val r = 0; private val g = 245; private val b = 255  // #00F5FF
 
     private val outerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val glowPaint  = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
@@ -46,8 +58,8 @@ class Shockwave(
     fun update() {
         radius += speed
         frameCount++
-        // 時間切れ or 画面外で消滅
-        if (frameCount >= durationFrames || radius > maxRadius) isDead = true
+        if (durationFrames != Int.MAX_VALUE && frameCount >= durationFrames) isDead = true
+        if (radius > maxRadius) isDead = true
     }
 
     /** プレイヤーが扇形の波面に触れているか */
@@ -63,10 +75,9 @@ class Shockwave(
     }
 
     fun draw(canvas: Canvas) {
-        // 時間経過でフェードアウト
-        val timeProgress = frameCount.toFloat() / durationFrames
-        val alpha = ((1f - timeProgress) * 210).toInt().coerceIn(0, 255)
-        val thickness = baseThickness * (1f - timeProgress * 0.4f)
+        // 色は常に一定（フェードなし）。isDead になった瞬間に描画されなくなり急消滅。
+        val alpha = 210
+        val thickness = baseThickness
 
         val startAngle = directionAngle - sweepAngle / 2f
         val oval = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
