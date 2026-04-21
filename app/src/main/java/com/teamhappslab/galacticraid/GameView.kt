@@ -891,15 +891,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             }
         }
 
-        // DBGボタン
-        canvas.drawRoundRect(debugBtnRect, 8f, 8f, dbgBtnPaint)
-        canvas.drawRoundRect(debugBtnRect, 8f, 8f, dbgBtnBorderPaint)
-        val dbgLabel = "DBG"
-        val dbgBounds = Rect(); dbgBtnTextPaint.getTextBounds(dbgLabel, 0, dbgLabel.length, dbgBounds)
-        canvas.drawText(dbgLabel,
-            debugBtnRect.centerX() - dbgBounds.width() / 2f,
-            debugBtnRect.centerY() + dbgBounds.height() / 2f,
-            dbgBtnTextPaint)
+        // DBGボタン（非表示・タッチ判定のみ有効）
 
         // デバッグパネルは PAUSEオーバーレイの後に描画（後で移動）
         // ────────────────────────────────────────────────────
