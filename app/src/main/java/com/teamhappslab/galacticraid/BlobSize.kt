@@ -44,13 +44,13 @@ enum class BlobSize {
 
     fun score(): Int = when (this) {
         TINY   -> 10
-        SMALL  -> 20
-        SPEEDY -> 30
+        SMALL  -> 25
+        SPEEDY -> 40
         MEDIUM -> 60
         LARGE  -> 150
-        HUGE   -> 350
-        DRAGON -> 800
-        ENEMY8 -> 1500  // Leviathan
+        HUGE   -> 500
+        DRAGON -> 1200
+        ENEMY8 -> 2000  // Leviathan
     }
 
     fun color(): Int = when (this) {

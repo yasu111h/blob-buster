@@ -68,8 +68,7 @@ class Blob(
             for (size in BlobSize.values()) cache[size] = BlobPaints.create(size)
 
             // TINY(UFO)→enemy1, SMALL(Sun)→enemy2, SPEEDY(SpeedyBlade)→enemy3, MEDIUM(MediumUFO)→enemy4,
-            // LARGE(Spider)→enemy5, HUGE(RedEye)→enemy6, DRAGON(Dragon)→enemy7
-            // ENEMY8(Leviathan) は省略 → 色付き円で描画（仮）
+            // LARGE(Spider)→enemy5, HUGE(RedEye)→enemy6, DRAGON(Dragon)→enemy7, ENEMY8(Leviathan)→enemy8
             val rawMap = mapOf(
                 BlobSize.TINY   to BitmapFactory.decodeResource(context.resources, R.drawable.enemy1),
                 BlobSize.SMALL  to BitmapFactory.decodeResource(context.resources, R.drawable.enemy2),
@@ -77,7 +76,8 @@ class Blob(
                 BlobSize.MEDIUM to BitmapFactory.decodeResource(context.resources, R.drawable.enemy4),
                 BlobSize.LARGE  to BitmapFactory.decodeResource(context.resources, R.drawable.enemy5),
                 BlobSize.HUGE   to BitmapFactory.decodeResource(context.resources, R.drawable.enemy6),
-                BlobSize.DRAGON to BitmapFactory.decodeResource(context.resources, R.drawable.enemy7)
+                BlobSize.DRAGON to BitmapFactory.decodeResource(context.resources, R.drawable.enemy7),
+                BlobSize.ENEMY8 to BitmapFactory.decodeResource(context.resources, R.drawable.enemy8)
             )
             bitmaps.clear()
             for (size in BlobSize.values()) {
