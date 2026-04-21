@@ -152,17 +152,42 @@ class SoundManager {
         }
     }
 
-    /** リトライ時など: BGMを先頭からやり直す */
+    /** リトライ時など: BGMを先頭から0.5秒後に再生する */
     fun restartBgm(context: Context) {
         if (!bgmRunning || mediaPlayer == null) {
-            startBgm(context)
+            // 初回: MediaPlayer生成後に0.5秒待って再生
+            bgmRunning = true
+            Thread {
+                val kb = genKillBuf(); val db = genDamageBuf(); val ib = genItemBuf()
+                for (i in killPool.indices)   killPool[i]   = makeStaticTrack(kb)
+                for (i in damagePool.indices) damagePool[i] = makeStaticTrack(db)
+                for (i in itemPool.indices)   itemPool[i]   = makeStaticTrack(ib)
+                sfxReady = true
+            }.apply { isDaemon = true; start() }
+            if (bgmEnabled) {
+                try {
+                    mediaPlayer = MediaPlayer.create(context, R.raw.bgm)?.apply {
+                        isLooping = true
+                        setVolume(1.0f, 1.0f)
+                    }
+                    Thread {
+                        Thread.sleep(500)
+                        if (!bgmUserPaused && !bgmActivityPaused) {
+                            try { mediaPlayer?.start() } catch (_: Exception) {}
+                        }
+                    }.apply { isDaemon = true; start() }
+                } catch (_: Exception) {}
+            }
         } else {
             bgmUserPaused = false
             if (bgmEnabled) {
-                try {
-                    mediaPlayer?.seekTo(0)
-                    if (!bgmActivityPaused) mediaPlayer?.start()
-                } catch (_: Exception) {}
+                try { mediaPlayer?.seekTo(0) } catch (_: Exception) {}
+                Thread {
+                    Thread.sleep(500)
+                    if (!bgmUserPaused && !bgmActivityPaused) {
+                        try { mediaPlayer?.start() } catch (_: Exception) {}
+                    }
+                }.apply { isDaemon = true; start() }
             }
         }
     }
