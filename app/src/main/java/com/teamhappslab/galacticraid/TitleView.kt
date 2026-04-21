@@ -136,8 +136,8 @@ class TitleView(context: Context) : View(context) {
         screenW = w.toFloat()
         screenH = h.toFloat()
 
-        titlePaint.textSize  = w * 0.12f   // "GALACTIC" は文字数が多いので少し小さく
-        titleGlowPaint.textSize = w * 0.12f
+        titlePaint.textSize  = w * 0.14f   // "GALAXY"
+        titleGlowPaint.textSize = w * 0.14f
         title2Paint.textSize = w * 0.20f   // "RAID" は大きく迫力を出す
         title2GlowPaint.textSize = w * 0.20f
         taglinePaint.textSize = w * 0.032f
@@ -224,9 +224,9 @@ class TitleView(context: Context) : View(context) {
             canvas.drawCircle(b.x, b.y, b.radius * pulse, blobBodyPaint)
         }
 
-        // Title "GALACTIC"
+        // Title "GALAXY"
         val glowA = (sin(animTick * 0.05f) * 35 + 65).toInt()
-        val blobText = "GALACTIC"
+        val blobText = "GALAXY"
         val blobBounds = Rect(); titlePaint.getTextBounds(blobText, 0, blobText.length, blobBounds)
         val blobX = (screenW - blobBounds.width()) / 2f
         val blobY = screenH * 0.27f
@@ -244,7 +244,7 @@ class TitleView(context: Context) : View(context) {
         canvas.drawText(busterText, busterX, busterY, title2Paint)
 
         // Tagline
-        val tag = "— SURVIVE THE GALACTIC RAID —"
+        val tag = "— SURVIVE THE GALAXY RAID —"
         val tagBounds = Rect(); taglinePaint.getTextBounds(tag, 0, tag.length, tagBounds)
         canvas.drawText(tag, (screenW - tagBounds.width()) / 2f, busterY + screenH * 0.055f, taglinePaint)
 
