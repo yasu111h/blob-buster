@@ -78,9 +78,8 @@ class Blob(
                 BlobSize.MEDIUM to BitmapFactory.decodeResource(context.resources, R.drawable.enemy4),
                 BlobSize.LARGE  to BitmapFactory.decodeResource(context.resources, R.drawable.enemy5),
                 BlobSize.HUGE   to BitmapFactory.decodeResource(context.resources, R.drawable.enemy6),
-                BlobSize.DRAGON to BitmapFactory.decodeResource(context.resources, R.drawable.enemy7),
-                BlobSize.ENEMY8 to BitmapFactory.decodeResource(context.resources, R.drawable.enemy1),
-                BlobSize.ENEMY9 to BitmapFactory.decodeResource(context.resources, R.drawable.enemy2)
+                BlobSize.DRAGON to BitmapFactory.decodeResource(context.resources, R.drawable.enemy7)
+                // ENEMY8, ENEMY9 は意図的に省略 → 丸（色付き円）で描画（仮）
             )
             bitmaps.clear()
             for (size in BlobSize.values()) {

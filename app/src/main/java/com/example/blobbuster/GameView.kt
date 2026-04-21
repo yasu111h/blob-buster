@@ -558,11 +558,11 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                         <= eb.radius + player.width / 2f) { dashHit = true; break }
                 }
             }
-            if (dashHit && !debugInvincible) {
-                hp--
+            if (dashHit) {
+                if (!debugInvincible) hp--
                 invincibleTimer = invincibleDuration
                 soundManager.playPlayerDamaged()
-                if (hp <= 0) triggerGameOver()
+                if (!debugInvincible && hp <= 0) triggerGameOver()
             }
         }
         prevPlayerX = player.x
@@ -643,9 +643,10 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 if (blob.isDead) continue   // O(1) フラグチェック（旧: O(n) contains）
                 // 画面上部（まだほぼ見えていない敵）は当たり判定をスキップ
                 if (blob.cy < blob.radius) continue
-                val dx = bullet.x - blob.cx
                 val dy = bullet.y - blob.cy
                 val r  = bullet.radius + blob.radius
+                if (dy > r || dy < -r) continue
+                val dx = bullet.x - blob.cx
                 if (dx * dx + dy * dy <= r * r) {
                     bullet.isDead = true
                     bulletPool.recycle(bullet)
@@ -673,16 +674,17 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         }
 
         // Player×Blob当たり判定（toList()コピーなし）
-        if (invincibleTimer <= 0 && !debugInvincible) {
+        if (invincibleTimer <= 0) {
             for (blob in blobManager.blobs) {
-                val dx = player.x - blob.cx
                 val dy = player.y - blob.cy
-                val r  = player.width / 2f + blob.radius
+                val r  = player.width * 0.35f + blob.radius
+                if (dy > r || dy < -r) continue
+                val dx = player.x - blob.cx
                 if (dx * dx + dy * dy <= r * r) {
-                    hp--
+                    if (!debugInvincible) hp--
                     invincibleTimer = invincibleDuration
                     soundManager.playPlayerDamaged()
-                    if (hp <= 0) triggerGameOver()
+                    if (!debugInvincible && hp <= 0) triggerGameOver()
                     break
                 }
             }
@@ -696,35 +698,36 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             val sw = swIter.next()
             sw.update()
             if (sw.isDead) { swIter.remove(); continue }
-            if (invincibleTimer <= 0 && !debugInvincible && sw.hitsPlayer(player.x, player.y, player.width / 2f)) {
-                hp--
+            if (invincibleTimer <= 0 && sw.hitsPlayer(player.x, player.y, player.width * 0.35f)) {
+                if (!debugInvincible) hp--
                 invincibleTimer = invincibleDuration
                 soundManager.playPlayerDamaged()
-                if (hp <= 0) triggerGameOver()
+                if (!debugInvincible && hp <= 0) triggerGameOver()
             }
         }
 
         // 敵弾×Player当たり判定
-        if (invincibleTimer <= 0 && !debugInvincible) {
+        if (invincibleTimer <= 0) {
             val ebHitIter = enemyBullets.iterator()
             while (ebHitIter.hasNext()) {
                 val eb = ebHitIter.next()
-                val dx = player.x - eb.x
                 val dy = player.y - eb.y
-                val r  = player.width / 2f + eb.radius
+                val r  = player.width * 0.35f + eb.radius
+                if (dy > r || dy < -r) continue
+                val dx = player.x - eb.x
                 if (dx * dx + dy * dy <= r * r) {
                     ebHitIter.remove()
-                    hp--
+                    if (!debugInvincible) hp--
                     invincibleTimer = invincibleDuration
                     soundManager.playPlayerDamaged()
-                    if (hp <= 0) triggerGameOver()
+                    if (!debugInvincible && hp <= 0) triggerGameOver()
                     break
                 }
             }
         }
 
         // GAME_OVER判定（念の為）
-        if (hp <= 0 && gameState == GameState.PLAYING) {
+        if (hp <= 0 && !debugInvincible && gameState == GameState.PLAYING) {
             triggerGameOver()
         }
     }
