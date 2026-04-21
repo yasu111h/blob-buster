@@ -108,7 +108,8 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     // ── 一時停止ボタン ─────────────────────────────────────
     private var pauseBtnRect  = RectF()
     private var resumeBtnRect = RectF()  // PAUSEDオーバーレイ中央の再開ボタン
-    private var homeBtnRect   = RectF()  // PAUSEDオーバーレイのHomeボタン
+    private var homeBtnRect         = RectF()  // PAUSEDオーバーレイのHomeボタン
+    private var gameOverHomeBtnRect = RectF()  // GAME_OVERオーバーレイのHomeボタン
     var onGoHome: (() -> Unit)? = null   // ホーム画面へ戻るコールバック
 
     private val pauseBtnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -350,6 +351,12 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         )
         homeBtnTextPaint.textSize = screenWidth * 0.065f
 
+        // Homeボタン（GAME_OVERオーバーレイ用）
+        gameOverHomeBtnRect = RectF(
+            (screenWidth - rBtnW) / 2f, screenHeight * 0.74f,
+            (screenWidth + rBtnW) / 2f, screenHeight * 0.74f + rBtnH
+        )
+
         // アイテム取得オーラ
         powerUpAuraPaint.strokeWidth = screenWidth * 0.018f
 
@@ -462,23 +469,21 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                         gameState = GameState.PLAYING
                         soundManager.resumeBgmByUser()
                     }
-                    // Homeボタン
-                    homeBtnRect.contains(tx, ty) -> {
-                        post {
-                            android.app.AlertDialog.Builder(context)
-                                .setMessage("Return to home?\nYour progress will be lost.")
-                                .setPositiveButton("Yes") { _, _ -> onGoHome?.invoke() }
-                                .setNegativeButton("Cancel", null)
-                                .show()
-                        }
-                    }
+                    // Homeボタン（即帰還）
+                    homeBtnRect.contains(tx, ty) -> onGoHome?.invoke()
                 }
             }
             return true
         }
 
         if (gameState == GameState.GAME_OVER) {
-            if (event.actionMasked == MotionEvent.ACTION_DOWN) initGame()
+            if (event.actionMasked == MotionEvent.ACTION_UP &&
+                gameOverHomeBtnRect.contains(event.x, event.y)) {
+                onGoHome?.invoke()
+            } else if (event.actionMasked == MotionEvent.ACTION_DOWN &&
+                !gameOverHomeBtnRect.contains(event.x, event.y)) {
+                initGame()
+            }
             return true
         }
 
@@ -985,6 +990,17 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 screenHeight * 0.65f,
                 retryPaint
             )
+
+            // Homeボタン
+            canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBgPaint)
+            canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBorderPaint)
+            val goHomeLabel = "⌂  Home"
+            val goHomeBounds = Rect()
+            homeBtnTextPaint.getTextBounds(goHomeLabel, 0, goHomeLabel.length, goHomeBounds)
+            canvas.drawText(goHomeLabel,
+                gameOverHomeBtnRect.centerX() - goHomeBounds.width() / 2f,
+                gameOverHomeBtnRect.centerY() + goHomeBounds.height() / 2f,
+                homeBtnTextPaint)
         }
 
         // ── デバッグパネル（全ステートで最前面に描画）──────────────
