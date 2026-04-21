@@ -4,11 +4,11 @@ plugins {
 }
 android {
     namespace = "com.teamhappslab.galaxyraid"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         applicationId = "com.teamhappslab.galaxyraid"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
     }

@@ -1,5 +1,6 @@
 package com.teamhappslab.galaxyraid
 
+
 /**
  * Bulletのオブジェクトプール。
  * 毎フレームnew Bullet()するのをやめ、使い終わった弾を再利用することでGCを抑制する。
@@ -14,7 +15,7 @@ class BulletPool(
     init {
         // ゲーム開始前にあらかじめプールを満たしておく（プレウォーム）
         repeat(initialSize) {
-            available.addLast(Bullet(screenWidth, screenHeight))
+            available.add(Bullet(screenWidth, screenHeight))
         }
     }
 
@@ -28,6 +29,6 @@ class BulletPool(
     /** 使い終わったBulletをプールに返す */
     fun recycle(bullet: Bullet) {
         bullet.isDead = true
-        available.addLast(bullet)
+        available.add(bullet)
     }
 }
