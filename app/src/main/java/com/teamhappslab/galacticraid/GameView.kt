@@ -702,7 +702,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     bullet.isDead = true
                     bulletPool.recycle(bullet)
                     if (blob.takeDamage()) {    // blob.isDead = true もここでセット
-                        scoreManager.addScore(blob.size.score())
+                        scoreManager.addScore((blob.size.score() * blobManager.scoreMultiplier).toInt())
                         blobManager.onKill()
                         deadBlobsForDrop.add(blob)
                         soundManager.playEnemyKilled()
@@ -858,12 +858,12 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
         canvas.drawText(heartText, screenWidth - heartBounds.width() - screenWidth * 0.03f, screenHeight * 0.05f, heartPaint)
 
-        // UI: LEVEL（中央上）
+        // UI: LEVEL（中央・2行目）
         val roundText = "LEVEL ${blobManager.level}"
         roundPaint.textSize = scorePaint.textSize
         val roundBounds = Rect()
         roundPaint.getTextBounds(roundText, 0, roundText.length, roundBounds)
-        canvas.drawText(roundText, (screenWidth - roundBounds.width()) / 2f, screenHeight * 0.05f, roundPaint)
+        canvas.drawText(roundText, (screenWidth - roundBounds.width()) / 2f, screenHeight * 0.10f, roundPaint)
 
         // ── デバッグUI ─────────────────────────────────────
         // デバッグ情報オーバーレイ（左上）

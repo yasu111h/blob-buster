@@ -26,6 +26,9 @@ class BlobManager(
     // 敵移動速度倍率（Lv100〜で1.1倍ずつ加速）
     val enemySpeedMult: Float get() = 1.1.pow(statTierCount.toDouble()).toFloat()
 
+    // スコア倍率（Lv100〜で1.1倍ずつ増加）
+    val scoreMultiplier: Float get() = 1.1.pow(statTierCount.toDouble()).toFloat()
+
     // スポーンバジェット
     private var spawnBudget: Float = 0f
     private val budgetPerFrame: Float
