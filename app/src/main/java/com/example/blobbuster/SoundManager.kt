@@ -140,7 +140,7 @@ class SoundManager {
         try {
             mediaPlayer = MediaPlayer.create(context, R.raw.bgm)?.apply {
                 isLooping = true
-                setVolume(0.75f, 0.75f)
+                setVolume(1.0f, 1.0f)
                 if (!bgmUserPaused && !bgmActivityPaused) start()
             }
         } catch (_: Exception) { /* BGM失敗しても続行 */ }

@@ -54,6 +54,10 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     private var dbgBullet1Rect  = RectF()
     private var dbgBullet3Rect  = RectF()
     private var dbgBullet5Rect  = RectF()
+    // HPボタン
+    private var dbgHp1Rect = RectF()
+    private var dbgHp2Rect = RectF()
+    private var dbgHp3Rect = RectF()
 
     // FPS計測
     private var lastFrameNs: Long = 0L
@@ -246,9 +250,9 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
 
         // デバッグパネル（右寄り）
         val panelW = screenWidth * 0.60f
-        val panelH = screenHeight * 0.48f  // 行数増加のため拡張
+        val panelH = screenHeight * 0.56f  // HP行追加のためさらに拡張
         val panelX = screenWidth - panelW - screenWidth * 0.03f
-        val panelY = screenHeight * 0.42f
+        val panelY = screenHeight * 0.33f
         debugPanelRect = RectF(panelX, panelY, panelX + panelW, panelY + panelH)
         dbgLabelPaint.textSize = screenWidth * 0.034f
         dbgOnPaint.textSize = screenWidth * 0.034f
@@ -277,6 +281,12 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         dbgBullet1Rect = RectF(panelX + panelW * 0.38f, bltRowY, panelX + panelW * 0.38f + bltBtnW, bltRowY + btnH)
         dbgBullet3Rect = RectF(panelX + panelW * 0.57f, bltRowY, panelX + panelW * 0.57f + bltBtnW, bltRowY + btnH)
         dbgBullet5Rect = RectF(panelX + panelW * 0.76f, bltRowY, panelX + panelW * 0.76f + bltBtnW, bltRowY + btnH)
+
+        // HP操作ボタン（1 / 2 / 3）
+        val hpRowY = bltRowY + panelH * 0.14f
+        dbgHp1Rect = RectF(panelX + panelW * 0.38f, hpRowY, panelX + panelW * 0.38f + bltBtnW, hpRowY + btnH)
+        dbgHp2Rect = RectF(panelX + panelW * 0.57f, hpRowY, panelX + panelW * 0.57f + bltBtnW, hpRowY + btnH)
+        dbgHp3Rect = RectF(panelX + panelW * 0.76f, hpRowY, panelX + panelW * 0.76f + bltBtnW, hpRowY + btnH)
 
         // デバッグ情報テキスト
         dbgInfoTextPaint.textSize = screenWidth * 0.030f
@@ -396,6 +406,9 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     debugPanelOpen && dbgBullet1Rect.contains(tx, ty)  -> player.setBulletLevel(1)
                     debugPanelOpen && dbgBullet3Rect.contains(tx, ty)  -> player.setBulletLevel(3)
                     debugPanelOpen && dbgBullet5Rect.contains(tx, ty)  -> player.setBulletLevel(5)
+                    debugPanelOpen && dbgHp1Rect.contains(tx, ty)      -> hp = 1
+                    debugPanelOpen && dbgHp2Rect.contains(tx, ty)      -> hp = 2
+                    debugPanelOpen && dbgHp3Rect.contains(tx, ty)      -> hp = 3
                     debugPanelOpen && !debugPanelRect.contains(tx, ty) -> debugPanelOpen = false
                     // DBGボタン
                     debugBtnRect.contains(tx, ty) -> debugPanelOpen = !debugPanelOpen
@@ -427,6 +440,9 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 dbgBullet1Rect.contains(tx, ty)  -> player.setBulletLevel(1)
                 dbgBullet3Rect.contains(tx, ty)  -> player.setBulletLevel(3)
                 dbgBullet5Rect.contains(tx, ty)  -> player.setBulletLevel(5)
+                dbgHp1Rect.contains(tx, ty)      -> hp = 1
+                dbgHp2Rect.contains(tx, ty)      -> hp = 2
+                dbgHp3Rect.contains(tx, ty)      -> hp = 3
                 !debugPanelRect.contains(tx, ty) -> debugPanelOpen = false
             }
             return true
@@ -901,6 +917,15 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 val active = (label.toInt() == player.bulletLevel)
                 canvas.drawRoundRect(rect, 6f, 6f, dbgBtnPaint)
                 canvas.drawText(label, rect.centerX() - screenWidth * 0.012f, bltLabelY, if (active) dbgOnPaint else dbgOffPaint)
+            }
+
+            // HP操作
+            val hpLabelY = dbgHp1Rect.centerY() + dbgLabelPaint.textSize * 0.4f
+            canvas.drawText("HP:", debugPanelRect.left + screenWidth * 0.03f, hpLabelY, dbgLabelPaint)
+            listOf(dbgHp1Rect to "1", dbgHp2Rect to "2", dbgHp3Rect to "3").forEach { (rect, label) ->
+                val active = (label.toInt() == hp)
+                canvas.drawRoundRect(rect, 6f, 6f, dbgBtnPaint)
+                canvas.drawText(label, rect.centerX() - screenWidth * 0.012f, hpLabelY, if (active) dbgOnPaint else dbgOffPaint)
             }
         }
         // ────────────────────────────────────────────────────────
