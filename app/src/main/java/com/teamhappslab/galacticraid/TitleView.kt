@@ -265,7 +265,7 @@ class TitleView(context: Context) : View(context) {
         btnBorderPaint.alpha = (180 * pulse + 75).toInt().coerceIn(0, 255)
         canvas.drawRoundRect(startButtonRect, 20f, 20f, btnBorderPaint)
 
-        val startText = "▶  START"
+        val startText = if (isLoading) "NOW LOADING..." else "▶  START"
         val startBounds = Rect(); btnTextPaint.getTextBounds(startText, 0, startText.length, startBounds)
         btnTextPaint.alpha = (190 * pulse + 65).toInt().coerceIn(0, 255)
         canvas.drawText(

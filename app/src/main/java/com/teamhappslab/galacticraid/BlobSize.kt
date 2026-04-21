@@ -4,8 +4,10 @@ import android.graphics.Color
 
 enum class MoveType { STRAIGHT_DOWN, ZIGZAG, RANDOM, CHASE }
 
+// TINY=UFO, SMALL=Sun, SPEEDY=SpeedyBlade, MEDIUM=MediumUFO,
+// LARGE=Spider, HUGE=RedEye, DRAGON=Dragon, ENEMY8=（未定）
 enum class BlobSize {
-    TINY, SMALL, SPEEDY, MEDIUM, LARGE, HUGE, DRAGON, ENEMY8, ENEMY9;
+    TINY, SMALL, SPEEDY, MEDIUM, LARGE, HUGE, DRAGON, ENEMY8;
 
     fun maxHp(): Int = when (this) {
         TINY   -> 1
@@ -16,7 +18,6 @@ enum class BlobSize {
         HUGE   -> 12
         DRAGON -> 25
         ENEMY8 -> 50
-        ENEMY9 -> 100
     }
 
     fun radius(screenWidth: Int): Float = screenWidth.toFloat() * when (this) {
@@ -28,7 +29,6 @@ enum class BlobSize {
         HUGE   -> 0.115f
         DRAGON -> 0.150f
         ENEMY8 -> 0.110f
-        ENEMY9 -> 0.130f
     }
 
     fun speed(screenHeight: Int): Float = screenHeight.toFloat() * when (this) {
@@ -40,7 +40,6 @@ enum class BlobSize {
         HUGE   -> 0.0020f
         DRAGON -> 0.0015f
         ENEMY8 -> 0.0025f
-        ENEMY9 -> 0.0022f
     }
 
     fun score(): Int = when (this) {
@@ -52,7 +51,6 @@ enum class BlobSize {
         HUGE   -> 350
         DRAGON -> 800
         ENEMY8 -> 1500
-        ENEMY9 -> 3000
     }
 
     fun color(): Int = when (this) {
@@ -64,7 +62,6 @@ enum class BlobSize {
         HUGE   -> Color.parseColor("#7B00CC")
         DRAGON -> Color.parseColor("#CC0000")
         ENEMY8 -> Color.parseColor("#FF8C00")
-        ENEMY9 -> Color.parseColor("#9400D3")
     }
 
     fun moveType(): MoveType = when (this) {
@@ -76,7 +73,6 @@ enum class BlobSize {
         HUGE   -> MoveType.CHASE
         DRAGON -> MoveType.CHASE
         ENEMY8 -> MoveType.CHASE
-        ENEMY9 -> MoveType.CHASE
     }
 
     fun spawnCost(): Int = when (this) {
@@ -88,7 +84,6 @@ enum class BlobSize {
         HUGE   -> 20
         DRAGON -> 35
         ENEMY8 -> 50
-        ENEMY9 -> 80
     }
 
     fun itemDropChance(): Float = when (this) {
@@ -100,7 +95,6 @@ enum class BlobSize {
         HUGE   -> 0.210f
         DRAGON -> 0.375f
         ENEMY8 -> 0.500f
-        ENEMY9 -> 0.800f
     }
 
     /**
@@ -113,24 +107,22 @@ enum class BlobSize {
         SMALL  -> 2.0f
         SPEEDY -> 2.0f
         MEDIUM -> 2.0f
-        LARGE  -> 1.5f   // 2.0→1.5（性能改善）
-        HUGE   -> 1.3f   // 2.0→1.3（性能改善・baseRadiusが既に大きい）
-        DRAGON -> 1.0f   // 2.0→1.0（性能改善・baseRadius=0.15*w で十分大きい）
+        LARGE  -> 1.5f
+        HUGE   -> 1.3f
+        DRAGON -> 1.0f
         ENEMY8 -> 1.2f
-        ENEMY9 -> 1.1f
     }
 
-    /** この敵が出現するのに必要な最低レベル */
+    /** この敵が出現するのに必要な最低レベル（実際の出現レベルと一致） */
     fun minLevel(): Int = when (this) {
         TINY   -> 1
-        SMALL  -> 2
-        SPEEDY -> 3
-        MEDIUM -> 4
-        LARGE  -> 6
-        HUGE   -> 8
-        DRAGON -> 10
+        SMALL  -> 3
+        SPEEDY -> 5
+        MEDIUM -> 7
+        LARGE  -> 9
+        HUGE   -> 12
+        DRAGON -> 17
         ENEMY8 -> 50
-        ENEMY9 -> 100
     }
 
     /** この敵が最大出現重みに達するレベル */
@@ -143,7 +135,6 @@ enum class BlobSize {
         HUGE   -> 50
         DRAGON -> 80
         ENEMY8 -> 100
-        ENEMY9 -> 200
     }
 
     /** ピーク時の出現重み（最大値） */
@@ -156,7 +147,6 @@ enum class BlobSize {
         HUGE   -> 70
         DRAGON -> 60
         ENEMY8 -> 50
-        ENEMY9 -> 40
     }
 
     /** グローバルティアに応じた攻撃ダメージ（将来用） */

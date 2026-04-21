@@ -645,6 +645,8 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             blobManager.tierUpEvent = false
             tierUpTimer = 180  // 3秒間エフェクト
             tierUpNumber = blobManager.globalTier
+            // ティアアップ時にHP+1回復（最大HPを超えない）
+            hp = minOf(hp + 1, maxHp)
         }
         if (tierUpTimer > 0) tierUpTimer--
 

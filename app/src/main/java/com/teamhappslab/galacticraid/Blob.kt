@@ -49,7 +49,7 @@ class Blob(
 
     // 攻撃タイマー（全敵対応）
     private var atkTimer1: Int = Random.nextInt(120)
-    private var atkTimer2: Int = if (size == BlobSize.HUGE || size == BlobSize.DRAGON || size == BlobSize.ENEMY8 || size == BlobSize.ENEMY9) Random.nextInt(60) else 0
+    private var atkTimer2: Int = if (size == BlobSize.HUGE || size == BlobSize.DRAGON || size == BlobSize.ENEMY8) Random.nextInt(60) else 0
 
     companion object {
         private val cache = HashMap<BlobSize, BlobPaints>(8)
@@ -68,9 +68,9 @@ class Blob(
             for (size in BlobSize.values()) cache[size] = BlobPaints.create(size)
 
             // 敵画像を読み込む（7種類・BlobSizeに1対1対応）
-            // TINY→enemy1, SMALL→enemy2, SPEEDY→enemy3, MEDIUM→enemy4,
-            // LARGE→enemy5, HUGE→enemy6, DRAGON→enemy7
-            // ENEMY8→enemy1流用（仮）, ENEMY9→enemy2流用（仮）
+            // TINY(UFO)→enemy1, SMALL(Sun)→enemy2, SPEEDY(SpeedyBlade)→enemy3, MEDIUM(MediumUFO)→enemy4,
+            // LARGE(Spider)→enemy5, HUGE(RedEye)→enemy6, DRAGON(Dragon)→enemy7
+            // ENEMY8(未定) は省略 → 色付き円で描画（仮）
             val rawMap = mapOf(
                 BlobSize.TINY   to BitmapFactory.decodeResource(context.resources, R.drawable.enemy1),
                 BlobSize.SMALL  to BitmapFactory.decodeResource(context.resources, R.drawable.enemy2),
@@ -236,21 +236,6 @@ class Blob(
                     }
                 }
             }
-            BlobSize.ENEMY9 -> {
-                // スプレッド7発 + 超速照準弾 + 衝撃波（35度）
-                atkTimer1++
-                if (atkTimer1 >= (100 * congestion).toInt()) { atkTimer1 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 7, spread = 0.45f, tint = 2, speedMult = 1.8f))
-                }
-                atkTimer2++
-                if (atkTimer2 >= 130) { atkTimer2 = 0
-                    if (shockwaves.size < 3) {
-                        val angleDeg = Math.toDegrees(atan2((playerY - cy).toDouble(), (playerX - cx).toDouble())).toFloat()
-                        shockwaves.add(Shockwave(cx, cy, screenWidth, screenHeight, angleDeg, sweepAngle = 10f))
-                    }
-                    aimShot(playerX, playerY, tint = 2, speedMult = 2.0f)?.let { result.add(it) }
-                }
-            }
         }
         return result
     }
@@ -302,7 +287,6 @@ class Blob(
                 BlobSize.DRAGON -> hpBarRedPaint
                 BlobSize.HUGE   -> hpBarYellowPaint
                 BlobSize.ENEMY8 -> hpBarRedPaint
-                BlobSize.ENEMY9 -> hpBarRedPaint
                 else            -> hpBarGreenPaint
             }
             canvas.drawRoundRect(RectF(bx, by, bx + bw * ratio, by + bh), bh / 2, bh / 2, fgPaint)

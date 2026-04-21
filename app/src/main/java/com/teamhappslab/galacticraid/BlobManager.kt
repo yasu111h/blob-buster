@@ -14,8 +14,8 @@ class BlobManager(
 
     private val maxBlobs = 12
 
-    // グローバルティア（50レベル節目で強化）
-    val globalTier: Int get() = (level - 1) / 50 + 1
+    // グローバルティア（level50, 100, 150...で強化）
+    val globalTier: Int get() = level / 50 + 1
 
     // スポーンバジェット
     private var spawnBudget: Float = 0f
@@ -36,9 +36,13 @@ class BlobManager(
 
     fun update(playerX: Float, playerY: Float, score: Int) {
         // スコアベースでlevel更新
+        var levelChanged = false
         while (score >= levelThreshold(level + 1)) {
             level++
+            levelChanged = true
         }
+        // レベルアップ時はキューをクリアして即座に新レベルの敵構成で再生成
+        if (levelChanged) spawnQueue.clear()
 
         // ティアアップ検知
         val currentTier = globalTier
