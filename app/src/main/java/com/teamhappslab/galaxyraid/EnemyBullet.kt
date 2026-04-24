@@ -44,7 +44,8 @@ class EnemyBullet(
 
     fun draw(canvas: Canvas) {
         if (isDead) return
-        val p = paints[tint] ?: paints[0] ?: return
+        val safeTint = tint.coerceIn(0, paints.size - 1)
+        val p = paints[safeTint] ?: paints[0] ?: return
         canvas.drawCircle(x, y, radius, p)
     }
 }

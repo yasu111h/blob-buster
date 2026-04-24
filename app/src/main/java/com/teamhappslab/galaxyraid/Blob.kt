@@ -67,25 +67,48 @@ class Blob(
             cache.clear()
             for (size in BlobSize.values()) cache[size] = BlobPaints.create(size)
 
-            // TINY(UFO)→enemy1, SMALL(Sun)→enemy2, SPEEDY(SpeedyBlade)→enemy3, MEDIUM(MediumUFO)→enemy4,
-            // LARGE(Spider)→enemy5, HUGE(RedEye)→enemy6, DRAGON(Dragon)→enemy7, ENEMY8(Leviathan)→enemy8
-            val rawMap = mapOf(
-                BlobSize.TINY   to BitmapFactory.decodeResource(context.resources, R.drawable.enemy1),
-                BlobSize.SMALL  to BitmapFactory.decodeResource(context.resources, R.drawable.enemy2),
-                BlobSize.SPEEDY to BitmapFactory.decodeResource(context.resources, R.drawable.enemy3),
-                BlobSize.MEDIUM to BitmapFactory.decodeResource(context.resources, R.drawable.enemy4),
-                BlobSize.LARGE  to BitmapFactory.decodeResource(context.resources, R.drawable.enemy5),
-                BlobSize.HUGE   to BitmapFactory.decodeResource(context.resources, R.drawable.enemy6),
-                BlobSize.DRAGON to BitmapFactory.decodeResource(context.resources, R.drawable.enemy7),
-                BlobSize.ENEMY8 to BitmapFactory.decodeResource(context.resources, R.drawable.enemy8)
+            // リソースIDマップ
+            val resMap = mapOf(
+                BlobSize.TINY   to R.drawable.enemy1,
+                BlobSize.SMALL  to R.drawable.enemy2,
+                BlobSize.SPEEDY to R.drawable.enemy3,
+                BlobSize.MEDIUM to R.drawable.enemy4,
+                BlobSize.LARGE  to R.drawable.enemy5,
+                BlobSize.HUGE   to R.drawable.enemy6,
+                BlobSize.DRAGON to R.drawable.enemy7,
+                BlobSize.ENEMY8 to R.drawable.enemy8
             )
             bitmaps.clear()
+            // 1枚ずつデコード→スケール→recycleでピークメモリを最小化
             for (size in BlobSize.values()) {
-                val raw = rawMap[size] ?: continue
+                val resId = resMap[size] ?: continue
                 val d = (size.radius(screenWidth) * size.displayScale() * 2).toInt().coerceAtLeast(4)
+                val raw = decodeSampled(context.resources, resId, d, d) ?: continue
                 bitmaps[size] = Bitmap.createScaledBitmap(raw, d, d, true)
-                raw.recycle()
+                if (raw !== bitmaps[size]) raw.recycle()
             }
+        }
+
+        /** 必要サイズに近い解像度でデコードし、密度自動拡大も無効化する */
+        private fun decodeSampled(res: android.content.res.Resources, resId: Int, reqW: Int, reqH: Int): Bitmap? {
+            // 1) 画像サイズだけ取得（メモリ確保なし）
+            val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeResource(res, resId, opts)
+            // 2) inSampleSize計算 + 密度スケーリング無効化
+            opts.inSampleSize = calcSampleSize(opts.outWidth, opts.outHeight, reqW, reqH)
+            opts.inJustDecodeBounds = false
+            opts.inScaled = false  // drawable/ の密度自動拡大を防止
+            return BitmapFactory.decodeResource(res, resId, opts)
+        }
+
+        private fun calcSampleSize(rawW: Int, rawH: Int, reqW: Int, reqH: Int): Int {
+            var sample = 1
+            if (rawW > reqW || rawH > reqH) {
+                while (rawW / (sample * 2) >= reqW && rawH / (sample * 2) >= reqH) {
+                    sample *= 2
+                }
+            }
+            return sample
         }
     }
 

@@ -39,10 +39,30 @@ class Player(
         private var playerBitmap: Bitmap? = null
 
         fun initBitmap(context: Context, playerWidth: Float) {
-            val raw = BitmapFactory.decodeResource(context.resources, R.drawable.player_ship)
             val size = playerWidth.toInt().coerceAtLeast(4)
-            playerBitmap = Bitmap.createScaledBitmap(raw, size, size, true)
-            raw.recycle()
+            // 1) 画像サイズだけ取得（メモリ確保なし）
+            val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeResource(context.resources, R.drawable.player_ship, opts)
+            // 2) inSampleSize計算 + 密度スケーリング無効化
+            opts.inSampleSize = calcSampleSize(opts.outWidth, opts.outHeight, size, size)
+            opts.inJustDecodeBounds = false
+            opts.inScaled = false
+            // 3) デコード（OOM時はnull → フォールバック円で描画）
+            val raw = BitmapFactory.decodeResource(context.resources, R.drawable.player_ship, opts)
+            if (raw != null) {
+                playerBitmap = Bitmap.createScaledBitmap(raw, size, size, true)
+                if (raw !== playerBitmap) raw.recycle()
+            }
+        }
+
+        private fun calcSampleSize(rawW: Int, rawH: Int, reqW: Int, reqH: Int): Int {
+            var sample = 1
+            if (rawW > reqW || rawH > reqH) {
+                while (rawW / (sample * 2) >= reqW && rawH / (sample * 2) >= reqH) {
+                    sample *= 2
+                }
+            }
+            return sample
         }
     }
 
