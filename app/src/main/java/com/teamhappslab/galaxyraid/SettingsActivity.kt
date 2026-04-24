@@ -14,6 +14,14 @@ class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        settingsView = SettingsView(this)
+        settingsView.onBack = { finish() }
+        settingsView.onResetScores = {
+            setResult(Activity.RESULT_OK)
+        }
+        setContentView(settingsView)
+
+        // DecorView生成後にフルスクリーン設定（setContentViewの後でないとNPE）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.let { controller ->
                 controller.hide(
@@ -32,13 +40,6 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        settingsView = SettingsView(this)
-        settingsView.onBack = { finish() }
-        settingsView.onResetScores = {
-            setResult(Activity.RESULT_OK)
-        }
-        setContentView(settingsView)
     }
 
     override fun onResume() {

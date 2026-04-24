@@ -14,6 +14,14 @@ class GameActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        soundManager = SoundManager()
+        soundManager.bgmEnabled = AppPrefs.isBgmEnabled(this)
+        soundManager.sfxEnabled = AppPrefs.isSfxEnabled(this)
+        gameView = GameView(this, soundManager)
+        gameView.onGoHome = { finish() }
+        setContentView(gameView)
+
+        // DecorView生成後にフルスクリーン設定（setContentViewの後でないとNPE）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.let { controller ->
                 controller.hide(
@@ -32,13 +40,6 @@ class GameActivity : AppCompatActivity() {
         }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        soundManager = SoundManager()
-        soundManager.bgmEnabled = AppPrefs.isBgmEnabled(this)
-        soundManager.sfxEnabled = AppPrefs.isSfxEnabled(this)
-        gameView = GameView(this, soundManager)
-        gameView.onGoHome = { finish() }
-        setContentView(gameView)
     }
 
     override fun onPause() {

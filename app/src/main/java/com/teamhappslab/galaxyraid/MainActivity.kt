@@ -25,6 +25,18 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        titleView = TitleView(this)
+        titleView.onStartTapped = {
+            Handler(Looper.getMainLooper()).postDelayed({
+                startActivity(Intent(this, GameActivity::class.java))
+            }, 600L)
+        }
+        titleView.onSettingsTapped = {
+            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+        }
+        setContentView(titleView)
+
+        // DecorView生成後にフルスクリーン設定（setContentViewの後でないとNPE）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.let { controller ->
                 controller.hide(
@@ -43,17 +55,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        titleView = TitleView(this)
-        titleView.onStartTapped = {
-            Handler(Looper.getMainLooper()).postDelayed({
-                startActivity(Intent(this, GameActivity::class.java))
-            }, 600L)
-        }
-        titleView.onSettingsTapped = {
-            settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
-        }
-        setContentView(titleView)
     }
 
     override fun onResume() {
