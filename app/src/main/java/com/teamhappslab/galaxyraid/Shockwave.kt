@@ -61,7 +61,7 @@ class Shockwave(
         if (durationFrames != Int.MAX_VALUE && frameCount >= durationFrames) isDead = true
         if (radius > maxRadius) isDead = true
         // 発生源から広がった波が地面ラインより下に完全に出たら消滅（下部蓄積防止）
-        if (cy + radius > screenHeight * 0.96f) isDead = true
+        if (cy + radius > screenHeight * 0.88f) isDead = true
     }
 
     /** プレイヤーが扇形の波面に触れているか */

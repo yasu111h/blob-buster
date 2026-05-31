@@ -151,7 +151,7 @@ class Blob(
                 cx = cx.coerceIn(minX, maxX)
             }
         }
-        val bottomLimit = if (moveType == MoveType.CHASE) screenHeight.toFloat() else screenHeight * 0.96f
+        val bottomLimit = screenHeight * 0.88f
         if (cy > bottomLimit) isDead = true
         if (flashTimer > 0) flashTimer--
     }

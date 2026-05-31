@@ -411,7 +411,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         dragPointerId = -1
         synchronized(pendingBullets) { pendingBullets.clear() }
         prevPlayerX = screenWidth / 2f
-        prevPlayerY = screenHeight * 0.90f
+        prevPlayerY = screenHeight * 0.85f
     }
 
     private fun startThread() {
@@ -561,7 +561,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                     val idx = event.findPointerIndex(dragPointerId)
                     if (idx != -1) {
                         player.x = event.getX(idx).coerceIn(player.width / 2f, screenWidth - player.width / 2f)
-                        player.y = event.getY(idx).coerceIn(screenHeight * 0.35f, screenHeight * 0.93f)
+                        player.y = event.getY(idx).coerceIn(screenHeight * 0.35f, screenHeight * 0.88f)
                     }
                 }
             }
@@ -656,8 +656,9 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
 
         // 敵弾発射（上限チェック・混雑度による間隔制御込み）
         // 発射禁止ライン(0.80f)より下にいる敵は撃たせない。
-        // 削除ライン(0.88f)との間にバッファを設けることで、
+        // 削除ライン(0.88f=地面ライン)との間にバッファを設けることで、
         // 最速弾でも削除前に地面を越えることが数学上ありえない構造にする。
+        // プレイヤーも地面ライン(0.88f)より下には行けないため、下領域は純粋なUIエリア。
         if (debugEnemyCanShoot) {
             val noFireLine = screenHeight * 0.80f
             for (blob in blobManager.blobs) {
