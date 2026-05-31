@@ -11,7 +11,8 @@ import kotlin.random.Random
 
 class TitleView(context: Context) : View(context) {
 
-    var onStartTapped: (() -> Unit)? = null
+    var onStoryModeTapped: (() -> Unit)? = null
+    var onEndlessModeTapped: (() -> Unit)? = null
     var onSettingsTapped: (() -> Unit)? = null
 
     private var isLoading = false
@@ -50,7 +51,8 @@ class TitleView(context: Context) : View(context) {
     )
     private val decoBlobs = mutableListOf<DecoBlob>()
 
-    private var startButtonRect   = RectF()
+    private var storyButtonRect    = RectF()
+    private var endlessButtonRect  = RectF()
     private var settingsButtonRect = RectF()
     private var screenW = 0f
     private var screenH = 0f
@@ -86,6 +88,15 @@ class TitleView(context: Context) : View(context) {
     }
     private val btnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#40C4FF"); isFakeBoldText = true
+    }
+    private val endlessBtnGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val endlessBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FF4081")
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f
+    }
+    private val endlessBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FF4081"); isFakeBoldText = true
     }
     private val settingsBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(180, 120, 160, 200)
@@ -141,8 +152,9 @@ class TitleView(context: Context) : View(context) {
         title2Paint.textSize = w * 0.20f   // "RAID" は大きく迫力を出す
         title2GlowPaint.textSize = w * 0.20f
         taglinePaint.textSize = w * 0.032f
-        btnTextPaint.textSize = w * 0.065f
-        settingsBtnTextPaint.textSize = w * 0.052f
+        btnTextPaint.textSize = w * 0.058f
+        endlessBtnTextPaint.textSize = w * 0.058f
+        settingsBtnTextPaint.textSize = w * 0.048f
         versionPaint.textSize = w * 0.028f
 
         scoreTitlePaint.textSize = w * 0.032f
@@ -151,9 +163,11 @@ class TitleView(context: Context) : View(context) {
         scoreEmptyPaint.textSize = w * 0.035f
 
         val bw = w * 0.58f
-        val bh = h * 0.075f
-        startButtonRect   = RectF((w - bw) / 2f, h * 0.68f, (w + bw) / 2f, h * 0.68f + bh)
-        settingsButtonRect = RectF((w - bw) / 2f, h * 0.77f, (w + bw) / 2f, h * 0.77f + bh)
+        val bh = h * 0.068f
+        val gap = h * 0.018f
+        storyButtonRect    = RectF((w - bw) / 2f, h * 0.64f, (w + bw) / 2f, h * 0.64f + bh)
+        endlessButtonRect  = RectF((w - bw) / 2f, storyButtonRect.bottom + gap, (w + bw) / 2f, storyButtonRect.bottom + gap + bh)
+        settingsButtonRect = RectF((w - bw) / 2f, endlessButtonRect.bottom + gap, (w + bw) / 2f, endlessButtonRect.bottom + gap + bh)
 
         val rng = Random(99)
         stars.clear()
@@ -252,27 +266,50 @@ class TitleView(context: Context) : View(context) {
         val scoreAreaY = busterY + screenH * 0.095f
         drawHighScores(canvas, scoreAreaY)
 
-        // START button
+        // STORY MODE button
         val pulse = sin(animTick * 0.06f).toFloat() * 0.35f + 0.65f
-        val expand = screenW * 0.025f * pulse
-        btnGlowPaint.color = Color.argb((70 * pulse).toInt(), 64, 196, 255)
+        val expand = screenW * 0.020f * pulse
+        btnGlowPaint.color = Color.argb((60 * pulse).toInt(), 64, 196, 255)
         canvas.drawRoundRect(
-            RectF(startButtonRect.left - expand, startButtonRect.top - expand,
-                startButtonRect.right + expand, startButtonRect.bottom + expand),
+            RectF(storyButtonRect.left - expand, storyButtonRect.top - expand,
+                storyButtonRect.right + expand, storyButtonRect.bottom + expand),
             28f, 28f, btnGlowPaint
         )
-        canvas.drawRoundRect(startButtonRect, 20f, 20f, btnBgPaint)
+        canvas.drawRoundRect(storyButtonRect, 20f, 20f, btnBgPaint)
         btnBorderPaint.alpha = (180 * pulse + 75).toInt().coerceIn(0, 255)
-        canvas.drawRoundRect(startButtonRect, 20f, 20f, btnBorderPaint)
+        canvas.drawRoundRect(storyButtonRect, 20f, 20f, btnBorderPaint)
 
-        val startText = if (isLoading) "NOW LOADING..." else "▶  START"
-        val startBounds = Rect(); btnTextPaint.getTextBounds(startText, 0, startText.length, startBounds)
+        val storyText = if (isLoading) "NOW LOADING..." else "▶  STORY MODE"
+        val storyBounds = Rect(); btnTextPaint.getTextBounds(storyText, 0, storyText.length, storyBounds)
         btnTextPaint.alpha = (190 * pulse + 65).toInt().coerceIn(0, 255)
         canvas.drawText(
-            startText,
-            (screenW - startBounds.width()) / 2f,
-            startButtonRect.centerY() + startBounds.height() / 2f,
+            storyText,
+            (screenW - storyBounds.width()) / 2f,
+            storyButtonRect.centerY() + storyBounds.height() / 2f,
             btnTextPaint
+        )
+
+        // ENDLESS MODE button
+        val endlessPulse = sin(animTick * 0.06f + 1.0f).toFloat() * 0.30f + 0.70f
+        val endlessExpand = screenW * 0.018f * endlessPulse
+        endlessBtnGlowPaint.color = Color.argb((55 * endlessPulse).toInt(), 255, 64, 128)
+        canvas.drawRoundRect(
+            RectF(endlessButtonRect.left - endlessExpand, endlessButtonRect.top - endlessExpand,
+                endlessButtonRect.right + endlessExpand, endlessButtonRect.bottom + endlessExpand),
+            28f, 28f, endlessBtnGlowPaint
+        )
+        canvas.drawRoundRect(endlessButtonRect, 20f, 20f, btnBgPaint)
+        endlessBtnBorderPaint.alpha = (180 * endlessPulse + 75).toInt().coerceIn(0, 255)
+        canvas.drawRoundRect(endlessButtonRect, 20f, 20f, endlessBtnBorderPaint)
+
+        val endlessText = if (isLoading) "NOW LOADING..." else "∞  ENDLESS MODE"
+        val endlessBounds = Rect(); endlessBtnTextPaint.getTextBounds(endlessText, 0, endlessText.length, endlessBounds)
+        endlessBtnTextPaint.alpha = (190 * endlessPulse + 65).toInt().coerceIn(0, 255)
+        canvas.drawText(
+            endlessText,
+            (screenW - endlessBounds.width()) / 2f,
+            endlessButtonRect.centerY() + endlessBounds.height() / 2f,
+            endlessBtnTextPaint
         )
 
         // SETTINGS button
@@ -326,10 +363,15 @@ class TitleView(context: Context) : View(context) {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_UP && !isLoading) {
             when {
-                startButtonRect.contains(event.x, event.y) -> {
+                storyButtonRect.contains(event.x, event.y) -> {
                     isLoading = true
                     invalidate()
-                    onStartTapped?.invoke()
+                    onStoryModeTapped?.invoke()
+                }
+                endlessButtonRect.contains(event.x, event.y) -> {
+                    isLoading = true
+                    invalidate()
+                    onEndlessModeTapped?.invoke()
                 }
                 settingsButtonRect.contains(event.x, event.y) -> {
                     onSettingsTapped?.invoke()

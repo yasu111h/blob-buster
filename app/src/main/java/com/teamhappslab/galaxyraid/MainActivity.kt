@@ -26,9 +26,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         titleView = TitleView(this)
-        titleView.onStartTapped = {
+        titleView.onStoryModeTapped = {
             Handler(Looper.getMainLooper()).postDelayed({
-                startActivity(Intent(this, GameActivity::class.java))
+                val intent = Intent(this, GameActivity::class.java)
+                intent.putExtra("game_mode", "story")
+                startActivity(intent)
+            }, 600L)
+        }
+        titleView.onEndlessModeTapped = {
+            Handler(Looper.getMainLooper()).postDelayed({
+                val intent = Intent(this, GameActivity::class.java)
+                intent.putExtra("game_mode", "endless")
+                startActivity(intent)
             }, 600L)
         }
         titleView.onSettingsTapped = {
