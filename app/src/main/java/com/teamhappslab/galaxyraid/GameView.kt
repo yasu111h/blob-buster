@@ -842,12 +842,15 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         // アイテム描画
         items.forEach { it.draw(canvas) }
 
-        // アイテム取得オーラ（プレイヤーの周囲に黄金リング）
+        // アイテム取得オーラ（プレイヤーの周囲に黄金リング、地面ラインでクリップ）
         if (powerUpFlashTimer > 0) {
             val progress = powerUpFlashTimer.toFloat() / 30f
             powerUpAuraPaint.alpha = (progress * 200).toInt()
             val auraR = player.width * (0.8f + (1f - progress) * 1.2f)
+            canvas.save()
+            canvas.clipRect(0f, 0f, screenWidth.toFloat(), screenHeight * 0.88f)
             canvas.drawCircle(player.x, player.y, auraR, powerUpAuraPaint)
+            canvas.restore()
         }
 
         // プレイヤー描画（無敵中は点滅）
