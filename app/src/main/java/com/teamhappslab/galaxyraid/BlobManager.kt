@@ -43,6 +43,9 @@ class BlobManager(
     // ティアアップフラグ（GameViewがこれを見てエフェクト表示）
     var tierUpEvent: Boolean = false
 
+    // 通常敵の新規出現を許可するか（ボス戦準備〜ボス戦中はfalse）
+    var spawningEnabled: Boolean = true
+
     // スコアベースのレベル閾値（公開: デバッグ用スコア同期に使用）
     fun levelThreshold(n: Int): Int = 80 * (n - 1) * n / 2
 
@@ -65,6 +68,9 @@ class BlobManager(
 
         blobs.forEach { it.update(playerX, playerY) }
         blobs.removeAll { it.isDead }
+
+        // ボス戦準備〜ボス戦中は新規出現しない
+        if (!spawningEnabled) return
 
         // 予算蓄積
         if (blobs.size < maxBlobs) {
@@ -159,5 +165,6 @@ class BlobManager(
         spawnQueue.clear()
         prevTier = 1
         tierUpEvent = false
+        spawningEnabled = true
     }
 }

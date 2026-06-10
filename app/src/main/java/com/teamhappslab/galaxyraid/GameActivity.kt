@@ -17,7 +17,8 @@ class GameActivity : AppCompatActivity() {
         soundManager = SoundManager()
         soundManager.bgmEnabled = AppPrefs.isBgmEnabled(this)
         soundManager.sfxEnabled = AppPrefs.isSfxEnabled(this)
-        gameView = GameView(this, soundManager)
+        val gameMode = intent.getStringExtra("game_mode") ?: "endless"
+        gameView = GameView(this, soundManager, gameMode)
         gameView.onGoHome = { finish() }
         setContentView(gameView)
 

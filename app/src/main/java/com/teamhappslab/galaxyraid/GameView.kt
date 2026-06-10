@@ -9,14 +9,19 @@ import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
 enum class GameState {
-    PLAYING, PAUSED, GAME_OVER
+    PLAYING, PAUSED, GAME_OVER, CLEAR
 }
 
-class GameView(context: Context, private val soundManager: SoundManager) : SurfaceView(context), SurfaceHolder.Callback {
+class GameView(
+    context: Context,
+    private val soundManager: SoundManager,
+    private val gameMode: String = "endless"
+) : SurfaceView(context), SurfaceHolder.Callback {
 
     companion object {
         /** false にするとデバッグボタン・パネルが完全無効化される（リリース用） */
@@ -35,6 +40,44 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
 
     // 衝撃波リスト
     private val shockwaves = mutableListOf<Shockwave>()
+
+    // ── ボス（ストーリーモード・レベル50） ────────────────
+    private val isStoryMode: Boolean get() = gameMode == "story"
+    private var boss: Boss? = null
+    private var bossSpawned: Boolean = false       // ボスを一度出したか
+    private var bossWaitTimer: Int = 0             // レベル50到達後、残存敵待ちのタイマー
+    private var bossWarningTimer: Int = 0          // WARNING演出の残りフレーム
+    private var bossHpDisplayRatio: Float = 1f     // HPバーの減少アニメーション用
+    private var clearTapDelayTimer: Int = 0        // CLEAR直後の誤タップ防止
+    private var clearAnimFrame: Int = 0            // CLEAR画面のアニメーション用カウンタ
+
+    private val bossHpBarBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(160, 30, 0, 0)
+    }
+    private val bossHpBarTrailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(200, 255, 200, 80)
+    }
+    private val bossHpBarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FF1744")
+    }
+    private val bossHpBarBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(200, 255, 80, 80)
+        style = Paint.Style.STROKE; strokeWidth = 2f
+    }
+    private val bossLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FF5252"); isFakeBoldText = true
+    }
+    private val warningTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FF1744"); isFakeBoldText = true
+    }
+    private val warningBgPaint = Paint().apply { color = Color.argb(0, 120, 0, 0) }
+    private val clearTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFD740"); isFakeBoldText = true
+    }
+    private val clearBonusPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#00FF88"); isFakeBoldText = true
+    }
+    // ────────────────────────────────────────────────────
 
     // ダッシュダメージ用：前フレームのプレイヤー位置
     private var prevPlayerX: Float = 0f
@@ -261,6 +304,7 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         Bullet.initSharedPaints(screenWidth)
         EnemyBullet.initSharedPaints(screenWidth)
         PowerUpItem.initPaints(screenWidth)
+        Boss.initBitmap(context, screenWidth * GameConfig.BOSS_WIDTH_RATIO)
         bulletPool = BulletPool(screenWidth, screenHeight, initialSize = 60)
 
         val textSize = screenWidth * 0.05f
@@ -269,6 +313,10 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         gameOverPaint.textSize = screenWidth * 0.12f
         retryPaint.textSize = screenWidth * 0.06f
         gameOverScorePaint.textSize = screenWidth * 0.07f
+        bossLabelPaint.textSize = screenWidth * 0.038f
+        warningTextPaint.textSize = screenWidth * 0.13f
+        clearTextPaint.textSize = screenWidth * 0.10f
+        clearBonusPaint.textSize = screenWidth * 0.055f
 
         // 星空を生成
         val rng = Random(42)
@@ -393,6 +441,15 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         rankAchieved = HighScoreManager.saveScore(context, scoreManager.score)
     }
 
+    /** ボス撃破演出完了後に呼ばれる。撃破ボーナスを加算してCLEAR状態へ */
+    private fun triggerClear() {
+        scoreManager.addScore(GameConfig.BOSS_DEFEAT_BONUS)
+        gameState = GameState.CLEAR
+        clearTapDelayTimer = 60  // 1秒間は誤タップでホームに戻らないように
+        soundManager.pauseBgmByUser()
+        rankAchieved = HighScoreManager.saveScore(context, scoreManager.score)
+    }
+
     private fun initGame() {
         soundManager.restartBgm(context)  // 初回は起動、リトライ時は先頭から再生
         player = Player(screenWidth, screenHeight)
@@ -408,6 +465,13 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         enemyBullets.clear()
         items.clear()
         shockwaves.clear()
+        boss = null
+        bossSpawned = false
+        bossWaitTimer = 0
+        bossWarningTimer = 0
+        bossHpDisplayRatio = 1f
+        clearTapDelayTimer = 0
+        clearAnimFrame = 0
         dragPointerId = -1
         synchronized(pendingBullets) { pendingBullets.clear() }
         prevPlayerX = screenWidth / 2f
@@ -493,6 +557,14 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             return true
         }
 
+        // CLEAR中: タップでタイトルへ戻る（GAME_OVERのホーム遷移と同じ方法）
+        if (gameState == GameState.CLEAR) {
+            if (event.actionMasked == MotionEvent.ACTION_UP && clearTapDelayTimer <= 0) {
+                onGoHome?.invoke()
+            }
+            return true
+        }
+
         if (gameState == GameState.GAME_OVER) {
             if (event.actionMasked == MotionEvent.ACTION_UP &&
                 gameOverHomeBtnRect.contains(event.x, event.y)) {
@@ -574,6 +646,10 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
     }
 
     fun update() {
+        if (gameState == GameState.CLEAR) {
+            clearAnimFrame++
+            if (clearTapDelayTimer > 0) clearTapDelayTimer--
+        }
         if (gameState != GameState.PLAYING) return
 
         frameCount++
@@ -654,6 +730,57 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         }
         if (tierUpTimer > 0) tierUpTimer--
 
+        // ── ボス出現シーケンス（ストーリーモードのみ） ──────────
+        if (isStoryMode && !bossSpawned && blobManager.level >= GameConfig.BOSS_TRIGGER_LEVEL) {
+            // 通常敵の新規出現を停止
+            blobManager.spawningEnabled = false
+            if (bossWaitTimer < GameConfig.BOSS_WAIT_MAX_FRAMES) bossWaitTimer++
+            // 残存敵が掃けたら（または待機上限を超えたら）WARNING演出開始
+            if (bossWarningTimer == 0 &&
+                (blobManager.blobs.isEmpty() || bossWaitTimer >= GameConfig.BOSS_WAIT_MAX_FRAMES)) {
+                bossWarningTimer = GameConfig.BOSS_WARNING_FRAMES
+            }
+        }
+        if (bossWarningTimer > 0) {
+            bossWarningTimer--
+            if (bossWarningTimer == 0) {
+                boss = Boss(screenWidth, screenHeight)
+                bossSpawned = true
+                bossHpDisplayRatio = 1f
+            }
+        }
+
+        // ── ボス更新 ─────────────────────────────────────
+        boss?.let { b ->
+            b.update()
+
+            // HPバーの減少アニメーション（表示値が実値へゆっくり追従）
+            val actualRatio = b.hp.toFloat() / b.maxHp
+            if (bossHpDisplayRatio > actualRatio) {
+                bossHpDisplayRatio = (bossHpDisplayRatio - 0.004f).coerceAtLeast(actualRatio)
+            }
+
+            if (b.isGone) {
+                // 撃破演出完了 → ゲームクリア
+                boss = null
+                triggerClear()
+                return
+            }
+            if (b.isDying) {
+                // 撃破演出: 連続爆発（Shockwaveをボス周囲にランダム発生）
+                if (frameCount % 12 == 0) {
+                    val ex = b.x + (Random.nextFloat() - 0.5f) * b.radius * 1.6f
+                    val ey = b.y + (Random.nextFloat() - 0.5f) * b.radius * 1.2f
+                    shockwaves.add(Shockwave(ex, ey, screenWidth, screenHeight,
+                        directionAngle = Random.nextFloat() * 360f, sweepAngle = 360f))
+                }
+            } else if (debugEnemyCanShoot) {
+                // ボスの攻撃（既存EnemyBulletを再利用）
+                enemyBullets.addAll(b.tryShoot(player.x, player.y,
+                    enemyBullets.size, GameConfig.BOSS_MAX_ENEMY_BULLETS))
+            }
+        }
+
         // 敵弾発射（上限チェック・混雑度による間隔制御込み）
         // 発射禁止ライン(0.80f)より下にいる敵は撃たせない。
         // 削除ライン(0.88f=地面ライン)との間にバッファを設けることで、
@@ -717,6 +844,31 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             }
         }
 
+        // 弾×ボス当たり判定（無敵中は弾が素通り）
+        boss?.let { b ->
+            if (!b.isInvincible) {
+                var bossKilled = false
+                for (bullet in bullets) {
+                    if (bullet.isDead) continue
+                    val dy = bullet.y - b.y
+                    val r  = bullet.radius + b.radius
+                    if (dy > r || dy < -r) continue
+                    val dx = bullet.x - b.x
+                    if (dx * dx + dy * dy <= r * r) {
+                        bullet.isDead = true
+                        bulletPool.recycle(bullet)
+                        if (b.takeDamage()) bossKilled = true
+                    }
+                }
+                if (bossKilled) {
+                    soundManager.playEnemyKilled()
+                    // 撃破の瞬間: 残っている敵弾・衝撃波を一掃して演出に集中
+                    enemyBullets.clear()
+                    shockwaves.clear()
+                }
+            }
+        }
+
         // イテレータで一括削除（removeAll + 線形検索を排除）
         val bIter2 = bullets.iterator()
         while (bIter2.hasNext()) { if (bIter2.next().isDead) bIter2.remove() }
@@ -748,13 +900,31 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
             invincibleTimer--
         }
 
-        // 衝撃波 更新・プレイヤー被弾判定
+        // Player×ボス本体当たり判定（戦闘中のみ）
+        boss?.let { b ->
+            if (!b.isDying && invincibleTimer <= 0) {
+                val dy = player.y - b.y
+                val r  = player.width * 0.35f + b.radius * 0.85f
+                if (dy <= r && dy >= -r) {
+                    val dx = player.x - b.x
+                    if (dx * dx + dy * dy <= r * r) {
+                        if (!debugInvincible) hp--
+                        invincibleTimer = invincibleDuration
+                        soundManager.playPlayerDamaged()
+                        if (!debugInvincible && hp <= 0) triggerGameOver()
+                    }
+                }
+            }
+        }
+
+        // 衝撃波 更新・プレイヤー被弾判定（ボス撃破演出中の爆発は当たらない）
+        val bossDyingNow = boss?.isDying == true
         val swIter = shockwaves.iterator()
         while (swIter.hasNext()) {
             val sw = swIter.next()
             sw.update()
             if (sw.isDead) { swIter.remove(); continue }
-            if (invincibleTimer <= 0 && sw.hitsPlayer(player.x, player.y, player.width * 0.35f)) {
+            if (!bossDyingNow && invincibleTimer <= 0 && sw.hitsPlayer(player.x, player.y, player.width * 0.35f)) {
                 if (!debugInvincible) hp--
                 invincibleTimer = invincibleDuration
                 soundManager.playPlayerDamaged()
@@ -830,6 +1000,9 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         // Blob描画（デバッグ: 非表示トグル）
         if (debugShowEnemies) blobManager.draw(canvas)
 
+        // ボス描画（敵と同レイヤー・弾より後ろ）
+        boss?.draw(canvas)
+
         // 衝撃波描画（敵の後ろ・弾の前）
         shockwaves.forEach { it.draw(canvas) }
 
@@ -874,6 +1047,46 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
         val heartBounds = Rect()
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
         canvas.drawText(heartText, screenWidth - heartBounds.width() - screenWidth * 0.03f, uiY, heartPaint)
+
+        // ── ボスUI: 画面上端のHPバー＋BOSSラベル ─────────────
+        boss?.let { b ->
+            if (!b.isGone) {
+                val barH = screenHeight * 0.018f
+                val barMargin = screenWidth * 0.04f
+                val barTop = screenHeight * 0.065f
+                val barRect = RectF(barMargin, barTop, screenWidth - barMargin, barTop + barH)
+                canvas.drawRoundRect(barRect, barH / 2, barH / 2, bossHpBarBgPaint)
+                val actualRatio = b.hp.toFloat() / b.maxHp
+                // 減少アニメーション: 直近のダメージ分を明るい色のトレイルで表示
+                if (bossHpDisplayRatio > actualRatio) {
+                    val trailRect = RectF(barRect.left, barRect.top,
+                        barRect.left + barRect.width() * bossHpDisplayRatio, barRect.bottom)
+                    canvas.drawRoundRect(trailRect, barH / 2, barH / 2, bossHpBarTrailPaint)
+                }
+                if (actualRatio > 0f) {
+                    val hpRect = RectF(barRect.left, barRect.top,
+                        barRect.left + barRect.width() * actualRatio, barRect.bottom)
+                    canvas.drawRoundRect(hpRect, barH / 2, barH / 2, bossHpBarPaint)
+                }
+                canvas.drawRoundRect(barRect, barH / 2, barH / 2, bossHpBarBorderPaint)
+                canvas.drawText("BOSS", barMargin, barTop + barH + bossLabelPaint.textSize * 1.1f, bossLabelPaint)
+            }
+        }
+
+        // ── WARNING演出（ボス登場前・点滅） ────────────────
+        if (bossWarningTimer > 0) {
+            // 赤いフラッシュ背景
+            val flashA = (sin(bossWarningTimer * 0.25f) * 40f + 40f).toInt().coerceIn(0, 90)
+            warningBgPaint.color = Color.argb(flashA, 150, 0, 0)
+            canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), warningBgPaint)
+            // 点滅テキスト
+            if (bossWarningTimer % 30 < 20) {
+                val wText = "WARNING"
+                val wBounds = Rect()
+                warningTextPaint.getTextBounds(wText, 0, wText.length, wBounds)
+                canvas.drawText(wText, (screenWidth - wBounds.width()) / 2f, screenHeight * 0.42f, warningTextPaint)
+            }
+        }
 
         // ── デバッグUI ─────────────────────────────────────
         // デバッグ情報オーバーレイ（左上）
@@ -1054,6 +1267,59 @@ class GameView(context: Context, private val soundManager: SoundManager) : Surfa
                 gameOverHomeBtnRect.centerX() - goHomeBounds.width() / 2f,
                 gameOverHomeBtnRect.centerY() + goHomeBounds.height() / 2f,
                 homeBtnTextPaint)
+        }
+
+        // ── MISSION COMPLETE オーバーレイ（ボス撃破・ゲームクリア） ──
+        if (gameState == GameState.CLEAR) {
+            canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), overlayPaint)
+
+            // MISSION COMPLETE（2行）
+            val line1 = "MISSION"
+            val line2 = "COMPLETE"
+            val b1 = Rect(); clearTextPaint.getTextBounds(line1, 0, line1.length, b1)
+            val b2 = Rect(); clearTextPaint.getTextBounds(line2, 0, line2.length, b2)
+            canvas.drawText(line1, (screenWidth - b1.width()) / 2f, screenHeight * 0.30f, clearTextPaint)
+            canvas.drawText(line2, (screenWidth - b2.width()) / 2f, screenHeight * 0.38f, clearTextPaint)
+
+            // 撃破ボーナス
+            val bonusText = "BOSS BONUS +${GameConfig.BOSS_DEFEAT_BONUS}"
+            val bonusBounds = Rect()
+            clearBonusPaint.getTextBounds(bonusText, 0, bonusText.length, bonusBounds)
+            canvas.drawText(bonusText, (screenWidth - bonusBounds.width()) / 2f, screenHeight * 0.46f, clearBonusPaint)
+
+            // 最終スコア
+            val scoreLine = "SCORE: ${scoreManager.score}"
+            val sBounds = Rect()
+            gameOverScorePaint.getTextBounds(scoreLine, 0, scoreLine.length, sBounds)
+            canvas.drawText(scoreLine, (screenWidth - sBounds.width()) / 2f, screenHeight * 0.55f, gameOverScorePaint)
+
+            // ランクイン表示
+            if (rankAchieved in 1..3) {
+                val medal = when (rankAchieved) { 1 -> "★ #1"; 2 -> "★ #2"; else -> "★ #3" }
+                rankInTextPaint.textSize = screenWidth * 0.075f
+                val rankBounds = Rect(); rankInTextPaint.getTextBounds(medal, 0, medal.length, rankBounds)
+                val rankW = rankBounds.width() + screenWidth * 0.12f
+                val rankH = rankBounds.height() + screenHeight * 0.04f
+                val rankRect = RectF(
+                    (screenWidth - rankW) / 2f, screenHeight * 0.59f,
+                    (screenWidth + rankW) / 2f, screenHeight * 0.59f + rankH
+                )
+                canvas.drawRoundRect(rankRect, 16f, 16f, rankInBgPaint)
+                canvas.drawRoundRect(rankRect, 16f, 16f, rankInBorderPaint)
+                canvas.drawText(medal,
+                    rankRect.centerX() - rankBounds.width() / 2f,
+                    rankRect.centerY() + rankBounds.height() / 2f,
+                    rankInTextPaint)
+            }
+
+            // タップでタイトルへ（点滅）
+            if (clearTapDelayTimer <= 0 && clearAnimFrame % 60 < 40) {
+                val tapText = "TAP TO RETURN"
+                val tapBounds = Rect()
+                retryPaint.getTextBounds(tapText, 0, tapText.length, tapBounds)
+                val tapY = if (rankAchieved in 1..3) screenHeight * 0.72f else screenHeight * 0.66f
+                canvas.drawText(tapText, (screenWidth - tapBounds.width()) / 2f, tapY, retryPaint)
+            }
         }
 
         // ── デバッグパネル（全ステートで最前面に描画）──────────────
