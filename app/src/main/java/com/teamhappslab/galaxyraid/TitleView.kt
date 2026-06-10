@@ -15,7 +15,8 @@ class TitleView(context: Context) : View(context) {
     var onEndlessModeTapped: (() -> Unit)? = null
     var onSettingsTapped: (() -> Unit)? = null
 
-    private var isLoading = false
+    private var storyLoading = false
+    private var endlessLoading = false
     private var animTick = 0
     private val handler = Handler(Looper.getMainLooper())
     private val updateRunnable = object : Runnable {
@@ -34,7 +35,8 @@ class TitleView(context: Context) : View(context) {
     }
 
     fun resetLoading() {
-        isLoading = false
+        storyLoading = false
+        endlessLoading = false
         invalidate()
     }
 
@@ -279,7 +281,7 @@ class TitleView(context: Context) : View(context) {
         btnBorderPaint.alpha = (180 * pulse + 75).toInt().coerceIn(0, 255)
         canvas.drawRoundRect(storyButtonRect, 20f, 20f, btnBorderPaint)
 
-        val storyText = if (isLoading) "NOW LOADING..." else "▶  STORY MODE"
+        val storyText = if (storyLoading) "NOW LOADING..." else "▶  STORY MODE"
         val storyBounds = Rect(); btnTextPaint.getTextBounds(storyText, 0, storyText.length, storyBounds)
         btnTextPaint.alpha = (190 * pulse + 65).toInt().coerceIn(0, 255)
         canvas.drawText(
@@ -302,7 +304,7 @@ class TitleView(context: Context) : View(context) {
         endlessBtnBorderPaint.alpha = (180 * endlessPulse + 75).toInt().coerceIn(0, 255)
         canvas.drawRoundRect(endlessButtonRect, 20f, 20f, endlessBtnBorderPaint)
 
-        val endlessText = if (isLoading) "NOW LOADING..." else "∞  ENDLESS MODE"
+        val endlessText = if (endlessLoading) "NOW LOADING..." else "∞  ENDLESS MODE"
         val endlessBounds = Rect(); endlessBtnTextPaint.getTextBounds(endlessText, 0, endlessText.length, endlessBounds)
         endlessBtnTextPaint.alpha = (190 * endlessPulse + 65).toInt().coerceIn(0, 255)
         canvas.drawText(
@@ -361,15 +363,15 @@ class TitleView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_UP && !isLoading) {
+        if (event.actionMasked == MotionEvent.ACTION_UP && !storyLoading && !endlessLoading) {
             when {
                 storyButtonRect.contains(event.x, event.y) -> {
-                    isLoading = true
+                    storyLoading = true
                     invalidate()
                     onStoryModeTapped?.invoke()
                 }
                 endlessButtonRect.contains(event.x, event.y) -> {
-                    isLoading = true
+                    endlessLoading = true
                     invalidate()
                     onEndlessModeTapped?.invoke()
                 }
