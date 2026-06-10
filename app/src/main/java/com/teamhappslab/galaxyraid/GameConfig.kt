@@ -23,4 +23,43 @@ object GameConfig {
     const val BOSS_PHASE_INVINCIBLE_FRAMES: Int = 60
     /** 撃破演出（連続爆発）の長さ（フレーム） */
     const val BOSS_DYING_FRAMES: Int = 150      // 2.5秒 @ 60fps
+
+    // ── ボス攻撃間隔（フレーム @60fps） ─────────────────────
+    // フェーズ1（HP > 66%）
+    /** 同方向5連射の間隔（約1.2秒） */
+    const val BOSS_P1_BURST_INTERVAL: Int = 72
+    /** 5-way扇状弾の間隔（約1.6秒） */
+    const val BOSS_P1_SPREAD_INTERVAL: Int = 96
+    // フェーズ2（33%〜66%）
+    /** 同方向5連射の間隔（約1.0秒） */
+    const val BOSS_P2_BURST_INTERVAL: Int = 60
+    /** リング弾12発の間隔（約2.0秒） */
+    const val BOSS_P2_RING_INTERVAL: Int = 120
+    /** 衝撃波の間隔（約2.5秒） */
+    const val BOSS_P2_SHOCKWAVE_INTERVAL: Int = 150
+    // フェーズ3（HP < 33%）
+    /** 同方向5連射の間隔（約1.0秒） */
+    const val BOSS_P3_BURST_INTERVAL: Int = 60
+    /** 5-way扇状弾の間隔（約1.1秒） */
+    const val BOSS_P3_SPREAD_INTERVAL: Int = 66
+    /** リング弾16発の間隔（約1.8秒） */
+    const val BOSS_P3_RING_INTERVAL: Int = 108
+    /** 衝撃波の間隔（約2.0秒） */
+    const val BOSS_P3_SHOCKWAVE_INTERVAL: Int = 120
+    /** ボス衝撃波の扇開き角度（通常敵の10fより強化） */
+    const val BOSS_SHOCKWAVE_SWEEP_ANGLE: Float = 14f
+    /** 画面内の衝撃波数の上限（通常敵と同じ） */
+    const val BOSS_MAX_SHOCKWAVES: Int = 3
+
+    // ── ボス戦中の雑魚敵（アイテム供給用） ──────────────────
+    /** 雑魚敵の出現間隔（約11秒 @60fps） */
+    const val BOSS_MINION_INTERVAL: Int = 660
+    /** ボス戦中に画面上に存在できる雑魚敵の最大数 */
+    const val BOSS_MINION_MAX: Int = 2
+
+    // ── ボス撃破爆発演出 ─────────────────────────────────
+    /** 爆発バーストの発生間隔（フレーム） */
+    const val BOSS_EXPLOSION_BURST_INTERVAL: Int = 8
+    /** 撃破演出の最後に入れる白フラッシュの長さ（約0.3秒） */
+    const val BOSS_FLASH_FRAMES: Int = 18
 }

@@ -3,9 +3,11 @@ package com.teamhappslab.galaxyraid
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Shader
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -50,6 +52,9 @@ class GameView(
     private var bossHpDisplayRatio: Float = 1f     // HPバーの減少アニメーション用
     private var clearTapDelayTimer: Int = 0        // CLEAR直後の誤タップ防止
     private var clearAnimFrame: Int = 0            // CLEAR画面のアニメーション用カウンタ
+    private var bossMinionTimer: Int = 0           // ボス戦中の雑魚出現タイマー
+    private var bossExplosion: BossExplosion? = null      // ボス撃破爆発エフェクト
+    private var clearCelebration: ClearCelebration? = null // クリア画面の紙吹雪演出
 
     private val bossHpBarBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(160, 30, 0, 0)
@@ -77,6 +82,10 @@ class GameView(
     private val clearBonusPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#00FF88"); isFakeBoldText = true
     }
+    /** CONGRATULATIONS! 用（虹色グラデーション・脈動。シェーダーはsurfaceCreatedで設定） */
+    private val congratsPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { isFakeBoldText = true }
+    /** ボス撃破演出の最後の白フラッシュ用 */
+    private val bossFlashPaint = Paint()
     // ────────────────────────────────────────────────────
 
     // ダッシュダメージ用：前フレームのプレイヤー位置
@@ -318,6 +327,18 @@ class GameView(
         clearTextPaint.textSize = screenWidth * 0.10f
         clearBonusPaint.textSize = screenWidth * 0.055f
 
+        // CONGRATULATIONS! の虹色グラデーション
+        congratsPaint.textSize = screenWidth * 0.088f
+        congratsPaint.shader = LinearGradient(
+            0f, 0f, screenWidth.toFloat(), 0f,
+            intArrayOf(
+                Color.parseColor("#FF5252"), Color.parseColor("#FFD740"),
+                Color.parseColor("#69F0AE"), Color.parseColor("#40C4FF"),
+                Color.parseColor("#E040FB"), Color.parseColor("#FFD740")
+            ),
+            null, Shader.TileMode.CLAMP
+        )
+
         // 星空を生成
         val rng = Random(42)
         stars.clear()
@@ -446,7 +467,10 @@ class GameView(
         scoreManager.addScore(GameConfig.BOSS_DEFEAT_BONUS)
         gameState = GameState.CLEAR
         clearTapDelayTimer = 60  // 1秒間は誤タップでホームに戻らないように
-        soundManager.pauseBgmByUser()
+        soundManager.pauseBgmByUser()       // 戦闘BGMを停止
+        soundManager.playClearJingle(context)  // 勝利ジングル（bgm_clearがあれば再生・無ければ代用ファンファーレ）
+        clearCelebration = ClearCelebration(screenWidth, screenHeight)
+        bossExplosion = null
         rankAchieved = HighScoreManager.saveScore(context, scoreManager.score)
     }
 
@@ -472,6 +496,9 @@ class GameView(
         bossHpDisplayRatio = 1f
         clearTapDelayTimer = 0
         clearAnimFrame = 0
+        bossMinionTimer = 0
+        bossExplosion = null
+        clearCelebration = null
         dragPointerId = -1
         synchronized(pendingBullets) { pendingBullets.clear() }
         prevPlayerX = screenWidth / 2f
@@ -649,6 +676,7 @@ class GameView(
         if (gameState == GameState.CLEAR) {
             clearAnimFrame++
             if (clearTapDelayTimer > 0) clearTapDelayTimer--
+            clearCelebration?.update()
         }
         if (gameState != GameState.PLAYING) return
 
@@ -767,19 +795,33 @@ class GameView(
                 return
             }
             if (b.isDying) {
-                // 撃破演出: 連続爆発（Shockwaveをボス周囲にランダム発生）
-                if (frameCount % 12 == 0) {
-                    val ex = b.x + (Random.nextFloat() - 0.5f) * b.radius * 1.6f
-                    val ey = b.y + (Random.nextFloat() - 0.5f) * b.radius * 1.2f
-                    shockwaves.add(Shockwave(ex, ey, screenWidth, screenHeight,
-                        directionAngle = Random.nextFloat() * 360f, sweepAngle = 360f))
+                // 撃破演出: 専用爆発エフェクト（オレンジ→黄→白の拡大円＋飛散パーティクル）
+                val exp = bossExplosion ?: BossExplosion(screenWidth, screenHeight).also { bossExplosion = it }
+                if (frameCount % GameConfig.BOSS_EXPLOSION_BURST_INTERVAL == 0) {
+                    val ex = b.x + (Random.nextFloat() - 0.5f) * b.radius * 1.8f
+                    val ey = b.y + (Random.nextFloat() - 0.5f) * b.radius * 1.4f
+                    exp.burst(ex, ey)
+                    soundManager.playEnemyKilled()  // 連続爆発音
                 }
-            } else if (debugEnemyCanShoot) {
-                // ボスの攻撃（既存EnemyBulletを再利用）
-                enemyBullets.addAll(b.tryShoot(player.x, player.y,
-                    enemyBullets.size, GameConfig.BOSS_MAX_ENEMY_BULLETS))
+            } else {
+                // ボス戦闘中: 約11秒ごとに救済用雑魚を出現（画面上の雑魚は最大2体まで）
+                if (b.state == BossState.FIGHTING) {
+                    bossMinionTimer++
+                    if (bossMinionTimer >= GameConfig.BOSS_MINION_INTERVAL) {
+                        bossMinionTimer = 0
+                        if (blobManager.blobs.size < GameConfig.BOSS_MINION_MAX) {
+                            blobManager.spawnBossMinion()
+                        }
+                    }
+                }
+                if (debugEnemyCanShoot) {
+                    // ボスの攻撃（既存EnemyBulletを再利用・衝撃波はリストへ直接add）
+                    enemyBullets.addAll(b.tryShoot(player.x, player.y,
+                        enemyBullets.size, GameConfig.BOSS_MAX_ENEMY_BULLETS, shockwaves))
+                }
             }
         }
+        bossExplosion?.update()
 
         // 敵弾発射（上限チェック・混雑度による間隔制御込み）
         // 発射禁止ライン(0.80f)より下にいる敵は撃たせない。
@@ -874,9 +916,10 @@ class GameView(
         while (bIter2.hasNext()) { if (bIter2.next().isDead) bIter2.remove() }
         blobManager.blobs.removeAll { it.isDead }
 
-        // 倒した敵からアイテムドロップ（画面上2個まで）
+        // 倒した敵からアイテムドロップ（画面上2個まで。ボス戦の救済雑魚は確定ドロップ）
         for (deadBlob in deadBlobsForDrop) {
-            if (items.size < 2 && Random.nextFloat() < deadBlob.size.itemDropChance()) {
+            if (deadBlob.guaranteedDrop ||
+                (items.size < 2 && Random.nextFloat() < deadBlob.size.itemDropChance())) {
                 items.add(PowerUpItem(deadBlob.cx, deadBlob.cy, screenWidth, screenHeight))
             }
         }
@@ -1003,6 +1046,9 @@ class GameView(
         // ボス描画（敵と同レイヤー・弾より後ろ）
         boss?.draw(canvas)
 
+        // ボス撃破爆発エフェクト
+        bossExplosion?.draw(canvas)
+
         // 衝撃波描画（敵の後ろ・弾の前）
         shockwaves.forEach { it.draw(canvas) }
 
@@ -1070,6 +1116,18 @@ class GameView(
                 }
                 canvas.drawRoundRect(barRect, barH / 2, barH / 2, bossHpBarBorderPaint)
                 canvas.drawText("BOSS", barMargin, barTop + barH + bossLabelPaint.textSize * 1.1f, bossLabelPaint)
+            }
+        }
+
+        // ── ボス撃破演出の最後: 画面全体の白フラッシュ（約0.3秒） ──
+        boss?.let { b ->
+            if (b.isDying) {
+                val flashStart = 1f - GameConfig.BOSS_FLASH_FRAMES.toFloat() / GameConfig.BOSS_DYING_FRAMES
+                if (b.dyingProgress >= flashStart) {
+                    val t = (b.dyingProgress - flashStart) / (1f - flashStart)
+                    bossFlashPaint.color = Color.argb((t * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                    canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), bossFlashPaint)
+                }
             }
         }
 
@@ -1272,6 +1330,18 @@ class GameView(
         // ── MISSION COMPLETE オーバーレイ（ボス撃破・ゲームクリア） ──
         if (gameState == GameState.CLEAR) {
             canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), overlayPaint)
+
+            // 紙吹雪・花火パーティクル（オーバーレイの上・テキストの下）
+            clearCelebration?.draw(canvas)
+
+            // CONGRATULATIONS!（虹色グラデーション・ゆっくり脈動）
+            val pulse = 1f + sin(clearAnimFrame * 0.06f) * 0.045f
+            congratsPaint.textSize = screenWidth * 0.088f * pulse
+            congratsPaint.alpha = (215 + sin(clearAnimFrame * 0.06f) * 40f).toInt().coerceIn(0, 255)
+            val congratsText = "CONGRATULATIONS!"
+            val cBounds = Rect()
+            congratsPaint.getTextBounds(congratsText, 0, congratsText.length, cBounds)
+            canvas.drawText(congratsText, (screenWidth - cBounds.width()) / 2f, screenHeight * 0.20f, congratsPaint)
 
             // MISSION COMPLETE（2行）
             val line1 = "MISSION"

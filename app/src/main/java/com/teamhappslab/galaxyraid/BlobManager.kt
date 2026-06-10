@@ -146,6 +146,19 @@ class BlobManager(
 
     fun onKill() {}
 
+    /**
+     * ボス戦中の救済用雑魚を1体出現させる。
+     * spawningEnabled=falseのままでも出現でき、撃破時は必ずアイテムをドロップする。
+     */
+    fun spawnBossMinion() {
+        val size = if (Random.nextBoolean()) BlobSize.TINY else BlobSize.SMALL
+        val margin = screenWidth * 0.08f
+        val cx = margin + Random.nextFloat() * (screenWidth - margin * 2)
+        val cy = -screenWidth * 0.15f
+        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight, enemySpeedMult, attackIntervalMult)
+            .apply { guaranteedDrop = true })
+    }
+
     /** デバッグ用: レベルを直接設定 */
     fun setLevel(newLevel: Int) {
         level = newLevel.coerceAtLeast(1)

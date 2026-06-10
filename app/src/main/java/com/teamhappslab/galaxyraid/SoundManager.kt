@@ -41,6 +41,7 @@ class SoundManager {
     @Volatile private var bgmUserPaused     = false
     @Volatile private var bgmActivityPaused = false
     private var mediaPlayer: MediaPlayer? = null
+    private var clearPlayer: MediaPlayer? = null  // クリアジングル用
 
     // ── SE バッファ生成 ────────────────────────────────────────────
 
@@ -192,6 +193,36 @@ class SoundManager {
         }
     }
 
+    /**
+     * ゲームクリア時のジングルを再生する。
+     * res/raw/bgm_clear.(mp3|ogg) が存在すればそれをMediaPlayerで再生
+     * （boss.pngと同じgetIdentifier方式: 音源ファイルを置くだけで自動的に使われる）。
+     * 無ければアイテム取得音を3回連続再生してファンファーレ風に代用する。
+     */
+    fun playClearJingle(context: Context) {
+        try {
+            val resId = context.resources.getIdentifier("bgm_clear", "raw", context.packageName)
+            if (resId != 0 && bgmEnabled) {
+                try { clearPlayer?.release() } catch (_: Exception) {}
+                clearPlayer = MediaPlayer.create(context, resId)?.apply {
+                    isLooping = false
+                    setVolume(1.0f, 1.0f)
+                    start()
+                }
+                if (clearPlayer != null) return
+            }
+        } catch (_: Exception) { /* ジングル失敗しても続行 */ }
+        // 代用ファンファーレ: アイテム取得音（上昇スイープ）×3回
+        if (sfxEnabled) {
+            Thread {
+                repeat(3) {
+                    playItemPickup()
+                    try { Thread.sleep(220) } catch (_: InterruptedException) {}
+                }
+            }.apply { isDaemon = true; start() }
+        }
+    }
+
     fun pauseBgmByUser() {
         bgmUserPaused = true
         try { mediaPlayer?.pause() } catch (_: Exception) {}
@@ -203,6 +234,7 @@ class SoundManager {
     fun pauseBgmBySystem() {
         bgmActivityPaused = true
         try { mediaPlayer?.pause() } catch (_: Exception) {}
+        try { clearPlayer?.pause() } catch (_: Exception) {}
     }
     fun resumeBgmBySystem() {
         bgmActivityPaused = false
@@ -212,6 +244,8 @@ class SoundManager {
     fun release() {
         try { mediaPlayer?.stop(); mediaPlayer?.release() } catch (_: Exception) {}
         mediaPlayer = null
+        try { clearPlayer?.stop(); clearPlayer?.release() } catch (_: Exception) {}
+        clearPlayer = null
         bgmRunning = false
         sfxReady = false
         for (pool in arrayOf(killPool, damagePool, itemPool)) {

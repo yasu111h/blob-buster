@@ -33,6 +33,8 @@ class Blob(
     var hp: Int = size.maxHp()
     private val maxHp: Int = size.maxHp()
     var isDead: Boolean = false
+    /** trueなら撃破時に必ずPowerUpItemをドロップ（ボス戦中の救済雑魚用） */
+    var guaranteedDrop: Boolean = false
     private var flashTimer: Int = 0
 
     private val moveSpeed: Float = size.speed(screenHeight) * speedMult
