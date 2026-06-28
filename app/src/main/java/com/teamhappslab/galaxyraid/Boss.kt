@@ -31,7 +31,8 @@ class Boss(
     private val screenHeight: Int,
     bossMaxHp: Int = GameConfig.BOSS_MAX_HP,        // ステージ別の最大HP
     private val maxPhase: Int = 3,                  // 到達できる最大フェーズ（1〜3）
-    private val attackIntervalMult: Float = 1f      // 攻撃間隔倍率（大きいほど弾幕が薄い）
+    private val attackIntervalMult: Float = 1f,     // 攻撃間隔倍率（大きいほど弾幕が薄い）
+    private val useAltBitmap: Boolean = false        // trueなら boss2.png を使う（Stage3〜5）
 ) {
     val width: Float = screenWidth * GameConfig.BOSS_WIDTH_RATIO
     /** 当たり判定半径（見た目よりやや小さめ） */
@@ -89,7 +90,8 @@ class Boss(
     private var atkTimer4: Int = -72  // 衝撃波
 
     companion object {
-        private var bossBitmap: Bitmap? = null
+        private var bossBitmap: Bitmap? = null       // Stage1・2用（boss.png）
+        private var bossBitmapAlt: Bitmap? = null    // Stage3〜5用（boss2.png）
 
         // ── プレースホルダー描画用Paint（画像差し替え後は未使用） ──
         private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5A0A78") }
@@ -106,22 +108,28 @@ class Boss(
 
         /**
          * ボス画像をロードする。
-         * res/drawable/boss.png（等）が存在すればそれを使用、無ければnullのまま
-         * （drawPlaceholder()によるCanvas描画にフォールバック）。
+         * res/drawable/boss.png（Stage1・2用）と boss2.png（Stage3〜5用）を読み込む。
+         * 存在しなければそれぞれnullのまま（drawPlaceholder()によるCanvas描画にフォールバック）。
          */
         fun initBitmap(context: Context, bossWidth: Float) {
-            bossBitmap = null
-            val resId = context.resources.getIdentifier("boss", "drawable", context.packageName)
-            if (resId == 0) return
+            bossBitmap = loadScaled(context, "boss", bossWidth)
+            bossBitmapAlt = loadScaled(context, "boss2", bossWidth)
+        }
+
+        /** drawable名から指定サイズに縮小したBitmapを生成（無ければnull）。 */
+        private fun loadScaled(context: Context, name: String, bossWidth: Float): Bitmap? {
+            val resId = context.resources.getIdentifier(name, "drawable", context.packageName)
+            if (resId == 0) return null
             val size = bossWidth.toInt().coerceAtLeast(4)
             val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeResource(context.resources, resId, opts)
             opts.inSampleSize = calcSampleSize(opts.outWidth, opts.outHeight, size, size)
             opts.inJustDecodeBounds = false
             opts.inScaled = false
-            val raw = BitmapFactory.decodeResource(context.resources, resId, opts) ?: return
-            bossBitmap = Bitmap.createScaledBitmap(raw, size, size, true)
-            if (raw !== bossBitmap) raw.recycle()
+            val raw = BitmapFactory.decodeResource(context.resources, resId, opts) ?: return null
+            val scaled = Bitmap.createScaledBitmap(raw, size, size, true)
+            if (raw !== scaled) raw.recycle()
+            return scaled
         }
 
         private fun calcSampleSize(rawW: Int, rawH: Int, reqW: Int, reqH: Int): Int {
@@ -349,11 +357,11 @@ class Boss(
 
     /**
      * ボス本体の描画。
-     * 画像差し替え手順: res/drawable/boss.png を追加するだけでよい
-     * （initBitmap()が実行時に "boss" drawableを検出して自動的に使用する）。
+     * Stage3〜5は boss2.png（useAltBitmap=true）、Stage1・2は boss.png を使う。
+     * 該当画像が無ければもう一方→プレースホルダーへフォールバック。
      */
     private fun drawBody(canvas: Canvas) {
-        val bmp = bossBitmap
+        val bmp = if (useAltBitmap) (bossBitmapAlt ?: bossBitmap) else bossBitmap
         if (bmp != null) {
             val half = width / 2f
             canvas.drawBitmap(bmp, null, RectF(x - half, y - half, x + half, y + half), bitmapPaint)

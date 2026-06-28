@@ -812,7 +812,8 @@ class GameView(
             if (bossWarningTimer == 0) {
                 boss = if (stageConfig != null) {
                     Boss(screenWidth, screenHeight,
-                        stageConfig.bossMaxHp, stageConfig.bossMaxPhase, stageConfig.bossAttackIntervalMult)
+                        stageConfig.bossMaxHp, stageConfig.bossMaxPhase, stageConfig.bossAttackIntervalMult,
+                        stageConfig.useAltBoss)
                 } else {
                     Boss(screenWidth, screenHeight)
                 }
