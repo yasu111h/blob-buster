@@ -26,8 +26,8 @@ class GameView(
 ) : SurfaceView(context), SurfaceHolder.Callback {
 
     companion object {
-        /** false にするとデバッグボタン・パネルが完全無効化される（リリース用） */
-        const val DEBUG_MODE = false
+        /** デバッグモード：false にするとデバッグボタン・パネルが完全無効化される（リリース用） */
+        const val DEBUG_MODE = true
     }
 
     private var gameThread: GameThread? = null
