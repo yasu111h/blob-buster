@@ -17,6 +17,10 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".StageSelectActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+        <activity
             android:name=".GameActivity"
             android:exported="false"
             android:screenOrientation="portrait"/>

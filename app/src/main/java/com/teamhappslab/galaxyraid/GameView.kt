@@ -22,7 +22,8 @@ enum class GameState {
 class GameView(
     context: Context,
     private val soundManager: SoundManager,
-    private val gameMode: String = "endless"
+    private val gameMode: String = "endless",
+    private val stage: Int = 0   // ストーリーモードのステージ番号（1〜5）。エンドレスは0
 ) : SurfaceView(context), SurfaceHolder.Callback {
 
     companion object {
@@ -43,11 +44,18 @@ class GameView(
     // 衝撃波リスト
     private val shockwaves = mutableListOf<Shockwave>()
 
-    // ── ボス（ストーリーモード・レベル50） ────────────────
+    // ── ボス（ストーリーモード） ────────────────────────
     private val isStoryMode: Boolean get() = gameMode == "story"
+    /** ストーリーのステージ設定（エンドレスはnull） */
+    private val stageConfig: StageConfig? = if (gameMode == "story") StageConfig.forStage(stage) else null
+    /** このステージでボスが出現する内部レベル */
+    private val bossTriggerLevel: Int get() = stageConfig?.bossTriggerLevel ?: GameConfig.BOSS_TRIGGER_LEVEL
+    private var midHealDone: Boolean = false       // 道中回復を済ませたか
+    private var preBossHealDone: Boolean = false   // ボス前回復を済ませたか
+    private var healMessageTimer: Int = 0          // 「HP回復」表示の残りフレーム
     private var boss: Boss? = null
     private var bossSpawned: Boolean = false       // ボスを一度出したか
-    private var bossWaitTimer: Int = 0             // レベル50到達後、残存敵待ちのタイマー
+    private var bossWaitTimer: Int = 0             // ボス出現レベル到達後、残存敵待ちのタイマー
     private var bossWarningTimer: Int = 0          // WARNING演出の残りフレーム
     private var bossHpDisplayRatio: Float = 1f     // HPバーの減少アニメーション用
     private var clearTapDelayTimer: Int = 0        // CLEAR直後の誤タップ防止
@@ -471,14 +479,27 @@ class GameView(
         soundManager.playClearJingle(context)  // 勝利ジングル（bgm_clearがあれば再生・無ければ代用ファンファーレ）
         clearCelebration = ClearCelebration(screenWidth, screenHeight)
         bossExplosion = null
+        // ストーリーモード: このステージのクリアを記録 → 次ステージ解放
+        if (isStoryMode && stage in 1..StageConfig.MAX_STAGE) {
+            AppPrefs.setStoryStageCleared(context, stage)
+        }
         rankAchieved = HighScoreManager.saveScore(context, scoreManager.score)
+    }
+
+    /** HP回復（amount>=99で全回復）。実際に回復したときだけ演出を出す。 */
+    private fun applyHeal(amount: Int) {
+        if (amount <= 0 || hp >= maxHp) return
+        hp = if (amount >= 99) maxHp else minOf(hp + amount, maxHp)
+        healMessageTimer = 90   // 1.5秒間「HP回復」を表示
+        powerUpFlashTimer = 30
+        soundManager.playItemPickup()
     }
 
     private fun initGame() {
         soundManager.restartBgm(context)  // 初回は起動、リトライ時は先頭から再生
         player = Player(screenWidth, screenHeight)
         bullets.clear()
-        blobManager = BlobManager(screenWidth, screenHeight)
+        blobManager = BlobManager(screenWidth, screenHeight, stageConfig)
         scoreManager.reset()
         hp = maxHp
         invincibleTimer = 0
@@ -499,6 +520,9 @@ class GameView(
         bossMinionTimer = 0
         bossExplosion = null
         clearCelebration = null
+        midHealDone = false
+        preBossHealDone = false
+        healMessageTimer = 0
         dragPointerId = -1
         synchronized(pendingBullets) { pendingBullets.clear() }
         prevPlayerX = screenWidth / 2f
@@ -757,11 +781,25 @@ class GameView(
             hp = minOf(hp + 1, maxHp)
         }
         if (tierUpTimer > 0) tierUpTimer--
+        if (healMessageTimer > 0) healMessageTimer--
+
+        // ── 道中回復（ストーリーのステージ設定で指定レベル到達時に1回） ──
+        stageConfig?.let { cfg ->
+            if (!midHealDone && cfg.midHealLevel > 0 && blobManager.level >= cfg.midHealLevel) {
+                midHealDone = true
+                applyHeal(cfg.midHealAmount)
+            }
+        }
 
         // ── ボス出現シーケンス（ストーリーモードのみ） ──────────
-        if (isStoryMode && !bossSpawned && blobManager.level >= GameConfig.BOSS_TRIGGER_LEVEL) {
+        if (isStoryMode && !bossSpawned && blobManager.level >= bossTriggerLevel) {
             // 通常敵の新規出現を停止
             blobManager.spawningEnabled = false
+            // ボス前回復（1回だけ・残存敵を待っている間に発動）
+            if (!preBossHealDone) {
+                preBossHealDone = true
+                stageConfig?.let { if (it.preBossHealAmount > 0) applyHeal(it.preBossHealAmount) }
+            }
             if (bossWaitTimer < GameConfig.BOSS_WAIT_MAX_FRAMES) bossWaitTimer++
             // 残存敵が掃けたら（または待機上限を超えたら）WARNING演出開始
             if (bossWarningTimer == 0 &&
@@ -772,7 +810,12 @@ class GameView(
         if (bossWarningTimer > 0) {
             bossWarningTimer--
             if (bossWarningTimer == 0) {
-                boss = Boss(screenWidth, screenHeight)
+                boss = if (stageConfig != null) {
+                    Boss(screenWidth, screenHeight,
+                        stageConfig.bossMaxHp, stageConfig.bossMaxPhase, stageConfig.bossAttackIntervalMult)
+                } else {
+                    Boss(screenWidth, screenHeight)
+                }
                 bossSpawned = true
                 bossHpDisplayRatio = 1f
             }
@@ -1082,7 +1125,9 @@ class GameView(
         canvas.drawText(scoreText, scoreX, uiY, scorePaint)
         val scoreBounds = Rect()
         scorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
-        val roundText = "LEVEL ${blobManager.level}"
+        // ストーリーは「STAGE n  Lv x/ボス出現Lv」で進捗を、エンドレスは「LEVEL n」を表示
+        val roundText = if (isStoryMode) "STAGE $stage  Lv ${blobManager.level}/$bossTriggerLevel"
+                        else "LEVEL ${blobManager.level}"
         roundPaint.textSize = scorePaint.textSize
         val levelX = scoreX + scoreBounds.width() + screenWidth * 0.03f
         canvas.drawText(roundText, levelX, uiY, roundPaint)
@@ -1093,6 +1138,16 @@ class GameView(
         val heartBounds = Rect()
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
         canvas.drawText(heartText, screenWidth - heartBounds.width() - screenWidth * 0.03f, uiY, heartPaint)
+
+        // 回復メッセージ（道中・ボス前の回復時に一定時間表示）
+        if (healMessageTimer > 0) {
+            val healText = "✚ HP RECOVERED"
+            clearBonusPaint.textSize = screenWidth * 0.06f
+            clearBonusPaint.alpha = (healMessageTimer.toFloat() / 90f * 255f).toInt().coerceIn(0, 255)
+            val hb = Rect(); clearBonusPaint.getTextBounds(healText, 0, healText.length, hb)
+            canvas.drawText(healText, (screenWidth - hb.width()) / 2f, screenHeight * 0.30f, clearBonusPaint)
+            clearBonusPaint.alpha = 255
+        }
 
         // ── ボスUI: 画面上端のHPバー＋BOSSラベル ─────────────
         boss?.let { b ->
@@ -1351,11 +1406,22 @@ class GameView(
             canvas.drawText(line1, (screenWidth - b1.width()) / 2f, screenHeight * 0.30f, clearTextPaint)
             canvas.drawText(line2, (screenWidth - b2.width()) / 2f, screenHeight * 0.38f, clearTextPaint)
 
+            // 撃破ボーナス（textSizeを明示的に戻す：他描画で変更されている場合に備える）
+            clearBonusPaint.textSize = screenWidth * 0.055f
+            // ストーリー: ステージクリア表記（次ステージ解放の案内）
+            if (isStoryMode && stage in 1..StageConfig.MAX_STAGE) {
+                val stageClearText = if (stage < StageConfig.MAX_STAGE)
+                    "STAGE $stage CLEAR ▶ STAGE ${stage + 1} UNLOCKED"
+                else "ALL STAGES CLEAR!"
+                val sb = Rect(); clearBonusPaint.getTextBounds(stageClearText, 0, stageClearText.length, sb)
+                canvas.drawText(stageClearText, (screenWidth - sb.width()) / 2f, screenHeight * 0.435f, clearBonusPaint)
+            }
+
             // 撃破ボーナス
             val bonusText = "BOSS BONUS +${GameConfig.BOSS_DEFEAT_BONUS}"
             val bonusBounds = Rect()
             clearBonusPaint.getTextBounds(bonusText, 0, bonusText.length, bonusBounds)
-            canvas.drawText(bonusText, (screenWidth - bonusBounds.width()) / 2f, screenHeight * 0.46f, clearBonusPaint)
+            canvas.drawText(bonusText, (screenWidth - bonusBounds.width()) / 2f, screenHeight * 0.48f, clearBonusPaint)
 
             // 最終スコア（スコアに連動した到達レベルを併記）
             val scoreLine = "SCORE: ${scoreManager.score}  (Lv.${GameConfig.levelForScore(scoreManager.score)})"

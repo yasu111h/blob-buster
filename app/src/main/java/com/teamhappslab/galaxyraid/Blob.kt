@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -27,11 +28,14 @@ class Blob(
     private val screenWidth: Int,
     private val screenHeight: Int,
     private val speedMult: Float = 1f,         // BlobManagerから渡される速度倍率
-    private val attackIntervalMult: Float = 1f  // BlobManagerから渡される攻撃間隔倍率
+    private val attackIntervalMult: Float = 1f, // BlobManagerから渡される攻撃間隔倍率
+    private val hpMult: Float = 1f              // ステージ難易度によるHP倍率（HP1の雑魚は1のまま）
 ) {
     val radius: Float = size.radius(screenWidth) * size.displayScale()
-    var hp: Int = size.maxHp()
-    private val maxHp: Int = size.maxHp()
+    // ステージ倍率を反映したHP。四捨五入し最低1を保証（HP1雑魚はどの倍率でも1）
+    private val scaledMaxHp: Int = (size.maxHp() * hpMult).roundToInt().coerceAtLeast(1)
+    var hp: Int = scaledMaxHp
+    private val maxHp: Int = scaledMaxHp
     var isDead: Boolean = false
     /** trueなら撃破時に必ずPowerUpItemをドロップ（ボス戦中の救済雑魚用） */
     var guaranteedDrop: Boolean = false

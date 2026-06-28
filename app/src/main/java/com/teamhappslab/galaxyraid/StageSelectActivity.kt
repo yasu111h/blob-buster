@@ -1,29 +1,31 @@
 package com.teamhappslab.galaxyraid
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 
-class GameActivity : AppCompatActivity() {
+/** ストーリーモードのステージ選択画面を表示するActivity。 */
+class StageSelectActivity : AppCompatActivity() {
 
-    private lateinit var gameView: GameView
-    private lateinit var soundManager: SoundManager
+    private lateinit var stageSelectView: StageSelectView
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        soundManager = SoundManager()
-        soundManager.bgmEnabled = AppPrefs.isBgmEnabled(this)
-        soundManager.sfxEnabled = AppPrefs.isSfxEnabled(this)
-        val gameMode = intent.getStringExtra("game_mode") ?: "endless"
-        val stage = intent.getIntExtra("stage", 0)
-        gameView = GameView(this, soundManager, gameMode, stage)
-        gameView.onGoHome = { finish() }
-        setContentView(gameView)
+        stageSelectView = StageSelectView(this)
+        stageSelectView.onStageSelected = { stage ->
+            val intent = Intent(this, GameActivity::class.java)
+            intent.putExtra("game_mode", "story")
+            intent.putExtra("stage", stage)
+            startActivity(intent)
+        }
+        stageSelectView.onBackTapped = { finish() }
+        setContentView(stageSelectView)
 
-        // DecorView生成後にフルスクリーン設定（setContentViewの後でないとNPE）
+        // DecorView生成後にフルスクリーン設定
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.let { controller ->
                 controller.hide(
@@ -44,20 +46,14 @@ class GameActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
-    override fun onPause() {
-        super.onPause()
-        gameView.pause()
-        soundManager.pauseBgmBySystem()
-    }
-
     override fun onResume() {
         super.onResume()
-        gameView.resume()
-        soundManager.resumeBgmBySystem()
+        stageSelectView.startAnimation()
+        stageSelectView.refresh()   // ゲームから戻ったとき解放状況を更新
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        soundManager.release()
+    override fun onPause() {
+        super.onPause()
+        stageSelectView.stopAnimation()
     }
 }

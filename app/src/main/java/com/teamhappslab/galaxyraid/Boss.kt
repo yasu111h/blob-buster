@@ -28,7 +28,10 @@ enum class BossState { ENTERING, FIGHTING, DYING, GONE }
  */
 class Boss(
     private val screenWidth: Int,
-    private val screenHeight: Int
+    private val screenHeight: Int,
+    bossMaxHp: Int = GameConfig.BOSS_MAX_HP,        // ステージ別の最大HP
+    private val maxPhase: Int = 3,                  // 到達できる最大フェーズ（1〜3）
+    private val attackIntervalMult: Float = 1f      // 攻撃間隔倍率（大きいほど弾幕が薄い）
 ) {
     val width: Float = screenWidth * GameConfig.BOSS_WIDTH_RATIO
     /** 当たり判定半径（見た目よりやや小さめ） */
@@ -39,20 +42,23 @@ class Boss(
     private val targetY: Float = screenHeight * 0.22f  // 定位置（画面上部1/4あたり）
     private val enterSpeed: Float = screenHeight * 0.004f
 
-    val maxHp: Int = GameConfig.BOSS_MAX_HP
+    val maxHp: Int = bossMaxHp
     var hp: Int = maxHp
         private set
+
+    /** 攻撃間隔をステージ倍率で補正（最低1フレーム） */
+    private fun iv(base: Int): Int = (base * attackIntervalMult).toInt().coerceAtLeast(1)
 
     var state: BossState = BossState.ENTERING
         private set
 
-    /** 現在フェーズ（1〜3） */
+    /** 現在フェーズ（1〜maxPhase）。HPで決まるが、ステージ上限maxPhaseでクランプ */
     val phase: Int
         get() = when {
             hp > maxHp * 2 / 3 -> 1
             hp > maxHp / 3     -> 2
             else               -> 3
-        }
+        }.coerceAtMost(maxPhase)
 
     private var prevPhase: Int = 1
     private var phaseInvincibleTimer: Int = 0   // フェーズ移行直後の無敵
@@ -193,51 +199,51 @@ class Boss(
             1 -> {
                 // 同方向5連射（約1.2秒間隔）
                 atkTimer1++
-                if (atkTimer1 >= GameConfig.BOSS_P1_BURST_INTERVAL) { atkTimer1 = 0
+                if (atkTimer1 >= iv(GameConfig.BOSS_P1_BURST_INTERVAL)) { atkTimer1 = 0
                     burstShot(playerX, playerY, result)
                 }
                 // 5-way扇状弾（約1.6秒間隔）
                 atkTimer2++
-                if (atkTimer2 >= GameConfig.BOSS_P1_SPREAD_INTERVAL) { atkTimer2 = 0
+                if (atkTimer2 >= iv(GameConfig.BOSS_P1_SPREAD_INTERVAL)) { atkTimer2 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.40f, tint = 2, speedMult = 1.2f))
                 }
             }
             2 -> {
                 // 同方向5連射（約1.0秒間隔）
                 atkTimer1++
-                if (atkTimer1 >= GameConfig.BOSS_P2_BURST_INTERVAL) { atkTimer1 = 0
+                if (atkTimer1 >= iv(GameConfig.BOSS_P2_BURST_INTERVAL)) { atkTimer1 = 0
                     burstShot(playerX, playerY, result)
                 }
                 // 全方位リング弾（約2.0秒間隔・12発）
                 atkTimer3++
-                if (atkTimer3 >= GameConfig.BOSS_P2_RING_INTERVAL) { atkTimer3 = 0
+                if (atkTimer3 >= iv(GameConfig.BOSS_P2_RING_INTERVAL)) { atkTimer3 = 0
                     result.addAll(ringShot(count = 12, speedMult = 0.9f))
                 }
                 // 衝撃波（約2.5秒間隔）
                 atkTimer4++
-                if (atkTimer4 >= GameConfig.BOSS_P2_SHOCKWAVE_INTERVAL) { atkTimer4 = 0
+                if (atkTimer4 >= iv(GameConfig.BOSS_P2_SHOCKWAVE_INTERVAL)) { atkTimer4 = 0
                     fireShockwave(playerX, playerY, shockwaves)
                 }
             }
             else -> {
                 // 同方向5連射（約1.0秒間隔）
                 atkTimer1++
-                if (atkTimer1 >= GameConfig.BOSS_P3_BURST_INTERVAL) { atkTimer1 = 0
+                if (atkTimer1 >= iv(GameConfig.BOSS_P3_BURST_INTERVAL)) { atkTimer1 = 0
                     burstShot(playerX, playerY, result)
                 }
                 // 5-way扇状弾（約1.1秒間隔）
                 atkTimer2++
-                if (atkTimer2 >= GameConfig.BOSS_P3_SPREAD_INTERVAL) { atkTimer2 = 0
+                if (atkTimer2 >= iv(GameConfig.BOSS_P3_SPREAD_INTERVAL)) { atkTimer2 = 0
                     result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.45f, tint = 2, speedMult = 1.2f))
                 }
                 // 全方位リング弾（約1.8秒間隔・16発）
                 atkTimer3++
-                if (atkTimer3 >= GameConfig.BOSS_P3_RING_INTERVAL) { atkTimer3 = 0
+                if (atkTimer3 >= iv(GameConfig.BOSS_P3_RING_INTERVAL)) { atkTimer3 = 0
                     result.addAll(ringShot(count = 16, speedMult = 1.0f))
                 }
                 // 衝撃波（約2.0秒間隔）
                 atkTimer4++
-                if (atkTimer4 >= GameConfig.BOSS_P3_SHOCKWAVE_INTERVAL) { atkTimer4 = 0
+                if (atkTimer4 >= iv(GameConfig.BOSS_P3_SHOCKWAVE_INTERVAL)) { atkTimer4 = 0
                     fireShockwave(playerX, playerY, shockwaves)
                 }
             }

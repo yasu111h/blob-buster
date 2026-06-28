@@ -6,7 +6,8 @@ import kotlin.random.Random
 
 class BlobManager(
     private val screenWidth: Int,
-    private val screenHeight: Int
+    private val screenHeight: Int,
+    private val stage: StageConfig? = null   // ストーリーのステージ設定（null=エンドレス）
 ) {
     val blobs: MutableList<Blob> = mutableListOf()
     var level: Int = 1
@@ -20,11 +21,16 @@ class BlobManager(
     // Lv100〜から能力アップが始まるティア数（Lv50=tier2は変動なし）
     private val statTierCount: Int get() = (globalTier - 2).coerceAtLeast(0)
 
-    // 攻撃間隔倍率（Lv100〜で0.9倍ずつ短縮→攻撃が速くなる）
-    val attackIntervalMult: Float get() = 0.9.pow(statTierCount.toDouble()).toFloat()
+    // 攻撃間隔倍率（Lv100〜で0.9倍ずつ短縮→攻撃が速くなる）×ステージ倍率
+    val attackIntervalMult: Float
+        get() = 0.9.pow(statTierCount.toDouble()).toFloat() * (stage?.enemyAttackIntervalMult ?: 1f)
 
-    // 敵移動速度倍率（Lv100〜で1.03倍ずつ加速）
-    val enemySpeedMult: Float get() = 1.03.pow(statTierCount.toDouble()).toFloat()
+    // 敵移動速度倍率（Lv100〜で1.03倍ずつ加速）×ステージ倍率
+    val enemySpeedMult: Float
+        get() = 1.03.pow(statTierCount.toDouble()).toFloat() * (stage?.enemySpeedMult ?: 1f)
+
+    // 敵HP倍率（ステージ難易度由来。エンドレスは1.0）
+    private val enemyHpMult: Float get() = stage?.enemyHpMult ?: 1f
 
     // スコア倍率（Lv50〜で1.1倍ずつ増加）
     val scoreMultiplier: Float get() = 1.1.pow((globalTier - 1).toDouble()).toFloat()
@@ -99,6 +105,8 @@ class BlobManager(
         val batchSize = 10
         val weights = BlobSize.values()
             .filter { level >= it.minLevel() }
+            // ステージ上限を超える強敵は出さない（エンドレスは制限なし）
+            .filter { stage == null || it.ordinal <= stage.enemyTierCap.ordinal }
             .map { size ->
                 val w = if (level >= size.peakLevel()) {
                     size.maxSpawnWeight().toFloat()
@@ -141,7 +149,7 @@ class BlobManager(
         val margin = screenWidth * 0.08f
         val cx = margin + Random.nextFloat() * (screenWidth - margin * 2)
         val cy = -screenWidth * 0.15f
-        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight, enemySpeedMult, attackIntervalMult))
+        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight, enemySpeedMult, attackIntervalMult, enemyHpMult))
     }
 
     fun onKill() {}
@@ -155,7 +163,7 @@ class BlobManager(
         val margin = screenWidth * 0.08f
         val cx = margin + Random.nextFloat() * (screenWidth - margin * 2)
         val cy = -screenWidth * 0.15f
-        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight, enemySpeedMult, attackIntervalMult)
+        blobs.add(Blob(cx, cy, size, screenWidth, screenHeight, enemySpeedMult, attackIntervalMult, enemyHpMult)
             .apply { guaranteedDrop = true })
     }
 

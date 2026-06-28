@@ -27,11 +27,8 @@ class MainActivity : AppCompatActivity() {
 
         titleView = TitleView(this)
         titleView.onStoryModeTapped = {
-            Handler(Looper.getMainLooper()).postDelayed({
-                val intent = Intent(this, GameActivity::class.java)
-                intent.putExtra("game_mode", "story")
-                startActivity(intent)
-            }, 600L)
+            // ストーリーはまずステージ選択画面へ（ゲーム起動ではないので待ち時間なし）
+            startActivity(Intent(this, StageSelectActivity::class.java))
         }
         titleView.onEndlessModeTapped = {
             Handler(Looper.getMainLooper()).postDelayed({
