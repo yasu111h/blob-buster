@@ -1273,8 +1273,8 @@ class GameView(
                 gameOverPaint
             )
 
-            // スコア表示
-            val scoreText = "SCORE: ${scoreManager.score}"
+            // スコア表示（スコアに連動した到達レベルを併記）
+            val scoreText = "SCORE: ${scoreManager.score}  (Lv.${GameConfig.levelForScore(scoreManager.score)})"
             val scoreBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
             canvas.drawText(
@@ -1357,8 +1357,8 @@ class GameView(
             clearBonusPaint.getTextBounds(bonusText, 0, bonusText.length, bonusBounds)
             canvas.drawText(bonusText, (screenWidth - bonusBounds.width()) / 2f, screenHeight * 0.46f, clearBonusPaint)
 
-            // 最終スコア
-            val scoreLine = "SCORE: ${scoreManager.score}"
+            // 最終スコア（スコアに連動した到達レベルを併記）
+            val scoreLine = "SCORE: ${scoreManager.score}  (Lv.${GameConfig.levelForScore(scoreManager.score)})"
             val sBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreLine, 0, scoreLine.length, sBounds)
             canvas.drawText(scoreLine, (screenWidth - sBounds.width()) / 2f, screenHeight * 0.55f, gameOverScorePaint)

@@ -132,6 +132,10 @@ class TitleView(context: Context) : View(context) {
         color = Color.argb(220, 200, 240, 255)
         isFakeBoldText = true
     }
+    private val scoreLevelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(210, 150, 230, 170)
+        isFakeBoldText = true
+    }
     private val scoreEmptyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(80, 100, 150, 200)
     }
@@ -162,6 +166,7 @@ class TitleView(context: Context) : View(context) {
         scoreTitlePaint.textSize = w * 0.032f
         scoreRankPaint.textSize  = w * 0.042f
         scoreValuePaint.textSize = w * 0.042f
+        scoreLevelPaint.textSize = w * 0.034f
         scoreEmptyPaint.textSize = w * 0.035f
 
         val bw = w * 0.58f
@@ -358,7 +363,13 @@ class TitleView(context: Context) : View(context) {
             val valText = "%,d".format(score)
             val valBounds = Rect(); scoreValuePaint.getTextBounds(valText, 0, valText.length, valBounds)
             scoreValuePaint.alpha = if (i == 0) 255 else if (i == 1) 200 else 160
-            canvas.drawText(valText, screenW * 0.72f - valBounds.width(), lineY, scoreValuePaint)
+            val valRight = screenW * 0.72f
+            canvas.drawText(valText, valRight - valBounds.width(), lineY, scoreValuePaint)
+
+            // スコアに連動したレベルを併記（スコアから逆算するため過去データもそのまま表示できる）
+            val lvlText = "Lv.${GameConfig.levelForScore(score)}"
+            scoreLevelPaint.alpha = if (i == 0) 230 else if (i == 1) 185 else 150
+            canvas.drawText(lvlText, screenW * 0.78f, lineY, scoreLevelPaint)
         }
     }
 

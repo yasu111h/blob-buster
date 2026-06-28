@@ -4,6 +4,24 @@ object GameConfig {
     /** 敵弾スピード倍率（1.0f = デフォルト、大きいほど速い） */
     const val ENEMY_BULLET_SPEED_MULT: Float = 1.0f
 
+    // ── スコア⇔レベル換算 ─────────────────────────────────
+    /**
+     * レベルnに到達するために必要なスコア閾値。
+     * BlobManager.levelThreshold と同一式（80 * (n-1) * n / 2）。
+     */
+    fun levelThreshold(n: Int): Int = 80 * (n - 1) * n / 2
+
+    /**
+     * 任意のスコアから到達レベルを逆算する（最小レベル1）。
+     * レベルはスコアから一意に決まるため、過去に保存されたスコアにも適用できる。
+     */
+    fun levelForScore(score: Int): Int {
+        if (score <= 0) return 1
+        var n = 1
+        while (levelThreshold(n + 1) <= score) n++
+        return n
+    }
+
     // ── ボス（ストーリーモード・レベル50） ─────────────────
     /** ボスが出現するレベル */
     const val BOSS_TRIGGER_LEVEL: Int = 50
