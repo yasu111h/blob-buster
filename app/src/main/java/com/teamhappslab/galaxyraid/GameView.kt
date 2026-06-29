@@ -1606,11 +1606,7 @@ class GameView(
                 canvas.drawText(stageClearText, (screenWidth - sb.width()) / 2f, screenHeight * 0.435f, clearBonusPaint)
             }
 
-            // 撃破ボーナス
-            val bonusText = "BOSS BONUS +${GameConfig.bossDefeatBonus(stage)}"
-            val bonusBounds = Rect()
-            clearBonusPaint.getTextBounds(bonusText, 0, bonusText.length, bonusBounds)
-            canvas.drawText(bonusText, (screenWidth - bonusBounds.width()) / 2f, screenHeight * 0.48f, clearBonusPaint)
+            // 撃破ボーナスは撃破の瞬間にスコア加算済みのため、ここでは表示しない
 
             // 最終スコア（1行目）とレベル（2行目）を別行で表示
             val scoreLine = "SCORE: ${scoreManager.score}"

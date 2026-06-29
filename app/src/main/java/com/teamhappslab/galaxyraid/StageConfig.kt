@@ -78,7 +78,7 @@ data class StageConfig(
         }
 
         // ── 攻撃頻度倍率（小さいほど高頻度） ──
-        const val FREQ_BASE: Float = 1.0f    // 指定なし
+        const val FREQ_BASE: Float = 0.85f   // 指定なし（ベース頻度を底上げ）
         const val FREQ_MID: Float = 0.8f     // 中
         const val FREQ_HIGH: Float = 0.65f   // 高
         const val FREQ_HIGH_PLUS: Float = 0.55f  // 高+
