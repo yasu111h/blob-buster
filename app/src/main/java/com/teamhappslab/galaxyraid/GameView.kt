@@ -175,6 +175,7 @@ class GameView(
     private var resumeBtnRect = RectF()  // PAUSEDオーバーレイ中央の再開ボタン
     private var homeBtnRect         = RectF()  // PAUSEDオーバーレイのHomeボタン
     private var gameOverHomeBtnRect = RectF()  // GAME_OVERオーバーレイのHomeボタン
+    private var gameOverRetryBtnRect = RectF() // GAME_OVERオーバーレイのRetryボタン
     var onGoHome: (() -> Unit)? = null   // ホーム画面へ戻るコールバック
 
     private val pauseBtnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -443,10 +444,15 @@ class GameView(
         )
         homeBtnTextPaint.textSize = screenWidth * 0.065f
 
+        // Retryボタン（GAME_OVERオーバーレイ用・Homeボタンの上）
+        gameOverRetryBtnRect = RectF(
+            (screenWidth - rBtnW) / 2f, screenHeight * 0.67f,
+            (screenWidth + rBtnW) / 2f, screenHeight * 0.67f + rBtnH
+        )
         // Homeボタン（GAME_OVERオーバーレイ用）
         gameOverHomeBtnRect = RectF(
-            (screenWidth - rBtnW) / 2f, screenHeight * 0.74f,
-            (screenWidth + rBtnW) / 2f, screenHeight * 0.74f + rBtnH
+            (screenWidth - rBtnW) / 2f, screenHeight * 0.79f,
+            (screenWidth + rBtnW) / 2f, screenHeight * 0.79f + rBtnH
         )
 
         // アイテム取得オーラ
@@ -617,12 +623,12 @@ class GameView(
         }
 
         if (gameState == GameState.GAME_OVER) {
-            if (event.actionMasked == MotionEvent.ACTION_UP &&
-                gameOverHomeBtnRect.contains(event.x, event.y)) {
-                onGoHome?.invoke()
-            } else if (event.actionMasked == MotionEvent.ACTION_DOWN &&
-                !gameOverHomeBtnRect.contains(event.x, event.y)) {
-                initGame()
+            // Retry/Homeはそれぞれのボタンを押した時だけ反応する（画面どこでもリトライは廃止）
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                when {
+                    gameOverRetryBtnRect.contains(event.x, event.y) -> initGame()
+                    gameOverHomeBtnRect.contains(event.x, event.y)  -> onGoHome?.invoke()
+                }
             }
             return true
         }
@@ -1126,8 +1132,8 @@ class GameView(
         canvas.drawText(scoreText, scoreX, uiY, scorePaint)
         val scoreBounds = Rect()
         scorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
-        // ストーリーは「STAGE n  Lv x/ボス出現Lv」で進捗を、エンドレスは「LEVEL n」を表示
-        val roundText = if (isStoryMode) "STAGE $stage  Lv ${blobManager.level}/$bossTriggerLevel"
+        // ストーリーは「STAGE n  Lv x」で進捗を、エンドレスは「LEVEL n」を表示
+        val roundText = if (isStoryMode) "STAGE $stage  Lv ${blobManager.level}"
                         else "LEVEL ${blobManager.level}"
         roundPaint.textSize = scorePaint.textSize
         val levelX = scoreX + scoreBounds.width() + screenWidth * 0.03f
@@ -1294,6 +1300,7 @@ class GameView(
             // 中央再開ボタン
             canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBgPaint)
             canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBorderPaint)
+            resumeBtnTextPaint.textSize = screenWidth * 0.07f
             val rLabel = "▶  Play"
             val rBounds = Rect()
             resumeBtnTextPaint.getTextBounds(rLabel, 0, rLabel.length, rBounds)
@@ -1329,27 +1336,36 @@ class GameView(
                 gameOverPaint
             )
 
-            // スコア表示（スコアに連動した到達レベルを併記）
-            val scoreText = "SCORE: ${scoreManager.score}  (Lv.${GameConfig.levelForScore(scoreManager.score)})"
+            // スコア（1行目）とレベル（2行目）を別行で表示
+            val scoreText = "SCORE: ${scoreManager.score}"
             val scoreBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
             canvas.drawText(
                 scoreText,
                 (screenWidth - scoreBounds.width()) / 2f,
-                screenHeight * 0.52f,
+                screenHeight * 0.48f,
+                gameOverScorePaint
+            )
+            val levelText = "Lv.${GameConfig.levelForScore(scoreManager.score)}"
+            val levelBounds = Rect()
+            gameOverScorePaint.getTextBounds(levelText, 0, levelText.length, levelBounds)
+            canvas.drawText(
+                levelText,
+                (screenWidth - levelBounds.width()) / 2f,
+                screenHeight * 0.535f,
                 gameOverScorePaint
             )
 
             // ランクイン表示
             if (rankAchieved in 1..3) {
-                val medal = when (rankAchieved) { 1 -> "★ #1"; 2 -> "★ #2"; else -> "★ #3" }
-                rankInTextPaint.textSize = screenWidth * 0.075f
+                val medal = when (rankAchieved) { 1 -> "★ 1st PLACE!"; 2 -> "★ 2nd PLACE!"; else -> "★ 3rd PLACE!" }
+                rankInTextPaint.textSize = screenWidth * 0.06f
                 val rankBounds = Rect(); rankInTextPaint.getTextBounds(medal, 0, medal.length, rankBounds)
                 val rankW = rankBounds.width() + screenWidth * 0.12f
                 val rankH = rankBounds.height() + screenHeight * 0.04f
                 val rankRect = RectF(
-                    (screenWidth - rankW) / 2f, screenHeight * 0.56f,
-                    (screenWidth + rankW) / 2f, screenHeight * 0.56f + rankH
+                    (screenWidth - rankW) / 2f, screenHeight * 0.575f,
+                    (screenWidth + rankW) / 2f, screenHeight * 0.575f + rankH
                 )
                 canvas.drawRoundRect(rankRect, 16f, 16f, rankInBgPaint)
                 canvas.drawRoundRect(rankRect, 16f, 16f, rankInBorderPaint)
@@ -1359,17 +1375,17 @@ class GameView(
                     rankInTextPaint)
             }
 
-            // タップリトライ
-            val retryY = if (rankAchieved in 1..3) screenHeight * 0.69f else screenHeight * 0.65f
-            val retryText = "TAP TO RETRY"
+            // Retryボタン（緑・Homeボタンの上）。ここを押した時だけリトライする
+            canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBgPaint)
+            canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBorderPaint)
+            resumeBtnTextPaint.textSize = screenWidth * 0.065f
+            val retryLabel = "↻  Retry"
             val retryBounds = Rect()
-            retryPaint.getTextBounds(retryText, 0, retryText.length, retryBounds)
-            canvas.drawText(
-                retryText,
-                (screenWidth - retryBounds.width()) / 2f,
-                retryY,
-                retryPaint
-            )
+            resumeBtnTextPaint.getTextBounds(retryLabel, 0, retryLabel.length, retryBounds)
+            canvas.drawText(retryLabel,
+                gameOverRetryBtnRect.centerX() - retryBounds.width() / 2f,
+                gameOverRetryBtnRect.centerY() + retryBounds.height() / 2f,
+                resumeBtnTextPaint)
 
             // Homeボタン
             canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBgPaint)
@@ -1424,22 +1440,26 @@ class GameView(
             clearBonusPaint.getTextBounds(bonusText, 0, bonusText.length, bonusBounds)
             canvas.drawText(bonusText, (screenWidth - bonusBounds.width()) / 2f, screenHeight * 0.48f, clearBonusPaint)
 
-            // 最終スコア（スコアに連動した到達レベルを併記）
-            val scoreLine = "SCORE: ${scoreManager.score}  (Lv.${GameConfig.levelForScore(scoreManager.score)})"
+            // 最終スコア（1行目）とレベル（2行目）を別行で表示
+            val scoreLine = "SCORE: ${scoreManager.score}"
             val sBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreLine, 0, scoreLine.length, sBounds)
-            canvas.drawText(scoreLine, (screenWidth - sBounds.width()) / 2f, screenHeight * 0.55f, gameOverScorePaint)
+            canvas.drawText(scoreLine, (screenWidth - sBounds.width()) / 2f, screenHeight * 0.535f, gameOverScorePaint)
+            val levelLine = "Lv.${GameConfig.levelForScore(scoreManager.score)}"
+            val lBounds = Rect()
+            gameOverScorePaint.getTextBounds(levelLine, 0, levelLine.length, lBounds)
+            canvas.drawText(levelLine, (screenWidth - lBounds.width()) / 2f, screenHeight * 0.585f, gameOverScorePaint)
 
             // ランクイン表示
             if (rankAchieved in 1..3) {
-                val medal = when (rankAchieved) { 1 -> "★ #1"; 2 -> "★ #2"; else -> "★ #3" }
-                rankInTextPaint.textSize = screenWidth * 0.075f
+                val medal = when (rankAchieved) { 1 -> "★ 1st PLACE!"; 2 -> "★ 2nd PLACE!"; else -> "★ 3rd PLACE!" }
+                rankInTextPaint.textSize = screenWidth * 0.06f
                 val rankBounds = Rect(); rankInTextPaint.getTextBounds(medal, 0, medal.length, rankBounds)
                 val rankW = rankBounds.width() + screenWidth * 0.12f
                 val rankH = rankBounds.height() + screenHeight * 0.04f
                 val rankRect = RectF(
-                    (screenWidth - rankW) / 2f, screenHeight * 0.59f,
-                    (screenWidth + rankW) / 2f, screenHeight * 0.59f + rankH
+                    (screenWidth - rankW) / 2f, screenHeight * 0.62f,
+                    (screenWidth + rankW) / 2f, screenHeight * 0.62f + rankH
                 )
                 canvas.drawRoundRect(rankRect, 16f, 16f, rankInBgPaint)
                 canvas.drawRoundRect(rankRect, 16f, 16f, rankInBorderPaint)
@@ -1454,7 +1474,7 @@ class GameView(
                 val tapText = "TAP TO RETURN"
                 val tapBounds = Rect()
                 retryPaint.getTextBounds(tapText, 0, tapText.length, tapBounds)
-                val tapY = if (rankAchieved in 1..3) screenHeight * 0.72f else screenHeight * 0.66f
+                val tapY = if (rankAchieved in 1..3) screenHeight * 0.74f else screenHeight * 0.68f
                 canvas.drawText(tapText, (screenWidth - tapBounds.width()) / 2f, tapY, retryPaint)
             }
         }
