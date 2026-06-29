@@ -36,17 +36,19 @@ data class StageConfig(
     val useAltBoss: Boolean,
 ) {
     companion object {
-        /** ステージ総数 */
-        const val MAX_STAGE = 5
+        /** ステージ総数（STAGE FINALを含む） */
+        const val MAX_STAGE = 6
 
-        // ── 5ステージ分の難易度テーブル（ステージ設計案.md 3-1準拠） ──
+        // ── 6ステージ分の難易度テーブル ──
+        // 道中回復は全ステージなし(0,0)・ボス前回復は全ステージ+1・最大フェーズは全て3。
         // stage / bossLv / 敵上限 / HP倍 / 攻撃間隔倍 / 速度倍 / ボスHP / 最終P / ボス攻撃倍 / 道中回復Lv / 道中量 / ボス前量 / 別ボス画像
         private val STAGES = listOf(
-            StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.5f,  0.85f,  320, 1, 1.5f,  10, 99, 99, false),
-            StageConfig(2, 23, BlobSize.HUGE,   0.75f, 1.3f,  0.9f,   480, 2, 1.25f,  0,  0,  2, false),
-            StageConfig(3, 27, BlobSize.DRAGON, 0.9f,  1.15f, 1.0f,   650, 3, 1.1f,   0,  0,  1, true),
-            StageConfig(4, 32, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 1.0f,   0,  0,  0, true),
-            StageConfig(5, 40, BlobSize.ENEMY8, 1.2f,  0.85f, 1.1f,  1150, 3, 0.85f,  0,  0,  0, true),
+            StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.5f,  0.85f,  320, 3, 1.5f,   0,  0,  1, false),
+            StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.3f,  0.9f,   480, 3, 1.25f,  0,  0,  1, false),
+            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.15f, 1.0f,   650, 3, 1.1f,   0,  0,  1, true),
+            StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 1.0f,   0,  0,  1, true),
+            StageConfig(5, 45, BlobSize.ENEMY8, 1.2f,  0.85f, 1.1f,  1150, 3, 0.85f,  0,  0,  1, true),
+            StageConfig(6, 60, BlobSize.ENEMY8, 1.3f,  0.8f,  1.15f, 1400, 3, 0.8f,   0,  0,  1, true),
         )
 
         /** ステージ番号(1〜5)に対応する設定を返す。範囲外はStage1にフォールバック。 */
@@ -60,6 +62,7 @@ data class StageConfig(
             3 -> "STAGE 3"
             4 -> "STAGE 4"
             5 -> "STAGE 5"
+            6 -> "FINAL STAGE"
             else -> "STAGE $stage"
         }
 
@@ -70,7 +73,71 @@ data class StageConfig(
             3 -> "NORMAL"
             4 -> "HARD"
             5 -> "EXTREME"
+            6 -> "FINAL"
             else -> ""
+        }
+
+        // ── 攻撃頻度倍率（小さいほど高頻度） ──
+        const val FREQ_BASE: Float = 1.0f    // 指定なし
+        const val FREQ_MID: Float = 0.8f     // 中
+        const val FREQ_HIGH: Float = 0.65f   // 高
+        const val FREQ_HIGH_PLUS: Float = 0.55f  // 高+
+        const val FREQ_MAX: Float = 0.45f    // 最高
+        const val FREQ_SUPER_MAX: Float = 0.35f  // 超最高
+
+        /**
+         * ステージごとのボス3フェーズ分の攻撃構成。
+         * 「5方向扇弾」=狙い5発の狭い扇(spread)、「扇弾」=広角7発の扇(wideSpread)として区別する。
+         */
+        fun bossPhasesFor(stage: Int): List<BossPhasePattern> = when (stage) {
+            1 -> listOf(
+                BossPhasePattern(spread = true),                                       // P1: 5連射＋5方向扇弾
+                BossPhasePattern(spread = true),                                       // P2: 5連射＋5方向扇弾
+                BossPhasePattern(ring = 12, shockwave = true),                         // P3: 5連射＋12リング＋衝撃波
+            )
+            2 -> listOf(
+                BossPhasePattern(spread = true),                                       // P1: 5連射＋5方向扇弾
+                BossPhasePattern(ring = 12, shockwave = true),                         // P2: 5連射＋12リング＋衝撃波
+                BossPhasePattern(spread = true, ring = 12, shockwave = true),          // P3: 5連射＋5方向扇弾＋12リング＋衝撃波
+            )
+            3 -> listOf(
+                BossPhasePattern(spread = true, ring = 12),                            // P1: 5連射＋5方向扇弾＋12リング
+                BossPhasePattern(wideSpread = true, ring = 16, shockwave = true),      // P2: 5連射＋扇弾＋16リング＋衝撃波
+                BossPhasePattern(wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID), // P3: ＋攻撃頻度中
+            )
+            4 -> listOf(
+                BossPhasePattern(spread = true, wideSpread = true, ring = 12, shockwave = true),                    // P1: 5方向扇弾＋扇弾＋12リング＋衝撃波
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID),  // P2: ＋16リング・頻度中
+                BossPhasePattern(wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH),               // P3: 扇弾＋16リング＋衝撃波・頻度高
+            )
+            5 -> listOf(
+                BossPhasePattern(spread = true, wideSpread = true, ring = 12, shockwave = true, freqMult = FREQ_MID),       // P1: 頻度中
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH),      // P2: 頻度高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH_PLUS), // P3: 頻度高+
+            )
+            else -> listOf( // STAGE FINAL（stage 6）
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH),      // P1: 頻度高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MAX),       // P2: 頻度最高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_SUPER_MAX), // P3: 頻度超最高
+            )
         }
     }
 }
+
+/**
+ * ボスの1フェーズ分の攻撃構成。
+ * @param burst 同方向5連射（基本的に常時ON）
+ * @param spread 5方向扇弾（狙い5発の狭い扇）
+ * @param wideSpread 扇弾（広角7発の扇）
+ * @param ring リング弾の弾数（0=なし / 12 / 16）
+ * @param shockwave 衝撃波
+ * @param freqMult 攻撃頻度倍率（小さいほど高頻度）
+ */
+data class BossPhasePattern(
+    val burst: Boolean = true,
+    val spread: Boolean = false,
+    val wideSpread: Boolean = false,
+    val ring: Int = 0,
+    val shockwave: Boolean = false,
+    val freqMult: Float = StageConfig.FREQ_BASE,
+)

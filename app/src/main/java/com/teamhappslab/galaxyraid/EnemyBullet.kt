@@ -5,7 +5,7 @@ import android.graphics.Color
 import android.graphics.Paint
 
 /**
- * tint: 0=green(通常弾), 1=orange(高速弾), 2=red(DRAGON強攻撃弾)
+ * tint: 0=通常弾, 1=高速弾, 2=強攻撃弾, 3=ボス扇弾（現状はすべて白で描画）
  */
 class EnemyBullet(
     var x: Float,
@@ -21,14 +21,15 @@ class EnemyBullet(
     private var ttl: Int = 240  // 最大4秒（60fps）で強制消去
 
     companion object {
-        // 丸1つ描画用（tint別）
-        private val paints = arrayOfNulls<Paint>(3)
+        // 丸1つ描画用（tint別。現状はすべて同じ白）
+        private val paints = arrayOfNulls<Paint>(4)
 
         fun initSharedPaints(screenWidth: Int) {
             val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(230, 255, 255, 255) }
             paints[0] = paint
             paints[1] = paint
             paints[2] = paint
+            paints[3] = paint
         }
     }
 

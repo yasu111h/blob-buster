@@ -47,7 +47,20 @@ object GameConfig {
     /** 撃破演出（連続爆発）の長さ（フレーム） */
     const val BOSS_DYING_FRAMES: Int = 150      // 2.5秒 @ 60fps
 
-    // ── ボス攻撃間隔（フレーム @60fps） ─────────────────────
+    // ── ボス攻撃間隔の基準値（データ駆動フェーズ用・フレーム@60fps） ──
+    // 実際の間隔 = 基準値 × フェーズの攻撃頻度倍率 × ステージのボス攻撃間隔倍率
+    /** 同方向5連射の基準間隔（約1.0秒） */
+    const val BOSS_ATK_BURST_BASE: Int = 60
+    /** 5方向扇弾（狭い狙い扇）の基準間隔（約1.4秒） */
+    const val BOSS_ATK_SPREAD_BASE: Int = 84
+    /** 扇弾（広角扇）の基準間隔（約1.6秒） */
+    const val BOSS_ATK_WIDE_SPREAD_BASE: Int = 96
+    /** リング弾の基準間隔（約1.85秒） */
+    const val BOSS_ATK_RING_BASE: Int = 110
+    /** 衝撃波の基準間隔（約2.2秒） */
+    const val BOSS_ATK_SHOCKWAVE_BASE: Int = 130
+
+    // ── ボス攻撃間隔（旧・フェーズ固定方式。現在は未使用） ──────────
     // フェーズ1（HP > 66%）
     /** 同方向5連射の間隔（約1.2秒） */
     const val BOSS_P1_BURST_INTERVAL: Int = 72

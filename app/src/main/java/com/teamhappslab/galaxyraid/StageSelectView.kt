@@ -100,11 +100,11 @@ class StageSelectView(context: Context) : View(context) {
         statusPaint.textSize = w * 0.040f
         backBtnTextPaint.textSize = w * 0.044f
 
-        // ステージカードを縦に5枚
+        // ステージカードを縦にMAX_STAGE枚（FINAL含む6枚が戻るボタンと重ならないサイズ）
         val cardW = w * 0.84f
-        val cardH = h * 0.105f
-        val gap = h * 0.022f
-        val firstTop = h * 0.20f
+        val cardH = h * 0.092f
+        val gap = h * 0.016f
+        val firstTop = h * 0.185f
         for (i in 0 until StageConfig.MAX_STAGE) {
             val top = firstTop + (cardH + gap) * i
             stageRects[i] = RectF((w - cardW) / 2f, top, (w + cardW) / 2f, top + cardH)

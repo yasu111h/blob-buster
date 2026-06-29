@@ -32,7 +32,8 @@ class Boss(
     bossMaxHp: Int = GameConfig.BOSS_MAX_HP,        // ステージ別の最大HP
     private val maxPhase: Int = 3,                  // 到達できる最大フェーズ（1〜3）
     private val attackIntervalMult: Float = 1f,     // 攻撃間隔倍率（大きいほど弾幕が薄い）
-    private val useAltBitmap: Boolean = false        // trueなら boss2.png を使う（Stage3〜5）
+    private val useAltBitmap: Boolean = false,       // trueなら boss2.png を使う（Stage3〜5）
+    private val phases: List<BossPhasePattern> = DEFAULT_PHASES  // 3フェーズ分の攻撃構成
 ) {
     val width: Float = screenWidth * GameConfig.BOSS_WIDTH_RATIO
     /** 当たり判定半径（見た目よりやや小さめ） */
@@ -46,9 +47,6 @@ class Boss(
     val maxHp: Int = bossMaxHp
     var hp: Int = maxHp
         private set
-
-    /** 攻撃間隔をステージ倍率で補正（最低1フレーム） */
-    private fun iv(base: Int): Int = (base * attackIntervalMult).toInt().coerceAtLeast(1)
 
     var state: BossState = BossState.ENTERING
         private set
@@ -85,11 +83,19 @@ class Boss(
 
     // 攻撃タイマー（初期値をずらして弾と衝撃波の同時発射が重ならない位相にする）
     private var atkTimer1: Int = 0    // 同方向5連射
-    private var atkTimer2: Int = -24  // 5-way扇状弾
+    private var atkTimer2: Int = -24  // 5方向扇弾（狭い狙い扇）
     private var atkTimer3: Int = -48  // リング弾
     private var atkTimer4: Int = -72  // 衝撃波
+    private var atkTimer5: Int = -60  // 扇弾（広角扇）
 
     companion object {
+        /** ステージ設定が無い場合（エンドレス用）のデフォルト3フェーズ攻撃構成 */
+        private val DEFAULT_PHASES = listOf(
+            BossPhasePattern(spread = true),
+            BossPhasePattern(ring = 12, shockwave = true),
+            BossPhasePattern(spread = true, ring = 16, shockwave = true),
+        )
+
         private var bossBitmap: Bitmap? = null       // Stage1・2用（boss.png）
         private var bossBitmapAlt: Bitmap? = null    // Stage3〜5用（boss2.png）
 
@@ -173,7 +179,7 @@ class Boss(
                     phaseInvincibleTimer = GameConfig.BOSS_PHASE_INVINCIBLE_FRAMES
                     phaseFlashTimer = GameConfig.BOSS_PHASE_INVINCIBLE_FRAMES
                     // 攻撃タイマーをずらしてリセット（複数攻撃の同時発射を防ぐ）
-                    atkTimer1 = 0; atkTimer2 = -24; atkTimer3 = -48; atkTimer4 = -72
+                    atkTimer1 = 0; atkTimer2 = -24; atkTimer3 = -48; atkTimer4 = -72; atkTimer5 = -60
                 }
             }
             BossState.DYING -> {
@@ -202,62 +208,50 @@ class Boss(
         if (bulletCount >= maxBullets) return emptyList()
 
         val result = mutableListOf<EnemyBullet>()
+        // 現在フェーズの攻撃構成（HPで決まるphaseでインデックス）
+        val p = phases.getOrElse(phase - 1) { phases.last() }
 
-        when (phase) {
-            1 -> {
-                // 同方向5連射（約1.2秒間隔）
-                atkTimer1++
-                if (atkTimer1 >= iv(GameConfig.BOSS_P1_BURST_INTERVAL)) { atkTimer1 = 0
-                    burstShot(playerX, playerY, result)
-                }
-                // 5-way扇状弾（約1.6秒間隔）
-                atkTimer2++
-                if (atkTimer2 >= iv(GameConfig.BOSS_P1_SPREAD_INTERVAL)) { atkTimer2 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.40f, tint = 2, speedMult = 1.2f))
-                }
+        // 同方向5連射
+        if (p.burst) {
+            atkTimer1++
+            if (atkTimer1 >= ivp(GameConfig.BOSS_ATK_BURST_BASE, p.freqMult)) { atkTimer1 = 0
+                burstShot(playerX, playerY, result)
             }
-            2 -> {
-                // 同方向5連射（約1.0秒間隔）
-                atkTimer1++
-                if (atkTimer1 >= iv(GameConfig.BOSS_P2_BURST_INTERVAL)) { atkTimer1 = 0
-                    burstShot(playerX, playerY, result)
-                }
-                // 全方位リング弾（約2.0秒間隔・12発）
-                atkTimer3++
-                if (atkTimer3 >= iv(GameConfig.BOSS_P2_RING_INTERVAL)) { atkTimer3 = 0
-                    result.addAll(ringShot(count = 12, speedMult = 0.9f))
-                }
-                // 衝撃波（約2.5秒間隔）
-                atkTimer4++
-                if (atkTimer4 >= iv(GameConfig.BOSS_P2_SHOCKWAVE_INTERVAL)) { atkTimer4 = 0
-                    fireShockwave(playerX, playerY, shockwaves)
-                }
+        }
+        // 5方向扇弾（狭い狙い扇・5発）
+        if (p.spread) {
+            atkTimer2++
+            if (atkTimer2 >= ivp(GameConfig.BOSS_ATK_SPREAD_BASE, p.freqMult)) { atkTimer2 = 0
+                result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.42f, tint = 2, speedMult = 1.2f))
             }
-            else -> {
-                // 同方向5連射（約1.0秒間隔）
-                atkTimer1++
-                if (atkTimer1 >= iv(GameConfig.BOSS_P3_BURST_INTERVAL)) { atkTimer1 = 0
-                    burstShot(playerX, playerY, result)
-                }
-                // 5-way扇状弾（約1.1秒間隔）
-                atkTimer2++
-                if (atkTimer2 >= iv(GameConfig.BOSS_P3_SPREAD_INTERVAL)) { atkTimer2 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.45f, tint = 2, speedMult = 1.2f))
-                }
-                // 全方位リング弾（約1.8秒間隔・16発）
-                atkTimer3++
-                if (atkTimer3 >= iv(GameConfig.BOSS_P3_RING_INTERVAL)) { atkTimer3 = 0
-                    result.addAll(ringShot(count = 16, speedMult = 1.0f))
-                }
-                // 衝撃波（約2.0秒間隔）
-                atkTimer4++
-                if (atkTimer4 >= iv(GameConfig.BOSS_P3_SHOCKWAVE_INTERVAL)) { atkTimer4 = 0
-                    fireShockwave(playerX, playerY, shockwaves)
-                }
+        }
+        // 扇弾（広角扇・7発）
+        if (p.wideSpread) {
+            atkTimer5++
+            if (atkTimer5 >= ivp(GameConfig.BOSS_ATK_WIDE_SPREAD_BASE, p.freqMult)) { atkTimer5 = 0
+                result.addAll(spreadShot(playerX, playerY, count = 7, spread = 0.78f, tint = 3, speedMult = 1.05f))
+            }
+        }
+        // 全方位リング弾（12発 or 16発）
+        if (p.ring > 0) {
+            atkTimer3++
+            if (atkTimer3 >= ivp(GameConfig.BOSS_ATK_RING_BASE, p.freqMult)) { atkTimer3 = 0
+                result.addAll(ringShot(count = p.ring, speedMult = if (p.ring >= 16) 1.0f else 0.9f))
+            }
+        }
+        // 衝撃波
+        if (p.shockwave) {
+            atkTimer4++
+            if (atkTimer4 >= ivp(GameConfig.BOSS_ATK_SHOCKWAVE_BASE, p.freqMult)) { atkTimer4 = 0
+                fireShockwave(playerX, playerY, shockwaves)
             }
         }
         return result
     }
+
+    /** 攻撃間隔 = 基準値 × フェーズの攻撃頻度倍率 × ステージのボス攻撃間隔倍率（最低1フレーム） */
+    private fun ivp(base: Int, freqMult: Float): Int =
+        (base * freqMult * attackIntervalMult).toInt().coerceAtLeast(1)
 
     /** 同方向5連射: 速度差をつけた照準弾×5（ENEMY8と同方式・ボス用に少し高速） */
     private fun burstShot(playerX: Float, playerY: Float, result: MutableList<EnemyBullet>) {
