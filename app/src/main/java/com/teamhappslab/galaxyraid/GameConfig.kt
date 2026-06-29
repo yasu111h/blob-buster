@@ -27,8 +27,13 @@ object GameConfig {
     const val BOSS_TRIGGER_LEVEL: Int = 50
     /** ボスの最大HP（プレイヤー弾1発=1ダメージ。弾段数1で毎秒12発 → 約60〜90秒の戦闘想定） */
     const val BOSS_MAX_HP: Int = 900
-    /** ボス撃破ボーナススコア */
-    const val BOSS_DEFEAT_BONUS: Int = 10000
+    /** ボス撃破ボーナスの基準値（ステージ1相当） */
+    const val BOSS_DEFEAT_BONUS_BASE: Int = 8000
+    /**
+     * ステージごとのボス撃破ボーナス。後半ステージほど高くする（S1=8000 … S5=40000）。
+     * ステージ番号が0以下（エンドレス等）の場合は基準値を返す。
+     */
+    fun bossDefeatBonus(stage: Int): Int = BOSS_DEFEAT_BONUS_BASE * stage.coerceAtLeast(1)
     /** ボスの横幅（画面幅比） */
     const val BOSS_WIDTH_RATIO: Float = 0.60f
     /** ボス戦中の敵弾上限（リング弾で同時数が増えるため通常より多め） */

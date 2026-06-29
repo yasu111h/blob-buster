@@ -176,6 +176,7 @@ class GameView(
     private var homeBtnRect         = RectF()  // PAUSEDオーバーレイのHomeボタン
     private var gameOverHomeBtnRect = RectF()  // GAME_OVERオーバーレイのHomeボタン
     private var gameOverRetryBtnRect = RectF() // GAME_OVERオーバーレイのRetryボタン
+    private var clearReturnBtnRect = RectF()   // CLEARオーバーレイのReturnボタン（ステージ選択へ）
     var onGoHome: (() -> Unit)? = null   // ホーム画面へ戻るコールバック
 
     private val pauseBtnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -279,6 +280,10 @@ class GameView(
     }
     private val roundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFD740")  // ネオンゴールド
+        isFakeBoldText = true
+    }
+    private val levelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#69F0AE")  // ネオングリーン（レベル表記用）
         isFakeBoldText = true
     }
     private val overlayPaint = Paint().apply {
@@ -455,6 +460,12 @@ class GameView(
             (screenWidth + rBtnW) / 2f, screenHeight * 0.79f + rBtnH
         )
 
+        // Returnボタン（CLEARオーバーレイ用・ステージ選択へ戻る）
+        clearReturnBtnRect = RectF(
+            (screenWidth - rBtnW) / 2f, screenHeight * 0.76f,
+            (screenWidth + rBtnW) / 2f, screenHeight * 0.76f + rBtnH
+        )
+
         // アイテム取得オーラ
         powerUpAuraPaint.strokeWidth = screenWidth * 0.018f
 
@@ -476,9 +487,8 @@ class GameView(
         rankAchieved = HighScoreManager.saveScore(context, scoreManager.score)
     }
 
-    /** ボス撃破演出完了後に呼ばれる。撃破ボーナスを加算してCLEAR状態へ */
+    /** ボス撃破演出完了後に呼ばれる。CLEAR状態へ（撃破ボーナスは撃破の瞬間に加算済み） */
     private fun triggerClear() {
-        scoreManager.addScore(GameConfig.BOSS_DEFEAT_BONUS)
         gameState = GameState.CLEAR
         clearTapDelayTimer = 60  // 1秒間は誤タップでホームに戻らないように
         soundManager.pauseBgmByUser()       // 戦闘BGMを停止
@@ -614,9 +624,10 @@ class GameView(
             return true
         }
 
-        // CLEAR中: タップでタイトルへ戻る（GAME_OVERのホーム遷移と同じ方法）
+        // CLEAR中: Returnボタンを押した時だけステージ選択へ戻る（onGoHome=GameActivity.finish）
         if (gameState == GameState.CLEAR) {
-            if (event.actionMasked == MotionEvent.ACTION_UP && clearTapDelayTimer <= 0) {
+            if (event.actionMasked == MotionEvent.ACTION_UP && clearTapDelayTimer <= 0 &&
+                clearReturnBtnRect.contains(event.x, event.y)) {
                 onGoHome?.invoke()
             }
             return true
@@ -954,6 +965,10 @@ class GameView(
                 }
                 if (bossKilled) {
                     soundManager.playEnemyKilled()
+                    // 撃破の瞬間（死亡エフェクト開始時）にボーナスを加算。
+                    // まだPLAYING中なのでblobManager.levelもスコアに追従し、
+                    // 上部HUDとCLEAR画面のスコア・レベルがズレない。
+                    scoreManager.addScore(GameConfig.bossDefeatBonus(stage))
                     // 撃破の瞬間: 残っている敵弾・衝撃波を一掃して演出に集中
                     enemyBullets.clear()
                     shockwaves.clear()
@@ -1132,12 +1147,18 @@ class GameView(
         canvas.drawText(scoreText, scoreX, uiY, scorePaint)
         val scoreBounds = Rect()
         scorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
-        // ストーリーは「STAGE n  Lv x」で進捗を、エンドレスは「LEVEL n」を表示
-        val roundText = if (isStoryMode) "STAGE $stage  Lv ${blobManager.level}"
-                        else "LEVEL ${blobManager.level}"
+        // ストーリーは「STAGE n」(金) ＋「Lv x」(緑) で、エンドレスは「LEVEL n」(緑)で表示
         roundPaint.textSize = scorePaint.textSize
+        levelPaint.textSize = scorePaint.textSize
         val levelX = scoreX + scoreBounds.width() + screenWidth * 0.03f
-        canvas.drawText(roundText, levelX, uiY, roundPaint)
+        if (isStoryMode) {
+            val stagePart = "STAGE $stage  "
+            canvas.drawText(stagePart, levelX, uiY, roundPaint)
+            val stageAdvance = roundPaint.measureText(stagePart)
+            canvas.drawText("Lv ${blobManager.level}", levelX + stageAdvance, uiY, levelPaint)
+        } else {
+            canvas.drawText("LEVEL ${blobManager.level}", levelX, uiY, levelPaint)
+        }
 
         // UI: HP（右上・赤ハート）
         val heartText = "HP: " + "♥".repeat(hp.coerceAtLeast(0))
@@ -1435,7 +1456,7 @@ class GameView(
             }
 
             // 撃破ボーナス
-            val bonusText = "BOSS BONUS +${GameConfig.BOSS_DEFEAT_BONUS}"
+            val bonusText = "BOSS BONUS +${GameConfig.bossDefeatBonus(stage)}"
             val bonusBounds = Rect()
             clearBonusPaint.getTextBounds(bonusText, 0, bonusText.length, bonusBounds)
             canvas.drawText(bonusText, (screenWidth - bonusBounds.width()) / 2f, screenHeight * 0.48f, clearBonusPaint)
@@ -1469,13 +1490,18 @@ class GameView(
                     rankInTextPaint)
             }
 
-            // タップでタイトルへ（点滅）
-            if (clearTapDelayTimer <= 0 && clearAnimFrame % 60 < 40) {
-                val tapText = "TAP TO RETURN"
-                val tapBounds = Rect()
-                retryPaint.getTextBounds(tapText, 0, tapText.length, tapBounds)
-                val tapY = if (rankAchieved in 1..3) screenHeight * 0.74f else screenHeight * 0.68f
-                canvas.drawText(tapText, (screenWidth - tapBounds.width()) / 2f, tapY, retryPaint)
+            // Returnボタン（ステージ選択へ戻る）。誤タップ防止の待機が明けてから表示
+            if (clearTapDelayTimer <= 0) {
+                canvas.drawRoundRect(clearReturnBtnRect, 24f, 24f, resumeBtnBgPaint)
+                canvas.drawRoundRect(clearReturnBtnRect, 24f, 24f, resumeBtnBorderPaint)
+                resumeBtnTextPaint.textSize = screenWidth * 0.065f
+                val returnLabel = "↩  Return"
+                val returnBounds = Rect()
+                resumeBtnTextPaint.getTextBounds(returnLabel, 0, returnLabel.length, returnBounds)
+                canvas.drawText(returnLabel,
+                    clearReturnBtnRect.centerX() - returnBounds.width() / 2f,
+                    clearReturnBtnRect.centerY() + returnBounds.height() / 2f,
+                    resumeBtnTextPaint)
             }
         }
 
