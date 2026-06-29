@@ -1,10 +1,12 @@
 package com.teamhappslab.galaxyraid
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.RadialGradient
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
@@ -252,10 +254,34 @@ class GameView(
     private var frameCount: Int = 0
     private var bgScrollY: Float = 0f
 
-    // 星空データ: [x, y, radius, alpha]
-    private data class Star(val x: Float, val y: Float, val r: Float, val alpha: Int)
+    // 星空データ（多層パララックス）。baseYに bgScrollY*speedMul を足して描画位置を出す。
+    private class Star(
+        val x: Float,
+        val baseY: Float,
+        val r: Float,
+        val alphaBase: Int,
+        val color: Int,        // rgb（描画時にalphaを上書き）
+        val speedMul: Float,   // 層ごとのスクロール速度（奥=遅い/手前=速い）
+        val glow: Boolean,     // 明るい星は周囲を淡く光らせる
+        val twinkle: Boolean,  // 一部の星だけ明滅
+        val twinklePhase: Float
+    )
     private val stars = mutableListOf<Star>()
     private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val starGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // 近景スターストリーク（高速前進感を出す縦の光線）
+    private class Streak(val x: Float, val baseY: Float, val len: Float, val speedMul: Float, val alpha: Int)
+    private val streaks = mutableListOf<Streak>()
+    private val streakPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(150, 195, 245)   // 弾(シアン/マゼンタ)と紛れない控えめな青白
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    // 薄いネオン星雲（起動時に低解像度Bitmapへ焼いて貼るだけ＝軽量）
+    private var nebulaBitmap: Bitmap? = null
+    private val nebulaPaint = Paint(Paint.FILTER_BITMAP_FLAG)
 
     // グリッドライン（薄い）
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -353,19 +379,62 @@ class GameView(
             null, Shader.TileMode.CLAMP
         )
 
-        // 星空を生成
+        // 星空を生成（多層パララックス：奥=小さく暗く遅い／手前=大きく明るく速い）
         val rng = Random(42)
+        val area = screenHeight * 0.88f
         stars.clear()
-        repeat(90) {
-            val alpha = rng.nextInt(120) + 60
-            val radius = rng.nextFloat() * 2.2f + 0.4f
-            stars.add(Star(
+        // 1ピクセルあたりのスケール（画面幅基準で星サイズを端末非依存に）
+        val px = screenWidth / 1080f
+
+        // 遠景：小さく暗い青白・ゆっくり
+        repeat(110) {
+            stars.add(makeStar(rng, area,
+                rMin = 0.6f * px, rMax = 1.2f * px,
+                speedMin = 0.20f, speedMax = 0.38f,
+                alphaMin = 35, alphaMax = 85,
+                color = Color.rgb(180, 200, 230), glow = false, twinkleChance = 0.15f))
+        }
+        // 中景：青白・少しシアン寄り
+        repeat(55) {
+            stars.add(makeStar(rng, area,
+                rMin = 1.0f * px, rMax = 1.9f * px,
+                speedMin = 0.5f, speedMax = 0.85f,
+                alphaMin = 80, alphaMax = 150,
+                color = Color.rgb(200, 222, 255), glow = false, twinkleChance = 0.3f))
+        }
+        // 近景：大きく明るい・速い・グローあり
+        repeat(18) {
+            stars.add(makeStar(rng, area,
+                rMin = 1.9f * px, rMax = 3.1f * px,
+                speedMin = 1.2f, speedMax = 2.1f,
+                alphaMin = 150, alphaMax = 220,
+                color = Color.rgb(232, 242, 255), glow = true, twinkleChance = 0.35f))
+        }
+        // アクセント：ネオン色（シアン/マゼンタ/ゴールド）を少量
+        val accentColors = intArrayOf(
+            Color.rgb(64, 196, 255), Color.rgb(255, 80, 140), Color.rgb(255, 215, 96))
+        repeat(7) {
+            stars.add(makeStar(rng, area,
+                rMin = 2.0f * px, rMax = 3.4f * px,
+                speedMin = 0.5f, speedMax = 1.2f,
+                alphaMin = 130, alphaMax = 200,
+                color = accentColors[rng.nextInt(accentColors.size)], glow = true, twinkleChance = 0.5f))
+        }
+
+        // 近景スターストリーク（縦の光線）
+        streaks.clear()
+        repeat(14) {
+            streaks.add(Streak(
                 x = rng.nextFloat() * screenWidth,
-                y = rng.nextFloat() * (screenHeight * 0.88f),
-                r = radius,
-                alpha = alpha
+                baseY = rng.nextFloat() * area,
+                len = area * (0.025f + rng.nextFloat() * 0.04f),
+                speedMul = 2.6f + rng.nextFloat() * 2.2f,
+                alpha = 45 + rng.nextInt(70)
             ))
         }
+
+        // 薄いネオン星雲を起動時に1枚へ焼く
+        nebulaBitmap = buildNebula(screenWidth, area.toInt())
 
         // デバッグボタン（右下）
         val dbgBtnW = screenWidth * 0.13f
@@ -477,6 +546,61 @@ class GameView(
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         stopThread()
+    }
+
+    /** 1個の星を生成（各層のパラメータ範囲から乱数で決定）。 */
+    private fun makeStar(
+        rng: Random, area: Float,
+        rMin: Float, rMax: Float,
+        speedMin: Float, speedMax: Float,
+        alphaMin: Int, alphaMax: Int,
+        color: Int, glow: Boolean, twinkleChance: Float
+    ): Star = Star(
+        x = rng.nextFloat() * screenWidth,
+        baseY = rng.nextFloat() * area,
+        r = rMin + rng.nextFloat() * (rMax - rMin),
+        alphaBase = alphaMin + rng.nextInt((alphaMax - alphaMin).coerceAtLeast(1)),
+        color = color,
+        speedMul = speedMin + rng.nextFloat() * (speedMax - speedMin),
+        glow = glow,
+        twinkle = rng.nextFloat() < twinkleChance,
+        twinklePhase = rng.nextFloat() * 6.28f
+    )
+
+    /**
+     * 薄いネオン星雲を低解像度Bitmapへ焼く（左上シアン・右下マゼンタ）。
+     * 描画時は拡大して貼るだけなので毎フレームのグラデーション生成を避けられる。
+     */
+    private fun buildNebula(w: Int, h: Int): Bitmap? {
+        if (w <= 0 || h <= 0) return null
+        val bw = (w / 2).coerceAtLeast(1)
+        val bh = (h / 2).coerceAtLeast(1)
+        val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        // 左上：薄いシアン
+        p.shader = RadialGradient(
+            bw * 0.24f, bh * 0.20f, bw * 0.75f,
+            intArrayOf(Color.argb(40, 64, 196, 255), Color.argb(14, 40, 120, 200), Color.TRANSPARENT),
+            floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
+        )
+        c.drawRect(0f, 0f, bw.toFloat(), bh.toFloat(), p)
+        // 右下：薄いマゼンタ
+        p.shader = RadialGradient(
+            bw * 0.80f, bh * 0.80f, bw * 0.78f,
+            intArrayOf(Color.argb(32, 255, 64, 129), Color.argb(12, 150, 40, 90), Color.TRANSPARENT),
+            floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
+        )
+        c.drawRect(0f, 0f, bw.toFloat(), bh.toFloat(), p)
+        // 中央上やや：ごく淡い青紫で奥行き
+        p.shader = RadialGradient(
+            bw * 0.5f, bh * 0.42f, bw * 0.55f,
+            intArrayOf(Color.argb(20, 90, 80, 200), Color.TRANSPARENT),
+            floatArrayOf(0f, 1f), Shader.TileMode.CLAMP
+        )
+        c.drawRect(0f, 0f, bw.toFloat(), bh.toFloat(), p)
+        p.shader = null
+        return bmp
     }
 
     private var rankAchieved: Int = 0  // 0=ランクインなし、1〜3=ランク順位
@@ -1076,34 +1200,61 @@ class GameView(
     }
 
     private fun drawInternal(canvas: Canvas) {
+        val area = screenHeight * 0.88f
+
         // 背景
         canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), bgPaint)
 
-        // グリッドライン（スクロール）
+        // 薄いネオン星雲（焼き込みBitmapを拡大して貼るだけ）
+        nebulaBitmap?.let { canvas.drawBitmap(it, null, RectF(0f, 0f, screenWidth.toFloat(), area), nebulaPaint) }
+
+        // グリッドライン（下側ほど濃く・上に行くほど消える＝航路感）
         val gridSpacing = screenWidth * 0.12f
+        // 縦線は控えめ（一定の薄さ）
         var gx = 0f
         while (gx <= screenWidth) {
-            canvas.drawLine(gx, 0f, gx, screenHeight * 0.88f, gridPaint)
+            gridPaint.alpha = 10
+            canvas.drawLine(gx, area * 0.25f, gx, area, gridPaint)
             gx += gridSpacing
         }
+        // 横線はスクロール＋高さで濃淡（上=透明→下=やや濃い）
         val scrollOffset = bgScrollY % gridSpacing
         var gy = scrollOffset - gridSpacing
-        while (gy <= screenHeight * 0.88f) {
-            canvas.drawLine(0f, gy, screenWidth.toFloat(), gy, gridPaint)
+        while (gy <= area) {
+            if (gy >= 0f) {
+                val t = (gy / area).coerceIn(0f, 1f)   // 0=上 1=下
+                gridPaint.alpha = (4 + t * t * 22f).toInt()
+                canvas.drawLine(0f, gy, screenWidth.toFloat(), gy, gridPaint)
+            }
             gy += gridSpacing
         }
 
-        // 星空（スクロール）
+        // 近景スターストリーク（高速前進感）
+        for (s in streaks) {
+            val sy = ((s.baseY + bgScrollY * s.speedMul) % area).let { if (it < 0f) it + area else it }
+            streakPaint.strokeWidth = 1.6f
+            streakPaint.alpha = s.alpha
+            canvas.drawLine(s.x, sy, s.x, (sy + s.len).coerceAtMost(area), streakPaint)
+        }
+
+        // 星空（多層パララックス・一部明滅・明るい星はグロー）
         for (star in stars) {
-            val sy = ((star.y + bgScrollY * 0.4f) % (screenHeight * 0.88f)).let {
-                if (it < 0f) it + screenHeight * 0.88f else it
+            val sy = ((star.baseY + bgScrollY * star.speedMul) % area).let { if (it < 0f) it + area else it }
+            val a = if (star.twinkle) {
+                (star.alphaBase * (0.7f + 0.3f * sin(frameCount * 0.08f + star.twinklePhase))).toInt().coerceIn(0, 255)
+            } else star.alphaBase
+            if (star.glow) {
+                starGlowPaint.color = star.color
+                starGlowPaint.alpha = (a * 0.28f).toInt().coerceIn(0, 255)
+                canvas.drawCircle(star.x, sy, star.r * 2.4f, starGlowPaint)
             }
-            starPaint.color = Color.argb(star.alpha, 200, 220, 255)
+            starPaint.color = star.color
+            starPaint.alpha = a
             canvas.drawCircle(star.x, sy, star.r, starPaint)
         }
 
         // 地面ライン（プレイエリア境界）
-        canvas.drawLine(0f, screenHeight * 0.88f, screenWidth.toFloat(), screenHeight * 0.88f, groundLinePaint)
+        canvas.drawLine(0f, area, screenWidth.toFloat(), area, groundLinePaint)
 
         // Blob描画（デバッグ: 非表示トグル）
         if (debugShowEnemies) blobManager.draw(canvas)
