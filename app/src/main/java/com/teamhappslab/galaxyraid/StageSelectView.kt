@@ -144,7 +144,7 @@ class StageSelectView(context: Context) : View(context) {
         }
 
         // ヘッダー
-        val header = "STORY MODE"
+        val header = "BOSS MODE"
         val hb = Rect(); headerPaint.getTextBounds(header, 0, header.length, hb)
         canvas.drawText(header, (screenW - hb.width()) / 2f, screenH * 0.11f, headerPaint)
         val sub = "— SELECT STAGE —"
