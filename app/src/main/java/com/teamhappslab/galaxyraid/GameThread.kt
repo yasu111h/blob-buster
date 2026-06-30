@@ -6,15 +6,27 @@ class GameThread(private val gameView: GameView) : Thread() {
 
     companion object {
         const val TARGET_FPS = 60
+
+        /**
+         * ★ゲーム全体の速度ノブ★
+         * 1.0 = 本来の60fps速度（速い）。値を下げると、一定速度を保ったまま
+         * ゲーム全体（移動・弾速・敵出現・アニメ）が同じ割合でゆっくりになる。
+         * 例: 0.75 なら本来の75%の速さ。速すぎ/遅すぎる場合はこの数値だけ調整する。
+         */
+        const val GAME_SPEED = 0.75f
+
+        /** 実際のロジック更新レート（GAME_SPEEDを反映。例: 60 * 0.75 = 45回/秒）。 */
+        const val SIM_FPS = TARGET_FPS * GAME_SPEED
+
         /** ロジック1ステップ分の時間（ナノ秒）。update()は常にこの刻みで1回進める。 */
-        const val STEP_NS = 1_000_000_000L / TARGET_FPS
+        val STEP_NS = (1_000_000_000.0 / SIM_FPS).toLong()
         /**
          * 1ループでまとめて進められる最大遅れ時間（ナノ秒）。
          * 一瞬大きく処理落ちしても、ここで上限を切ることで
          * update()を一度に何十回も呼ぶ「暴走（spiral of death）」を防ぐ。
          * 上限を超える極端な処理落ち時のみ、わずかにスロー寄りになる。
          */
-        const val MAX_FRAME_NS = STEP_NS * 5
+        val MAX_FRAME_NS = STEP_NS * 5
     }
 
     /**
