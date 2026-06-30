@@ -313,10 +313,11 @@ class TitleView(context: Context) : View(context) {
         // サブコピー
         taglinePaint.letterSpacing = 0.18f
         val tag = "SURVIVE THE GALAXY RAID"
-        canvas.drawText(tag, (screenW - taglinePaint.measureText(tag)) / 2f, accentY + screenH * 0.040f, taglinePaint)
+        val taglineY = accentY + screenH * 0.040f
+        canvas.drawText(tag, (screenW - taglinePaint.measureText(tag)) / 2f, taglineY, taglinePaint)
 
-        // ベストスコア
-        drawHighScores(canvas, raidBaseY + raidSize * 0.55f)
+        // ベストスコア（サブコピーと重ならないよう余白を空けて配置）
+        drawHighScores(canvas, taglineY + screenH * 0.030f)
 
         // ボタン
         drawButton(canvas, storyButtonRect, if (storyLoading) "NOW LOADING..." else "BOSS MODE",
@@ -440,7 +441,8 @@ class TitleView(context: Context) : View(context) {
             val score = highScores.getOrElse(i) { 0 }
             if (score <= 0) continue
             val ly = baseY0 + rowH * i
-            val em = if (i == 0) 255 else if (i == 1) 205 else 165
+            // 1〜3位とも同じ明るさで表示
+            val em = 235
 
             scoreRankPaint.alpha = em
             canvas.drawText(ranks[i], frame.left + frameW * 0.10f, ly, scoreRankPaint)
@@ -451,7 +453,7 @@ class TitleView(context: Context) : View(context) {
             canvas.drawText(valText, valRight - scoreValuePaint.measureText(valText), ly, scoreValuePaint)
 
             val lvlText = "Lv.${GameConfig.levelForScore(score)}"
-            scoreLevelPaint.alpha = (em * 0.9f).toInt()
+            scoreLevelPaint.alpha = em
             canvas.drawText(lvlText, frame.left + frameW * 0.74f, ly, scoreLevelPaint)
         }
     }
