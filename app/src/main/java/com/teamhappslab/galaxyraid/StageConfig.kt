@@ -44,12 +44,12 @@ data class StageConfig(
         // 道中回復は全ステージなし(0,0)・ボス前回復は全ステージ+1・最大フェーズは全て3。
         // stage / bossLv / 敵上限 / HP倍 / 攻撃間隔倍 / 速度倍 / ボスHP / 最終P / ボス攻撃倍 / 道中回復Lv / 道中量 / ボス前量 / 別ボス画像 / 敵出現Lv倍率
         private val STAGES = listOf(
-            StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.5f,  0.85f,  320, 3, 1.0f,   0,  0,  1, false, 1.0f),
-            StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.3f,  0.9f,   480, 3, 1.0f,   0,  0,  1, false, 1.0f),
-            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.15f, 1.0f,   650, 3, 1.0f,   0,  0,  1, true,  1.0f),
-            StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 0.95f,  0,  0,  1, true,  1.0f),
-            StageConfig(5, 45, BlobSize.ENEMY8, 1.2f,  0.85f, 1.1f,  1150, 3, 0.9f,   0,  0,  1, true,  1.0f),
-            StageConfig(6, 60, BlobSize.ENEMY8, 1.3f,  0.8f,  1.15f, 1400, 3, 0.8f,   0,  0,  1, true,  1.0f),
+            StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.2f,  0.9f,   320, 3, 1.0f,   0,  0,  1, false, 1.0f),
+            StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.1f,  0.9f,   480, 3, 1.0f,   0,  0,  1, false, 1.0f),
+            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.0f,  1.0f,   650, 3, 1.0f,   0,  0,  1, true,  1.0f),
+            StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 0.97f,  0,  0,  1, true,  0.9f),
+            StageConfig(5, 37, BlobSize.ENEMY8, 1.0f,  0.95f, 1.05f, 1150, 3, 0.93f,  0,  0,  1, true,  0.7f),
+            StageConfig(6, 40, BlobSize.ENEMY8, 1.1f,  0.9f,  1.05f, 1400, 3, 0.9f,   0,  0,  1, true,  0.7f),
         )
 
         /** ステージ番号(1〜5)に対応する設定を返す。範囲外はStage1にフォールバック。 */
@@ -79,12 +79,12 @@ data class StageConfig(
         }
 
         // ── 攻撃頻度倍率（小さいほど高頻度） ──
-        const val FREQ_BASE: Float = 0.85f   // 指定なし（ベース頻度を底上げ）
-        const val FREQ_MID: Float = 0.8f     // 中
+        const val FREQ_BASE: Float = 0.8f    // 指定なし
+        const val FREQ_MID: Float = 0.7f     // 中
         const val FREQ_HIGH: Float = 0.65f   // 高
-        const val FREQ_HIGH_PLUS: Float = 0.55f  // 高+
-        const val FREQ_MAX: Float = 0.45f    // 最高
-        const val FREQ_SUPER_MAX: Float = 0.35f  // 超最高
+        const val FREQ_HIGH_PLUS: Float = 0.6f   // 高+
+        const val FREQ_MAX: Float = 0.55f    // 最高
+        const val FREQ_SUPER_MAX: Float = 0.5f   // 超最高
 
         /**
          * ステージごとのボス3フェーズ分の攻撃構成。
@@ -94,22 +94,22 @@ data class StageConfig(
             1 -> listOf(
                 BossPhasePattern(spread = true),                                       // P1: 5連射＋5方向扇弾
                 BossPhasePattern(spread = true),                                       // P2: 5連射＋5方向扇弾
-                BossPhasePattern(ring = 12, shockwave = true),                         // P3: 5連射＋12リング＋衝撃波
+                BossPhasePattern(shockwave = true),                                    // P3: 5連射＋衝撃波
             )
             2 -> listOf(
-                BossPhasePattern(spread = true),                                       // P1: 5連射＋5方向扇弾
+                BossPhasePattern(spread = true, wideSpread = true),                    // P1: 5連射＋5方向扇弾＋扇弾
                 BossPhasePattern(ring = 12, shockwave = true),                         // P2: 5連射＋12リング＋衝撃波
                 BossPhasePattern(spread = true, ring = 12, shockwave = true),          // P3: 5連射＋5方向扇弾＋12リング＋衝撃波
             )
             3 -> listOf(
-                BossPhasePattern(spread = true, ring = 12),                            // P1: 5連射＋5方向扇弾＋12リング
+                BossPhasePattern(spread = true, ring = 16, shockwave = true),          // P1: 5連射＋5方向扇弾＋16リング＋衝撃波
                 BossPhasePattern(wideSpread = true, ring = 16, shockwave = true),      // P2: 5連射＋扇弾＋16リング＋衝撃波
                 BossPhasePattern(wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID), // P3: ＋攻撃頻度中
             )
             4 -> listOf(
-                BossPhasePattern(spread = true, wideSpread = true, ring = 12, shockwave = true),                    // P1: 5方向扇弾＋扇弾＋12リング＋衝撃波
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID),  // P2: ＋16リング・頻度中
-                BossPhasePattern(wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH),               // P3: 扇弾＋16リング＋衝撃波・頻度高
+                BossPhasePattern(spread = true, ring = 12, shockwave = true),          // P1: 5連射＋5方向扇弾＋12リング＋衝撃波
+                BossPhasePattern(burst = false, spread = true, wideSpread = true, ring = 16, freqMult = FREQ_MID), // P2: 5方向扇弾＋扇弾＋16リング・頻度中（5連射/衝撃波なし）
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH), // P3: 全部＋頻度高
             )
             5 -> listOf(
                 BossPhasePattern(spread = true, wideSpread = true, ring = 12, shockwave = true, freqMult = FREQ_MID),       // P1: 頻度中
