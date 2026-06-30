@@ -509,8 +509,8 @@ class GameView(
         pauseBtnTextPaint.textSize = screenWidth * 0.040f
 
         // 中央再開ボタン（PAUSEDオーバーレイ用）
-        val rBtnW = screenWidth * 0.55f
-        val rBtnH = screenHeight * 0.095f
+        val rBtnW = screenWidth * 0.48f
+        val rBtnH = screenHeight * 0.078f
         resumeBtnRect = RectF(
             (screenWidth - rBtnW) / 2f, screenHeight * 0.50f,
             (screenWidth + rBtnW) / 2f, screenHeight * 0.50f + rBtnH
@@ -1539,47 +1539,22 @@ class GameView(
                 gameOverScorePaint
             )
 
-            // ランクイン表示
+            // ランクイン表示（ボタンではなくお祝いラベル）
             if (rankAchieved in 1..3) {
-                val medal = when (rankAchieved) { 1 -> "★ 1st PLACE!"; 2 -> "★ 2nd PLACE!"; else -> "★ 3rd PLACE!" }
-                rankInTextPaint.textSize = screenWidth * 0.06f
-                val rankBounds = Rect(); rankInTextPaint.getTextBounds(medal, 0, medal.length, rankBounds)
-                val rankW = rankBounds.width() + screenWidth * 0.12f
-                val rankH = rankBounds.height() + screenHeight * 0.04f
-                val rankRect = RectF(
-                    (screenWidth - rankW) / 2f, screenHeight * 0.575f,
-                    (screenWidth + rankW) / 2f, screenHeight * 0.575f + rankH
-                )
-                canvas.drawRoundRect(rankRect, 16f, 16f, rankInBgPaint)
-                canvas.drawRoundRect(rankRect, 16f, 16f, rankInBorderPaint)
-                canvas.drawText(medal,
-                    rankRect.centerX() - rankBounds.width() / 2f,
-                    rankRect.centerY() + rankBounds.height() / 2f,
-                    rankInTextPaint)
+                drawRankBadge(canvas, screenHeight * 0.595f)
             }
 
             // Retryボタン（緑・Homeボタンの上）。ここを押した時だけリトライする
             canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBgPaint)
             canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBorderPaint)
-            resumeBtnTextPaint.textSize = screenWidth * 0.065f
-            val retryLabel = "↻  Retry"
-            val retryBounds = Rect()
-            resumeBtnTextPaint.getTextBounds(retryLabel, 0, retryLabel.length, retryBounds)
-            canvas.drawText(retryLabel,
-                gameOverRetryBtnRect.centerX() - retryBounds.width() / 2f,
-                gameOverRetryBtnRect.centerY() + retryBounds.height() / 2f,
-                resumeBtnTextPaint)
+            resumeBtnTextPaint.textSize = screenWidth * 0.058f
+            drawCenteredLabel(canvas, "↻  Retry", gameOverRetryBtnRect, resumeBtnTextPaint)
 
             // Homeボタン
             canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBgPaint)
             canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBorderPaint)
-            val goHomeLabel = "⌂  Home"
-            val goHomeBounds = Rect()
-            homeBtnTextPaint.getTextBounds(goHomeLabel, 0, goHomeLabel.length, goHomeBounds)
-            canvas.drawText(goHomeLabel,
-                gameOverHomeBtnRect.centerX() - goHomeBounds.width() / 2f,
-                gameOverHomeBtnRect.centerY() + goHomeBounds.height() / 2f,
-                homeBtnTextPaint)
+            homeBtnTextPaint.textSize = screenWidth * 0.058f
+            drawCenteredLabel(canvas, "⌂  Home", gameOverHomeBtnRect, homeBtnTextPaint)
         }
 
         // ── MISSION COMPLETE オーバーレイ（ボス撃破・ゲームクリア） ──
@@ -1629,23 +1604,9 @@ class GameView(
             gameOverScorePaint.getTextBounds(levelLine, 0, levelLine.length, lBounds)
             canvas.drawText(levelLine, (screenWidth - lBounds.width()) / 2f, screenHeight * 0.585f, gameOverScorePaint)
 
-            // ランクイン表示
+            // ランクイン表示（ボタンではなくお祝いラベル）
             if (rankAchieved in 1..3) {
-                val medal = when (rankAchieved) { 1 -> "★ 1st PLACE!"; 2 -> "★ 2nd PLACE!"; else -> "★ 3rd PLACE!" }
-                rankInTextPaint.textSize = screenWidth * 0.06f
-                val rankBounds = Rect(); rankInTextPaint.getTextBounds(medal, 0, medal.length, rankBounds)
-                val rankW = rankBounds.width() + screenWidth * 0.12f
-                val rankH = rankBounds.height() + screenHeight * 0.04f
-                val rankRect = RectF(
-                    (screenWidth - rankW) / 2f, screenHeight * 0.62f,
-                    (screenWidth + rankW) / 2f, screenHeight * 0.62f + rankH
-                )
-                canvas.drawRoundRect(rankRect, 16f, 16f, rankInBgPaint)
-                canvas.drawRoundRect(rankRect, 16f, 16f, rankInBorderPaint)
-                canvas.drawText(medal,
-                    rankRect.centerX() - rankBounds.width() / 2f,
-                    rankRect.centerY() + rankBounds.height() / 2f,
-                    rankInTextPaint)
+                drawRankBadge(canvas, screenHeight * 0.645f)
             }
 
             // Returnボタン（ステージ選択へ戻る）。誤タップ防止の待機が明けてから表示
@@ -1720,6 +1681,35 @@ class GameView(
             }
         }
         // ────────────────────────────────────────────────────────
+    }
+
+    /** ボタン矩形の中にラベルを縦横中央で描く（フォントメトリクス基準で正確に中央化） */
+    private fun drawCenteredLabel(canvas: Canvas, label: String, rect: RectF, paint: Paint) {
+        val prevAlign = paint.textAlign
+        paint.textAlign = Paint.Align.CENTER
+        val fm = paint.fontMetrics
+        val baseline = rect.centerY() - (fm.ascent + fm.descent) / 2f
+        canvas.drawText(label, rect.centerX(), baseline, paint)
+        paint.textAlign = prevAlign
+    }
+
+    /**
+     * ランクイン表示（ボタンではなく「お祝いラベル」として描く）。
+     * 塗りつぶし枠を使わず、金色テキスト＋下の細い飾り線で、Retry/Homeボタンと明確に区別する。
+     */
+    private fun drawRankBadge(canvas: Canvas, centerY: Float) {
+        val place = when (rankAchieved) { 1 -> "1位"; 2 -> "2位"; else -> "3位" }
+        val medal = "★  ランキング $place  ★"
+        rankInTextPaint.textSize = screenWidth * 0.058f
+        rankInTextPaint.textAlign = Paint.Align.CENTER
+        val fm = rankInTextPaint.fontMetrics
+        val baseline = centerY - (fm.ascent + fm.descent) / 2f
+        canvas.drawText(medal, screenWidth / 2f, baseline, rankInTextPaint)
+        rankInTextPaint.textAlign = Paint.Align.LEFT
+        // 下の飾り線（ボタンの塗り枠と差をつけるための細いアクセント）
+        val lineHalf = screenWidth * 0.14f
+        val lineY = baseline + screenWidth * 0.030f
+        canvas.drawLine(screenWidth / 2f - lineHalf, lineY, screenWidth / 2f + lineHalf, lineY, rankInBorderPaint)
     }
 
     /**
