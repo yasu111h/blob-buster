@@ -87,9 +87,9 @@ enum class BlobSize {
     }
 
     fun itemDropChance(): Float = when (this) {
-        TINY   -> 0.023f
-        SMALL  -> 0.030f
-        SPEEDY -> 0.045f
+        TINY   -> 0.030f
+        SMALL  -> 0.040f
+        SPEEDY -> 0.047f
         MEDIUM -> 0.068f
         LARGE  -> 0.105f
         HUGE   -> 0.210f
