@@ -2,7 +2,12 @@ package com.teamhappslab.galaxyraid
 
 object GameConfig {
     /** 敵弾スピード倍率（1.0f = デフォルト、大きいほど速い） */
-    const val ENEMY_BULLET_SPEED_MULT: Float = 1.0f
+    const val ENEMY_BULLET_SPEED_MULT: Float = 0.75f
+
+    // ── 敵弾の速さノブ ───────────────────────────────────
+    // 敵・ボスが撃つ弾の「飛ぶ速さ」だけを変える倍率（移動速度や発射頻度には影響しない）。
+    // 1.0=従来 / 小さいほど弾がゆっくり飛んで避けやすくなる。例: 0.75で25%遅い。
+    // ※全体速度ノブ GameThread.GAME_SPEED とは別物。こちらは「弾速だけ」を調整する。
 
     // ── スコア⇔レベル換算 ─────────────────────────────────
     /**
