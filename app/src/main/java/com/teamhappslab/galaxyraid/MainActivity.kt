@@ -43,6 +43,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(titleView)
 
         // DecorView生成後にフルスクリーン設定（setContentViewの後でないとNPE）
+        enableImmersiveMode()
+
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    /** ステータスバー・ナビゲーションバーを隠す（全画面）。戻ってくると復活するため都度呼ぶ */
+    @Suppress("DEPRECATION")
+    private fun enableImmersiveMode() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.let { controller ->
                 controller.hide(
@@ -59,12 +67,17 @@ class MainActivity : AppCompatActivity() {
                 android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             )
         }
+    }
 
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // 他画面から戻ってフォーカスを得た時にナビバーが復活するので、その都度隠す
+        if (hasFocus) enableImmersiveMode()
     }
 
     override fun onResume() {
         super.onResume()
+        enableImmersiveMode()
         titleView.startAnimation()
         titleView.resetLoading()
         titleView.updateHighScores(HighScoreManager.getTopScores(this))
