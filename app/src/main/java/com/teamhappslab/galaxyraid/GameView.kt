@@ -279,9 +279,9 @@ class GameView(
         strokeCap = Paint.Cap.ROUND
     }
 
-    // 薄いネオン星雲（起動時に低解像度Bitmapへ焼いて貼るだけ＝軽量）
-    private var nebulaBitmap: Bitmap? = null
-    private val nebulaPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    // 背景（背景色＋ネオン星雲）を1枚の不透明Bitmapに焼いておき、毎フレーム等倍で貼るだけ＝高速。
+    // ※毎フレームのグラデーション生成・拡大・半透明合成を避けるのが目的（SurfaceViewはCPU描画）。
+    private var bgBitmap: Bitmap? = null
 
     // グリッドライン（薄い）
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -387,7 +387,7 @@ class GameView(
         val px = screenWidth / 1080f
 
         // 遠景：小さく暗い青白・ゆっくり
-        repeat(110) {
+        repeat(70) {
             stars.add(makeStar(rng, area,
                 rMin = 0.6f * px, rMax = 1.2f * px,
                 speedMin = 0.20f, speedMax = 0.38f,
@@ -395,7 +395,7 @@ class GameView(
                 color = Color.rgb(180, 200, 230), glow = false, twinkleChance = 0.15f))
         }
         // 中景：青白・少しシアン寄り
-        repeat(55) {
+        repeat(38) {
             stars.add(makeStar(rng, area,
                 rMin = 1.0f * px, rMax = 1.9f * px,
                 speedMin = 0.5f, speedMax = 0.85f,
@@ -403,7 +403,7 @@ class GameView(
                 color = Color.rgb(200, 222, 255), glow = false, twinkleChance = 0.3f))
         }
         // 近景：大きく明るい・速い・グローあり
-        repeat(18) {
+        repeat(14) {
             stars.add(makeStar(rng, area,
                 rMin = 1.9f * px, rMax = 3.1f * px,
                 speedMin = 1.2f, speedMax = 2.1f,
@@ -413,7 +413,7 @@ class GameView(
         // アクセント：ネオン色（シアン/マゼンタ/ゴールド）を少量
         val accentColors = intArrayOf(
             Color.rgb(64, 196, 255), Color.rgb(255, 80, 140), Color.rgb(255, 215, 96))
-        repeat(7) {
+        repeat(6) {
             stars.add(makeStar(rng, area,
                 rMin = 2.0f * px, rMax = 3.4f * px,
                 speedMin = 0.5f, speedMax = 1.2f,
@@ -423,7 +423,7 @@ class GameView(
 
         // 近景スターストリーク（縦の光線）
         streaks.clear()
-        repeat(14) {
+        repeat(10) {
             streaks.add(Streak(
                 x = rng.nextFloat() * screenWidth,
                 baseY = rng.nextFloat() * area,
@@ -433,8 +433,9 @@ class GameView(
             ))
         }
 
-        // 薄いネオン星雲を起動時に1枚へ焼く
-        nebulaBitmap = buildNebula(screenWidth, area.toInt())
+        // 背景（背景色＋星雲）を全画面の不透明Bitmapへ1回だけ焼く
+        bgBitmap?.recycle()
+        bgBitmap = buildBackground(screenWidth, screenHeight, area)
 
         // デバッグボタン（右下）
         val dbgBtnW = screenWidth * 0.13f
@@ -568,38 +569,42 @@ class GameView(
     )
 
     /**
-     * 薄いネオン星雲を低解像度Bitmapへ焼く（左上シアン・右下マゼンタ）。
-     * 描画時は拡大して貼るだけなので毎フレームのグラデーション生成を避けられる。
+     * 背景（背景色＋薄いネオン星雲）を全画面の不透明Bitmapへ1回だけ焼く。
+     * 毎フレームはこれを等倍で貼るだけなので、グラデ生成・拡大・半透明合成のコストがゼロになる。
+     * @param area 星雲を載せる上側プレイエリアの高さ（下端のUIエリアは背景色のみ）
      */
-    private fun buildNebula(w: Int, h: Int): Bitmap? {
+    private fun buildBackground(w: Int, h: Int, area: Float): Bitmap? {
         if (w <= 0 || h <= 0) return null
-        val bw = (w / 2).coerceAtLeast(1)
-        val bh = (h / 2).coerceAtLeast(1)
-        val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
+        // 背景色で全面を不透明に塗る
+        c.drawColor(Color.parseColor("#080E1A"))
+        val fw = w.toFloat()
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
         // 左上：薄いシアン
         p.shader = RadialGradient(
-            bw * 0.24f, bh * 0.20f, bw * 0.75f,
+            fw * 0.24f, area * 0.20f, fw * 0.75f,
             intArrayOf(Color.argb(40, 64, 196, 255), Color.argb(14, 40, 120, 200), Color.TRANSPARENT),
             floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
         )
-        c.drawRect(0f, 0f, bw.toFloat(), bh.toFloat(), p)
+        c.drawRect(0f, 0f, fw, area, p)
         // 右下：薄いマゼンタ
         p.shader = RadialGradient(
-            bw * 0.80f, bh * 0.80f, bw * 0.78f,
+            fw * 0.80f, area * 0.80f, fw * 0.78f,
             intArrayOf(Color.argb(32, 255, 64, 129), Color.argb(12, 150, 40, 90), Color.TRANSPARENT),
             floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
         )
-        c.drawRect(0f, 0f, bw.toFloat(), bh.toFloat(), p)
+        c.drawRect(0f, 0f, fw, area, p)
         // 中央上やや：ごく淡い青紫で奥行き
         p.shader = RadialGradient(
-            bw * 0.5f, bh * 0.42f, bw * 0.55f,
+            fw * 0.5f, area * 0.42f, fw * 0.55f,
             intArrayOf(Color.argb(20, 90, 80, 200), Color.TRANSPARENT),
             floatArrayOf(0f, 1f), Shader.TileMode.CLAMP
         )
-        c.drawRect(0f, 0f, bw.toFloat(), bh.toFloat(), p)
+        c.drawRect(0f, 0f, fw, area, p)
         p.shader = null
+        // 全面不透明なので合成ではなくコピー扱いにして貼付を高速化
+        bmp.setHasAlpha(false)
         return bmp
     }
 
@@ -1202,11 +1207,10 @@ class GameView(
     private fun drawInternal(canvas: Canvas) {
         val area = screenHeight * 0.88f
 
-        // 背景
-        canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), bgPaint)
-
-        // 薄いネオン星雲（焼き込みBitmapを拡大して貼るだけ）
-        nebulaBitmap?.let { canvas.drawBitmap(it, null, RectF(0f, 0f, screenWidth.toFloat(), area), nebulaPaint) }
+        // 背景（背景色＋星雲を焼いた不透明Bitmapを等倍で貼るだけ）。無ければ従来の単色塗り。
+        val bg = bgBitmap
+        if (bg != null) canvas.drawBitmap(bg, 0f, 0f, null)
+        else canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), bgPaint)
 
         // グリッドライン（下側ほど濃く・上に行くほど消える＝航路感）
         val gridSpacing = screenWidth * 0.12f
