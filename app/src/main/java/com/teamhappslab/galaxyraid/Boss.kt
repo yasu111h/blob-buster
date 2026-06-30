@@ -328,6 +328,10 @@ class Boss(
             if (frameCount % 6 < 3) return
             bitmapPaint.alpha = ((1f - dyingProgress) * 255).toInt().coerceIn(0, 255)
             scale = 1f - dyingProgress * 0.65f
+        } else if (hitFlashTimer > 0) {
+            // 被弾中：白い円ではなくボスの絵自体を軽く明滅させる
+            val k = 0.5f + 0.5f * sin(frameCount * 0.7f)        // 0〜1
+            bitmapPaint.alpha = (255 - 95 * k).toInt().coerceIn(0, 255)  // 約160〜255
         } else {
             bitmapPaint.alpha = 255
         }
