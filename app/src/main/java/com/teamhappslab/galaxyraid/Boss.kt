@@ -347,14 +347,8 @@ class Boss(
             drawBody(canvas)
         }
 
-        // 被弾フラッシュ（白点滅）
-        if (hitFlashTimer > 0) {
-            canvas.drawCircle(x, y, radius, flashPaint)
-        }
-        // フェーズ移行フラッシュ
-        if (phaseFlashTimer > 0 && frameCount % 4 < 2) {
-            canvas.drawCircle(x, y, radius * 1.1f, flashPaint)
-        }
+        // 被弾フラッシュ／フェーズ移行フラッシュの白い円は廃止
+        // （連射で当たり続けるとボスが白く潰れて見えるため。無敵判定など挙動はそのまま）
 
         canvas.restore()
         bitmapPaint.alpha = 255
