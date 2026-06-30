@@ -43,11 +43,11 @@ data class StageConfig(
         // 道中回復は全ステージなし(0,0)・ボス前回復は全ステージ+1・最大フェーズは全て3。
         // stage / bossLv / 敵上限 / HP倍 / 攻撃間隔倍 / 速度倍 / ボスHP / 最終P / ボス攻撃倍 / 道中回復Lv / 道中量 / ボス前量 / 別ボス画像
         private val STAGES = listOf(
-            StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.5f,  0.85f,  320, 3, 1.5f,   0,  0,  1, false),
-            StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.3f,  0.9f,   480, 3, 1.25f,  0,  0,  1, false),
-            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.15f, 1.0f,   650, 3, 1.1f,   0,  0,  1, true),
-            StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 1.0f,   0,  0,  1, true),
-            StageConfig(5, 45, BlobSize.ENEMY8, 1.2f,  0.85f, 1.1f,  1150, 3, 0.85f,  0,  0,  1, true),
+            StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.5f,  0.85f,  320, 3, 1.0f,   0,  0,  1, false),
+            StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.3f,  0.9f,   480, 3, 1.0f,   0,  0,  1, false),
+            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.15f, 1.0f,   650, 3, 1.0f,   0,  0,  1, true),
+            StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 0.95f,  0,  0,  1, true),
+            StageConfig(5, 45, BlobSize.ENEMY8, 1.2f,  0.85f, 1.1f,  1150, 3, 0.9f,   0,  0,  1, true),
             StageConfig(6, 60, BlobSize.ENEMY8, 1.3f,  0.8f,  1.15f, 1400, 3, 0.8f,   0,  0,  1, true),
         )
 
