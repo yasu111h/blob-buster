@@ -128,6 +128,11 @@ class StageSelectView(context: Context) : View(context) {
     private fun isUnlocked(stage: Int) = stage <= maxOf(2, clearedStage + 1)
     private fun isCleared(stage: Int) = stage <= clearedStage
 
+    /** FINAL STAGE（最終ステージ）は直前のSTAGE5をクリアするまで表示しない。 */
+    private val finalStageUnlocked get() = clearedStage >= StageConfig.MAX_STAGE - 1
+    /** 画面に表示するステージ数（FINAL STAGEは解放後にのみ出現させる）。 */
+    private val visibleStageCount get() = if (finalStageUnlocked) StageConfig.MAX_STAGE else StageConfig.MAX_STAGE - 1
+
     override fun onDraw(canvas: Canvas) {
         if (screenW == 0f) return
 
@@ -151,8 +156,8 @@ class StageSelectView(context: Context) : View(context) {
         val sbnd = Rect(); headerSubPaint.getTextBounds(sub, 0, sub.length, sbnd)
         canvas.drawText(sub, (screenW - sbnd.width()) / 2f, screenH * 0.15f, headerSubPaint)
 
-        // ステージカード
-        for (i in 0 until StageConfig.MAX_STAGE) {
+        // ステージカード（FINAL STAGEはSTAGE5クリアまで非表示）
+        for (i in 0 until visibleStageCount) {
             val stage = i + 1
             val rect = stageRects[i] ?: continue
             val unlocked = isUnlocked(stage)
@@ -205,7 +210,7 @@ class StageSelectView(context: Context) : View(context) {
                 onBackTapped?.invoke()
                 return true
             }
-            for (i in 0 until StageConfig.MAX_STAGE) {
+            for (i in 0 until visibleStageCount) {
                 val rect = stageRects[i] ?: continue
                 if (rect.contains(event.x, event.y)) {
                     val stage = i + 1
