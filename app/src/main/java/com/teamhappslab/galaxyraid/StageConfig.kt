@@ -34,6 +34,7 @@ data class StageConfig(
     val midHealAmount: Int,
     val preBossHealAmount: Int,
     val useAltBoss: Boolean,
+    val enemySpawnLevelMult: Float = 1.0f,  // 全敵の出現レベルを一律で前倒しする倍率（小さいほど早く出る）
 ) {
     companion object {
         /** ステージ総数（STAGE FINALを含む） */
@@ -41,14 +42,14 @@ data class StageConfig(
 
         // ── 6ステージ分の難易度テーブル ──
         // 道中回復は全ステージなし(0,0)・ボス前回復は全ステージ+1・最大フェーズは全て3。
-        // stage / bossLv / 敵上限 / HP倍 / 攻撃間隔倍 / 速度倍 / ボスHP / 最終P / ボス攻撃倍 / 道中回復Lv / 道中量 / ボス前量 / 別ボス画像
+        // stage / bossLv / 敵上限 / HP倍 / 攻撃間隔倍 / 速度倍 / ボスHP / 最終P / ボス攻撃倍 / 道中回復Lv / 道中量 / ボス前量 / 別ボス画像 / 敵出現Lv倍率
         private val STAGES = listOf(
-            StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.5f,  0.85f,  320, 3, 1.0f,   0,  0,  1, false),
-            StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.3f,  0.9f,   480, 3, 1.0f,   0,  0,  1, false),
-            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.15f, 1.0f,   650, 3, 1.0f,   0,  0,  1, true),
-            StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 0.95f,  0,  0,  1, true),
-            StageConfig(5, 45, BlobSize.ENEMY8, 1.2f,  0.85f, 1.1f,  1150, 3, 0.9f,   0,  0,  1, true),
-            StageConfig(6, 60, BlobSize.ENEMY8, 1.3f,  0.8f,  1.15f, 1400, 3, 0.8f,   0,  0,  1, true),
+            StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.5f,  0.85f,  320, 3, 1.0f,   0,  0,  1, false, 1.0f),
+            StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.3f,  0.9f,   480, 3, 1.0f,   0,  0,  1, false, 1.0f),
+            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.15f, 1.0f,   650, 3, 1.0f,   0,  0,  1, true,  1.0f),
+            StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 0.95f,  0,  0,  1, true,  1.0f),
+            StageConfig(5, 45, BlobSize.ENEMY8, 1.2f,  0.85f, 1.1f,  1150, 3, 0.9f,   0,  0,  1, true,  1.0f),
+            StageConfig(6, 60, BlobSize.ENEMY8, 1.3f,  0.8f,  1.15f, 1400, 3, 0.8f,   0,  0,  1, true,  1.0f),
         )
 
         /** ステージ番号(1〜5)に対応する設定を返す。範囲外はStage1にフォールバック。 */

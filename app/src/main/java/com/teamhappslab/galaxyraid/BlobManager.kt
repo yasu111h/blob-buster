@@ -2,6 +2,7 @@ package com.teamhappslab.galaxyraid
 
 import android.graphics.Canvas
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class BlobManager(
@@ -55,6 +56,15 @@ class BlobManager(
     // スコアベースのレベル閾値（公開: デバッグ用スコア同期に使用）
     fun levelThreshold(n: Int): Int = 80 * (n - 1) * n / 2
 
+    // ── 敵出現レベルのステージ倍率（小さいほど全敵が早く出現） ──
+    private val spawnLevelMult: Float get() = stage?.enemySpawnLevelMult ?: 1f
+    /** ステージ倍率を掛けた実効出現レベル（最低1） */
+    private fun effMinLevel(size: BlobSize): Int =
+        (size.minLevel() * spawnLevelMult).roundToInt().coerceAtLeast(1)
+    /** ステージ倍率を掛けた実効ピークレベル（最低でも実効出現レベル+1：0除算防止） */
+    private fun effPeakLevel(size: BlobSize): Int =
+        (size.peakLevel() * spawnLevelMult).roundToInt().coerceAtLeast(effMinLevel(size) + 1)
+
     fun update(playerX: Float, playerY: Float, score: Int) {
         // スコアベースでlevel更新
         var levelChanged = false
@@ -104,14 +114,15 @@ class BlobManager(
     private fun generateNextBatch() {
         val batchSize = 10
         val weights = BlobSize.values()
-            .filter { level >= it.minLevel() }
+            .filter { level >= effMinLevel(it) }
             // ステージ上限を超える強敵は出さない（エンドレスは制限なし）
             .filter { stage == null || it.ordinal <= stage.enemyTierCap.ordinal }
             .map { size ->
-                val w = if (level >= size.peakLevel()) {
+                val emin = effMinLevel(size); val epeak = effPeakLevel(size)
+                val w = if (level >= epeak) {
                     size.maxSpawnWeight().toFloat()
                 } else {
-                    val progress = (level - size.minLevel()).toFloat() / (size.peakLevel() - size.minLevel()).toFloat()
+                    val progress = (level - emin).toFloat() / (epeak - emin).toFloat()
                     size.maxSpawnWeight() * progress
                 }
                 size to w
