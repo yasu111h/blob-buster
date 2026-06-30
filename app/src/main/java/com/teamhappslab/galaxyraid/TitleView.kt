@@ -58,8 +58,8 @@ class TitleView(context: Context) : View(context) {
         catch (e2: Exception) { Typeface.DEFAULT_BOLD }
     }
 
-    private data class Star(val x: Float, val y: Float, val r: Float, val baseAlpha: Int, val phase: Float)
-    private val stars = mutableListOf<Star>()
+    // 共通の宇宙背景（背景色＋星雲＋多層星）
+    private val space = SpaceBackground()
 
     private var storyButtonRect    = RectF()
     private var endlessButtonRect  = RectF()
@@ -79,10 +79,6 @@ class TitleView(context: Context) : View(context) {
     private var ringR = 0f
 
     // Paints
-    private val bgPaint = Paint()
-    private val beamPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1.4f
@@ -188,19 +184,8 @@ class TitleView(context: Context) : View(context) {
         ringCy = (titleTopY + titleBotY) / 2f
         ringR  = w * 0.46f
 
-        // 背景の縦グラデ
-        bgPaint.shader = LinearGradient(
-            0f, 0f, 0f, screenH,
-            intArrayOf(Color.parseColor("#03040A"), Color.parseColor("#070A16"), Color.parseColor("#0B0A18")),
-            floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP
-        )
-
-        // 中央上から差す光の柱
-        beamPaint.shader = LinearGradient(
-            0f, 0f, 0f, screenH * 0.50f,
-            intArrayOf(Color.argb(75, 130, 205, 255), Color.argb(22, 110, 180, 240), Color.argb(0, 100, 170, 230)),
-            floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP
-        )
+        // 共通の宇宙背景を構築（背景色＋星雲＋多層星）
+        space.configure(w, h, 99L)
 
         // メタリックなタイトル塗り（上＝明るい→中央ハイライト→下＝濃いブルー）
         titlePaint.shader = LinearGradient(
@@ -231,42 +216,13 @@ class TitleView(context: Context) : View(context) {
         storyButtonRect    = RectF((w - bw) / 2f, storyTop, (w + bw) / 2f, storyTop + bh)
         endlessButtonRect  = RectF((w - bw) / 2f, storyButtonRect.bottom + gap, (w + bw) / 2f, storyButtonRect.bottom + gap + bh)
         settingsButtonRect = RectF((w - bw) / 2f, endlessButtonRect.bottom + gap, (w + bw) / 2f, endlessButtonRect.bottom + gap + bh)
-
-        val rng = Random(99)
-        stars.clear()
-        repeat(70) {
-            stars.add(Star(
-                x = rng.nextFloat() * w,
-                y = rng.nextFloat() * h,
-                r = rng.nextFloat() * 1.8f + 0.3f,
-                baseAlpha = rng.nextInt(110) + 40,
-                phase = rng.nextFloat() * 6.28f
-            ))
-        }
     }
 
     override fun onDraw(canvas: Canvas) {
         if (screenW == 0f) return
 
-        // 背景
-        canvas.drawRect(0f, 0f, screenW, screenH, bgPaint)
-
-        // 光の柱（台形）
-        val beam = Path().apply {
-            moveTo(screenW / 2f - screenW * 0.055f, 0f)
-            lineTo(screenW / 2f + screenW * 0.055f, 0f)
-            lineTo(screenW / 2f + screenW * 0.17f, screenH * 0.50f)
-            lineTo(screenW / 2f - screenW * 0.17f, screenH * 0.50f)
-            close()
-        }
-        canvas.drawPath(beam, beamPaint)
-
-        // 星
-        for (s in stars) {
-            val a = (sin(animTick * 0.04f + s.phase) * 40 + s.baseAlpha).toInt().coerceIn(15, 255)
-            starPaint.color = Color.argb(a, 205, 225, 255)
-            canvas.drawCircle(s.x, s.y, s.r, starPaint)
-        }
+        // 背景（共通の宇宙背景：背景色＋星雲＋多層星）
+        space.draw(canvas, animTick)
 
         // HUDリング
         canvas.drawCircle(ringCx, ringCy, ringR, ringPaint)
