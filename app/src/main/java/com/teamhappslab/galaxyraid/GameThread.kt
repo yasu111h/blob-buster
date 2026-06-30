@@ -65,7 +65,13 @@ class GameThread(private val gameView: GameView) : Thread() {
 
             // 次の更新までの進捗（0.0〜1.0）。描画はこの割合で前回位置と現在位置の
             // 中間を描くことで、ロジック45回/秒でも画面60回/秒で滑らかに見える。
-            val alpha = (accumulator.toFloat() / STEP_NS).coerceIn(0f, 1f)
+            // ただし一時停止/クリア/ゲームオーバー中は敵が動かないので、補間を切り
+            // alpha=1（現在位置に固定）にする。これをしないと前回位置との間で振動して見える。
+            val alpha = if (gameView.isSimulating()) {
+                (accumulator.toFloat() / STEP_NS).coerceIn(0f, 1f)
+            } else {
+                1f
+            }
             gameView.draw(alpha)
 
             // 画面リフレッシュ(60fps)に合わせて寝る。これで描画回数を論理回数より多く保つ。

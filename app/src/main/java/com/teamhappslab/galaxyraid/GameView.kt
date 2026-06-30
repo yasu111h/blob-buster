@@ -1202,6 +1202,9 @@ class GameView(
         }
     }
 
+    /** ゲームが実際に進行中か（PLAYINGのみ）。停止中は補間を切って静止させるために使う。 */
+    fun isSimulating(): Boolean = gameState == GameState.PLAYING
+
     fun draw(alpha: Float = 0f) {
         val canvas: Canvas = holder.lockCanvas() ?: return
         try {
