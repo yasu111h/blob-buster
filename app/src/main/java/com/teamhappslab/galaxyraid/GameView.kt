@@ -1202,16 +1202,16 @@ class GameView(
         }
     }
 
-    fun draw() {
+    fun draw(alpha: Float = 0f) {
         val canvas: Canvas = holder.lockCanvas() ?: return
         try {
-            drawInternal(canvas)
+            drawInternal(canvas, alpha)
         } finally {
             holder.unlockCanvasAndPost(canvas)
         }
     }
 
-    private fun drawInternal(canvas: Canvas) {
+    private fun drawInternal(canvas: Canvas, alpha: Float = 0f) {
         val area = screenHeight * 0.88f
 
         // 背景（背景色＋星雲を焼いた不透明Bitmapを等倍で貼るだけ）。無ければ従来の単色塗り。
@@ -1267,11 +1267,11 @@ class GameView(
         // 地面ライン（プレイエリア境界）
         canvas.drawLine(0f, area, screenWidth.toFloat(), area, groundLinePaint)
 
-        // Blob描画（デバッグ: 非表示トグル）
-        if (debugShowEnemies) blobManager.draw(canvas)
+        // Blob描画（デバッグ: 非表示トグル）。alphaで前回位置との中間を描き補間
+        if (debugShowEnemies) blobManager.draw(canvas, alpha)
 
         // ボス描画（敵と同レイヤー・弾より後ろ）
-        boss?.draw(canvas)
+        boss?.draw(canvas, alpha)
 
         // ボス撃破爆発エフェクト
         bossExplosion?.draw(canvas)
@@ -1280,13 +1280,13 @@ class GameView(
         shockwaves.forEach { it.draw(canvas) }
 
         // 弾描画
-        bullets.forEach { it.draw(canvas) }
+        bullets.forEach { it.draw(canvas, alpha) }
 
         // 敵弾描画
-        enemyBullets.forEach { it.draw(canvas) }
+        enemyBullets.forEach { it.draw(canvas, alpha) }
 
         // アイテム描画
-        items.forEach { it.draw(canvas) }
+        items.forEach { it.draw(canvas, alpha) }
 
         // アイテム取得オーラ（プレイヤーの周囲に黄金リング、地面ラインでクリップ）
         if (powerUpFlashTimer > 0) {

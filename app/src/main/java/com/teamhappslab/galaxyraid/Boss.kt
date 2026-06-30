@@ -41,6 +41,8 @@ class Boss(
 
     var x: Float = screenWidth / 2f
     var y: Float = -width * 0.6f          // 画面外上から登場
+    private var prevX: Float = x          // 補間用: 前回更新時の位置
+    private var prevY: Float = y
     private val targetY: Float = screenHeight * 0.22f  // 定位置（画面上部1/4あたり）
     private val enterSpeed: Float = screenHeight * 0.004f
 
@@ -150,6 +152,7 @@ class Boss(
     }
 
     fun update() {
+        prevX = x; prevY = y
         frameCount++
         if (hitFlashTimer > 0) hitFlashTimer--
         if (phaseFlashTimer > 0) phaseFlashTimer--
@@ -316,7 +319,7 @@ class Boss(
         return false
     }
 
-    fun draw(canvas: Canvas) {
+    fun draw(canvas: Canvas, alpha: Float = 0f) {
         if (state == BossState.GONE) return
 
         // 撃破演出中は点滅しながら縮小・フェードアウト
@@ -328,6 +331,12 @@ class Boss(
         } else {
             bitmapPaint.alpha = 255
         }
+
+        // 前回位置と現在位置の中間へずらして描く（カクつき防止の補間）
+        val iox = (prevX - x) * (1f - alpha)
+        val ioy = (prevY - y) * (1f - alpha)
+        canvas.save()
+        canvas.translate(iox, ioy)
 
         if (scale != 1f) {
             canvas.save()
@@ -346,6 +355,8 @@ class Boss(
         if (phaseFlashTimer > 0 && frameCount % 4 < 2) {
             canvas.drawCircle(x, y, radius * 1.1f, flashPaint)
         }
+
+        canvas.restore()
         bitmapPaint.alpha = 255
     }
 

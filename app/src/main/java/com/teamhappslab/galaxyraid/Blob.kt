@@ -31,6 +31,8 @@ class Blob(
     private val attackIntervalMult: Float = 1f, // BlobManagerから渡される攻撃間隔倍率
     private val hpMult: Float = 1f              // ステージ難易度によるHP倍率（HP1の雑魚は1のまま）
 ) {
+    var prevCx: Float = cx   // 補間用: 前回更新時の中心座標
+    var prevCy: Float = cy
     val radius: Float = size.radius(screenWidth) * size.displayScale()
     // ステージ倍率を反映したHP。四捨五入し最低1を保証（HP1雑魚はどの倍率でも1）
     private val scaledMaxHp: Int = (size.maxHp() * hpMult).roundToInt().coerceAtLeast(1)
@@ -117,6 +119,7 @@ class Blob(
     }
 
     fun update(playerX: Float, playerY: Float) {
+        prevCx = cx; prevCy = cy
         val edgePad = screenWidth * 0.09f
         val minX = radius + edgePad
         val maxX = screenWidth - radius - edgePad
@@ -291,13 +294,19 @@ class Blob(
         return false
     }
 
-    fun draw(canvas: Canvas) {
+    fun draw(canvas: Canvas, alpha: Float = 0f) {
+        // 前回位置と現在位置の中間へずらして描く（カクつき防止の補間）
+        val ox = (prevCx - cx) * (1f - alpha)
+        val oy = (prevCy - cy) * (1f - alpha)
+        canvas.save()
+        canvas.translate(ox, oy)
+
         val bmp = bitmaps[size]
         if (bmp != null) {
             canvas.drawBitmap(bmp, cx - radius, cy - radius, bitmapPaint)
         } else {
-            val p = cache[size] ?: return
-            canvas.drawCircle(cx, cy, radius, p.body)
+            val p = cache[size]
+            if (p != null) canvas.drawCircle(cx, cy, radius, p.body)
         }
         // 被弾時の白い丸エフェクトは廃止（チカチカして見栄えが悪いため）
 
@@ -315,5 +324,7 @@ class Blob(
             }
             canvas.drawRoundRect(RectF(bx, by, bx + bw * ratio, by + bh), bh / 2, bh / 2, fgPaint)
         }
+
+        canvas.restore()
     }
 }

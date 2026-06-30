@@ -19,6 +19,8 @@ class EnemyBullet(
     val radius: Float = screenWidth * 0.018f
     var isDead: Boolean = false
     private var ttl: Int = 240  // 最大4秒（60fps）で強制消去
+    private var prevX: Float = x   // 補間用: 前回更新時の位置
+    private var prevY: Float = y
 
     companion object {
         // 丸1つ描画用（tint別。現状はすべて同じ白）
@@ -34,6 +36,7 @@ class EnemyBullet(
     }
 
     fun update() {
+        prevX = x; prevY = y
         x += vx
         y += vy
         ttl--
@@ -43,10 +46,12 @@ class EnemyBullet(
         }
     }
 
-    fun draw(canvas: Canvas) {
+    fun draw(canvas: Canvas, alpha: Float = 0f) {
         if (isDead) return
         val safeTint = tint.coerceIn(0, paints.size - 1)
         val p = paints[safeTint] ?: paints[0] ?: return
-        canvas.drawCircle(x, y, radius, p)
+        val ix = prevX + (x - prevX) * alpha
+        val iy = prevY + (y - prevY) * alpha
+        canvas.drawCircle(ix, iy, radius, p)
     }
 }

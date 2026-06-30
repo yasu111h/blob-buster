@@ -186,8 +186,8 @@ class BlobManager(
         prevTier = globalTier
     }
 
-    fun draw(canvas: Canvas) {
-        blobs.forEach { it.draw(canvas) }
+    fun draw(canvas: Canvas, alpha: Float = 0f) {
+        blobs.forEach { it.draw(canvas, alpha) }
     }
 
     fun reset() {

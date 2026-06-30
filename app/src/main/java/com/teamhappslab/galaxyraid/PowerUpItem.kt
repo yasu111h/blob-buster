@@ -15,6 +15,7 @@ class PowerUpItem(
     var isDead: Boolean = false
     private var animTick: Int = 0
     private val speed = screenHeight * 0.006f
+    private var prevY: Float = y   // 補間用: 前回更新時のY（落下のみ）
 
     companion object {
         private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -39,6 +40,7 @@ class PowerUpItem(
 
     /** playerX/playerY は当たり判定用（移動には使わない） */
     fun update(playerX: Float, playerY: Float) {
+        prevY = y
         y += speed  // 真下に落下
         animTick++
         // 画面下を超えたら消える
@@ -51,13 +53,14 @@ class PowerUpItem(
         return dx * dx + dy * dy <= (playerWidth + radius) * (playerWidth + radius)
     }
 
-    fun draw(canvas: Canvas) {
+    fun draw(canvas: Canvas, alpha: Float = 0f) {
         if (isDead) return
         val pulse = 1f + 0.15f * sin(animTick * 0.15f).toFloat()
+        val iy = prevY + (y - prevY) * alpha   // 中間位置で描画（補間）
 
-        canvas.drawCircle(x, y, radius * 1.8f * pulse, glowPaint)
-        canvas.drawCircle(x, y, radius * pulse, bodyPaint)
-        canvas.drawCircle(x, y, radius * 0.45f * pulse, corePaint)
-        canvas.drawText("UP", x, y + textPaint.textSize * 0.35f, textPaint)
+        canvas.drawCircle(x, iy, radius * 1.8f * pulse, glowPaint)
+        canvas.drawCircle(x, iy, radius * pulse, bodyPaint)
+        canvas.drawCircle(x, iy, radius * 0.45f * pulse, corePaint)
+        canvas.drawText("UP", x, iy + textPaint.textSize * 0.35f, textPaint)
     }
 }

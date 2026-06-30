@@ -21,6 +21,11 @@ class GameThread(private val gameView: GameView) : Thread() {
         /** ロジック1ステップ分の時間（ナノ秒）。update()は常にこの刻みで1回進める。 */
         val STEP_NS = (1_000_000_000.0 / SIM_FPS).toLong()
         /**
+         * 描画1フレーム分の目標時間（ナノ秒）。画面のリフレッシュレート(60Hz)に合わせて
+         * ロジック(45回/秒)より多く描く。間のコマは補間(alpha)で埋めるのでカクつかない。
+         */
+        val RENDER_STEP_NS = 1_000_000_000L / TARGET_FPS
+        /**
          * 1ループでまとめて進められる最大遅れ時間（ナノ秒）。
          * 一瞬大きく処理落ちしても、ここで上限を切ることで
          * update()を一度に何十回も呼ぶ「暴走（spiral of death）」を防ぐ。
@@ -52,17 +57,20 @@ class GameThread(private val gameView: GameView) : Thread() {
             if (frameTime > MAX_FRAME_NS) frameTime = MAX_FRAME_NS
             accumulator += frameTime
 
-            // 貯まった時間ぶんだけ固定刻みで更新（＝実時間に対して常に毎秒60回）
+            // 貯まった時間ぶんだけ固定刻みで更新（＝実時間に対して常に一定回数）
             while (accumulator >= STEP_NS) {
                 gameView.update()
                 accumulator -= STEP_NS
             }
 
-            gameView.draw()
+            // 次の更新までの進捗（0.0〜1.0）。描画はこの割合で前回位置と現在位置の
+            // 中間を描くことで、ロジック45回/秒でも画面60回/秒で滑らかに見える。
+            val alpha = (accumulator.toFloat() / STEP_NS).coerceIn(0f, 1f)
+            gameView.draw(alpha)
 
-            // 処理が軽いときは目標フレーム時間まで寝てCPUを休める
+            // 画面リフレッシュ(60fps)に合わせて寝る。これで描画回数を論理回数より多く保つ。
             val work = System.nanoTime() - frameStart
-            val sleepMs = (STEP_NS - work) / 1_000_000L
+            val sleepMs = (RENDER_STEP_NS - work) / 1_000_000L
             if (sleepMs > 1) {
                 try {
                     sleep(sleepMs)
