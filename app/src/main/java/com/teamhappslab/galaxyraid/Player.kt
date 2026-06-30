@@ -25,6 +25,9 @@ class Player(
         private set
     val playerRadius get() = width * 1.5f
 
+    // デバッグ用: trueの間は弾段数が減衰しない（増えることはある）
+    var bulletLevelNoDecay: Boolean = false
+
     // バレットレベルタイマー（1以上ならカウントダウン中、0なら非アクティブ）
     private var bulletLevelTimer: Int = 0
     private val level3Duration: Int = 540  // lv3: 9秒 @ 60fps（×1.5）
@@ -73,8 +76,8 @@ class Player(
 
     fun update() {
         if (shootCooldown > 0) shootCooldown--
-        // バレットレベルタイマー処理
-        if (bulletLevelTimer > 0) {
+        // バレットレベルタイマー処理（減らないモード中はカウントダウンを止める＝減衰しない）
+        if (bulletLevelTimer > 0 && !bulletLevelNoDecay) {
             bulletLevelTimer--
             if (bulletLevelTimer == 0) {
                 when (bulletLevel) {

@@ -128,6 +128,8 @@ class GameView(
     // 無敵モードトグル
     var debugInvincible: Boolean = false
     private var dbgInvincibleRect = RectF()
+    // 弾減らないモードトグル（状態はPlayer.bulletLevelNoDecayが保持）
+    private var dbgNoDecayRect = RectF()
     // レベル±10ボタン
     private var dbgLvlMinus10Rect = RectF()
     private var dbgLvlPlus10Rect  = RectF()
@@ -458,35 +460,38 @@ class GameView(
         // 閉じるボタン（パネル上端・右寄り・十分な余白）
         dbgCloseRect = RectF(panelX + panelW * 0.74f, panelY + panelH * 0.01f, panelX + panelW * 0.98f, panelY + panelH * 0.07f)
 
-        // トグル行の配置（4行）: 敵の表示 / 敵の攻撃 / デバッグ表示 / 無敵モード
-        val rowH = panelH * 0.10f
-        val rowY1 = panelY + panelH * 0.17f
-        val rowY2 = rowY1 + panelH * 0.10f
-        val rowY3 = rowY2 + panelH * 0.10f
-        val rowY4 = rowY3 + panelH * 0.10f
+        // トグル行の配置（5行）: 敵の表示 / 敵の攻撃 / デバッグ表示 / 無敵モード / 弾減らない
+        val rowH = panelH * 0.075f
+        val rowSpacing = panelH * 0.085f
+        val rowY1 = panelY + panelH * 0.15f
+        val rowY2 = rowY1 + rowSpacing
+        val rowY3 = rowY2 + rowSpacing
+        val rowY4 = rowY3 + rowSpacing
+        val rowY5 = rowY4 + rowSpacing
         dbgToggle1Rect    = RectF(panelX + panelW * 0.05f, rowY1 - rowH * 0.8f, panelX + panelW * 0.95f, rowY1 + rowH * 0.2f)
         dbgToggle2Rect    = RectF(panelX + panelW * 0.05f, rowY2 - rowH * 0.8f, panelX + panelW * 0.95f, rowY2 + rowH * 0.2f)
         dbgToggle3Rect    = RectF(panelX + panelW * 0.05f, rowY3 - rowH * 0.8f, panelX + panelW * 0.95f, rowY3 + rowH * 0.2f)
         dbgInvincibleRect = RectF(panelX + panelW * 0.05f, rowY4 - rowH * 0.8f, panelX + panelW * 0.95f, rowY4 + rowH * 0.2f)
+        dbgNoDecayRect    = RectF(panelX + panelW * 0.05f, rowY5 - rowH * 0.8f, panelX + panelW * 0.95f, rowY5 + rowH * 0.2f)
 
         // レベル操作ボタン（LVL −10 / − / + / +10）
-        val btnH  = panelH * 0.09f
+        val btnH  = panelH * 0.085f
         val btnW  = panelW * 0.14f
-        val lvlRowY = rowY4 + panelH * 0.14f
+        val lvlRowY = rowY5 + panelH * 0.115f
         dbgLvlMinus10Rect = RectF(panelX + panelW * 0.34f, lvlRowY, panelX + panelW * 0.34f + btnW, lvlRowY + btnH)
         dbgLvlMinusRect   = RectF(panelX + panelW * 0.50f, lvlRowY, panelX + panelW * 0.50f + btnW, lvlRowY + btnH)
         dbgLvlPlusRect    = RectF(panelX + panelW * 0.65f, lvlRowY, panelX + panelW * 0.65f + btnW, lvlRowY + btnH)
         dbgLvlPlus10Rect  = RectF(panelX + panelW * 0.80f, lvlRowY, panelX + panelW * 0.80f + btnW, lvlRowY + btnH)
 
         // 弾段数ボタン（1 / 3 / 5）
-        val bltRowY = lvlRowY + panelH * 0.13f
+        val bltRowY = lvlRowY + panelH * 0.115f
         val bltBtnW = panelW * 0.16f
         dbgBullet1Rect = RectF(panelX + panelW * 0.38f, bltRowY, panelX + panelW * 0.38f + bltBtnW, bltRowY + btnH)
         dbgBullet3Rect = RectF(panelX + panelW * 0.57f, bltRowY, panelX + panelW * 0.57f + bltBtnW, bltRowY + btnH)
         dbgBullet5Rect = RectF(panelX + panelW * 0.76f, bltRowY, panelX + panelW * 0.76f + bltBtnW, bltRowY + btnH)
 
         // HP操作ボタン（1 / 2 / 3）
-        val hpRowY = bltRowY + panelH * 0.12f
+        val hpRowY = bltRowY + panelH * 0.105f
         dbgHp1Rect = RectF(panelX + panelW * 0.38f, hpRowY, panelX + panelW * 0.38f + bltBtnW, hpRowY + btnH)
         dbgHp2Rect = RectF(panelX + panelW * 0.57f, hpRowY, panelX + panelW * 0.57f + bltBtnW, hpRowY + btnH)
         dbgHp3Rect = RectF(panelX + panelW * 0.76f, hpRowY, panelX + panelW * 0.76f + bltBtnW, hpRowY + btnH)
@@ -728,6 +733,7 @@ class GameView(
                     debugPanelOpen && dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
                     debugPanelOpen && dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
                     debugPanelOpen && dbgInvincibleRect.contains(tx, ty)  -> debugInvincible = !debugInvincible
+                    debugPanelOpen && dbgNoDecayRect.contains(tx, ty)    -> player.bulletLevelNoDecay = !player.bulletLevelNoDecay
                     debugPanelOpen && dbgLvlMinus10Rect.contains(tx, ty) -> { blobManager.setLevel(blobManager.level - 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
                     debugPanelOpen && dbgLvlMinusRect.contains(tx, ty)   -> { blobManager.setLevel(blobManager.level - 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
                     debugPanelOpen && dbgLvlPlusRect.contains(tx, ty)    -> { blobManager.setLevel(blobManager.level + 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
@@ -782,6 +788,7 @@ class GameView(
                 dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
                 dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
                 dbgInvincibleRect.contains(tx, ty)  -> debugInvincible = !debugInvincible
+                dbgNoDecayRect.contains(tx, ty)    -> player.bulletLevelNoDecay = !player.bulletLevelNoDecay
                 dbgLvlMinus10Rect.contains(tx, ty) -> { blobManager.setLevel(blobManager.level - 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
                 dbgLvlMinusRect.contains(tx, ty)   -> { blobManager.setLevel(blobManager.level - 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
                 dbgLvlPlusRect.contains(tx, ty)    -> { blobManager.setLevel(blobManager.level + 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
@@ -1676,6 +1683,7 @@ class GameView(
             drawToggleRow(dbgToggle2Rect, "敵の攻撃", debugEnemyCanShoot)
             drawToggleRow(dbgToggle3Rect, "デバッグ表示", debugShowInfo)
             drawToggleRow(dbgInvincibleRect, "無敵モード", debugInvincible)
+            drawToggleRow(dbgNoDecayRect, "弾減らない", player.bulletLevelNoDecay)
 
             // LVL操作（−10 / − / + / +10）
             val lvlLabelY = dbgLvlMinusRect.centerY() + dbgLabelPaint.textSize * 0.4f
