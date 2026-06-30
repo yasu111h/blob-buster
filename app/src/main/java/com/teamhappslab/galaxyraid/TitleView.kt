@@ -325,8 +325,7 @@ class TitleView(context: Context) : View(context) {
         drawHighScores(canvas, taglineY + screenH * 0.030f)
 
         // ボタン
-        drawButton(canvas, storyButtonRect, if (storyLoading) "NOW LOADING..." else "BOSS MODE",
-            if (storyLoading) null else "▶", Color.parseColor("#3FC4FF"), 0f)
+        drawButton(canvas, storyButtonRect, "BOSS MODE", "▶", Color.parseColor("#3FC4FF"), 0f)
         drawButton(canvas, endlessButtonRect, if (endlessLoading) "NOW LOADING..." else "ENDLESS",
             if (endlessLoading) null else "∞", Color.parseColor("#FF4F90"), 1.0f)
         drawButton(canvas, settingsButtonRect, "SETTINGS", "⚙", Color.parseColor("#88A6C4"), 2.0f)
@@ -467,8 +466,7 @@ class TitleView(context: Context) : View(context) {
         if (event.actionMasked == MotionEvent.ACTION_UP && !storyLoading && !endlessLoading) {
             when {
                 storyButtonRect.contains(event.x, event.y) -> {
-                    storyLoading = true
-                    invalidate()
+                    // BOSS MODEはステージ選択画面へ即遷移（ローディング表示は出さない）
                     onStoryModeTapped?.invoke()
                 }
                 endlessButtonRect.contains(event.x, event.y) -> {

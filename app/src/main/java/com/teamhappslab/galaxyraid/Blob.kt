@@ -302,7 +302,7 @@ class Blob(
             val p = cache[size] ?: return
             canvas.drawCircle(cx, cy, radius, p.body)
         }
-        if (flashTimer > 0) canvas.drawCircle(cx, cy, radius, flashPaint)
+        // 被弾時の白い丸エフェクトは廃止（チカチカして見栄えが悪いため）
 
         // HPバー（HP複数の敵のみ）
         if (maxHp > 1) {

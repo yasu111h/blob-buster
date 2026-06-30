@@ -21,6 +21,7 @@ class StageSelectView(context: Context) : View(context) {
     var onBackTapped: (() -> Unit)? = null
 
     private var clearedStage = 0
+    private var loadingStage = 0   // ローディング中のステージ番号（0=なし）
     private var animTick = 0
     private val handler = Handler(Looper.getMainLooper())
     private val updateRunnable = object : Runnable {
@@ -85,6 +86,7 @@ class StageSelectView(context: Context) : View(context) {
     /** 表示更新（解放状況を読み直す） */
     fun refresh() {
         clearedStage = AppPrefs.getStoryClearedStage(context)
+        loadingStage = 0   // ゲームから戻ったらローディング表示を解除
         invalidate()
     }
 
@@ -178,7 +180,13 @@ class StageSelectView(context: Context) : View(context) {
             val titleText = StageConfig.titleOf(stage)
             val subText = StageConfig.subtitleOf(stage)
             val tx = rect.left + screenW * 0.06f
-            if (unlocked) {
+            if (unlocked && loadingStage == stage) {
+                // ローディング中：カード中央に NOW LOADING... を表示
+                statusPaint.color = Color.parseColor("#FFD740")
+                val status = "NOW LOADING..."
+                val stb = Rect(); statusPaint.getTextBounds(status, 0, status.length, stb)
+                canvas.drawText(status, rect.centerX() - stb.width() / 2f, rect.centerY() + stb.height() / 2f, statusPaint)
+            } else if (unlocked) {
                 canvas.drawText(titleText, tx, rect.centerY() - screenH * 0.005f, stageTitlePaint)
                 canvas.drawText(subText, tx, rect.centerY() + screenH * 0.03f, stageSubPaint)
                 // ステータス（右側）: CLEAR✓ または PLAY▶
@@ -205,6 +213,8 @@ class StageSelectView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // ローディング中は二重起動を防ぐため操作を無視
+        if (loadingStage != 0) return true
         if (event.actionMasked == MotionEvent.ACTION_UP) {
             if (backRect.contains(event.x, event.y)) {
                 onBackTapped?.invoke()
@@ -214,7 +224,12 @@ class StageSelectView(context: Context) : View(context) {
                 val rect = stageRects[i] ?: continue
                 if (rect.contains(event.x, event.y)) {
                     val stage = i + 1
-                    if (isUnlocked(stage)) onStageSelected?.invoke(stage)
+                    if (isUnlocked(stage)) {
+                        // NOW LOADING... を見せてから少し遅れてゲーム起動
+                        loadingStage = stage
+                        invalidate()
+                        handler.postDelayed({ onStageSelected?.invoke(stage) }, 500L)
+                    }
                     return true
                 }
             }
