@@ -28,6 +28,11 @@ class TitleView(context: Context) : View(context) {
         }
     }
 
+    // 実際のアプリバージョン（versionName）に自動連動して表示
+    private val versionText: String = try {
+        "v" + (context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "")
+    } catch (e: Exception) { "" }
+
     private var highScores: List<Int> = listOf(0, 0, 0)
 
     fun updateHighScores(scores: List<Int>) {
@@ -329,8 +334,8 @@ class TitleView(context: Context) : View(context) {
         // ビネット
         canvas.drawRect(0f, 0f, screenW, screenH, vignettePaint)
 
-        // バージョン
-        canvas.drawText("v0.1.0", screenW * 0.04f, screenH * 0.975f, versionPaint)
+        // バージョン（実際のversionNameに連動）
+        canvas.drawText(versionText, screenW * 0.04f, screenH * 0.975f, versionPaint)
     }
 
     private fun drawTitleLine(canvas: Canvas, text: String, baseY: Float, size: Float, spacing: Float, glowA: Int) {
