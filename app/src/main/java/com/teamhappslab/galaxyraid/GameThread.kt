@@ -13,7 +13,7 @@ class GameThread(private val gameView: GameView) : Thread() {
          * ゲーム全体（移動・弾速・敵出現・アニメ）が同じ割合でゆっくりになる。
          * 例: 0.75 なら本来の75%の速さ。速すぎ/遅すぎる場合はこの数値だけ調整する。
          */
-        const val GAME_SPEED = 0.75f
+        const val GAME_SPEED = 0.5f
 
         /** 実際のロジック更新レート（GAME_SPEEDを反映。例: 60 * 0.75 = 45回/秒）。 */
         const val SIM_FPS = TARGET_FPS * GAME_SPEED
