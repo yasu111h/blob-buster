@@ -32,10 +32,10 @@ enum class BlobSize {
     }
 
     fun speed(screenHeight: Int): Float = screenHeight.toFloat() * when (this) {
-        TINY   -> 0.0050f
-        SMALL  -> 0.0055f
+        TINY   -> 0.0070f
+        SMALL  -> 0.0080f
         SPEEDY -> 0.0110f
-        MEDIUM -> 0.0042f
+        MEDIUM -> 0.0060f
         LARGE  -> 0.0028f
         HUGE   -> 0.0020f
         DRAGON -> 0.0020f  // 遅い(0.20%)
