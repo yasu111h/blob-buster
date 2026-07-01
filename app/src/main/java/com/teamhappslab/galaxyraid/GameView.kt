@@ -1305,32 +1305,38 @@ class GameView(
         // プレイヤー描画（無敵中は点滅）
         player.draw(canvas, invincibleTimer > 0, frameCount)
 
-        // UI: スコア（左上）・LEVEL（スコアの右隣、スコア幅に連動）
-        val scoreText = "SCORE: ${scoreManager.score}"
-        val scoreX = screenWidth * 0.03f
-        val uiY = screenHeight * 0.05f
-        canvas.drawText(scoreText, scoreX, uiY, scorePaint)
-        val scoreBounds = Rect()
-        scorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
-        // ストーリーは「STAGE n」(金) ＋「Lv x」(緑) で、エンドレスは「LEVEL n」(緑)で表示
-        roundPaint.textSize = scorePaint.textSize
-        levelPaint.textSize = scorePaint.textSize
-        val levelX = scoreX + scoreBounds.width() + screenWidth * 0.03f
-        if (isStoryMode) {
-            val stagePart = "STAGE $stage  "
-            canvas.drawText(stagePart, levelX, uiY, roundPaint)
-            val stageAdvance = roundPaint.measureText(stagePart)
-            canvas.drawText("Lv ${blobManager.level}", levelX + stageAdvance, uiY, levelPaint)
-        } else {
-            canvas.drawText("LEVEL ${blobManager.level}", levelX, uiY, levelPaint)
-        }
+        // ── 上部ステータス（2段構成）──
+        // 桁数が増えても重ならないよう、重要度で段を分ける：
+        //   段1: SCORE（左）／ HP（右）
+        //   段2: STAGE（金）＋ Lv（緑）  ※エンドレスは LEVEL のみ
+        val marginX = screenWidth * 0.03f
+        val row1Y = screenHeight * 0.048f
+        val row2Y = screenHeight * 0.088f
+        val baseSize = screenWidth * 0.05f
+        val subSize = screenWidth * 0.042f
 
-        // UI: HP（右上・赤ハート）
-        val heartText = "HP: " + "♥".repeat(hp.coerceAtLeast(0))
-        heartPaint.textSize = scorePaint.textSize
+        // 段1左: SCORE（3桁区切りで読みやすく）
+        scorePaint.textSize = baseSize
+        canvas.drawText("SCORE  ${"%,d".format(scoreManager.score)}", marginX, row1Y, scorePaint)
+
+        // 段1右: HP（赤ハート・右寄せ）
+        val heartText = "HP  " + "♥".repeat(hp.coerceAtLeast(0))
+        heartPaint.textSize = baseSize
         val heartBounds = Rect()
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
-        canvas.drawText(heartText, screenWidth - heartBounds.width() - screenWidth * 0.03f, uiY, heartPaint)
+        canvas.drawText(heartText, screenWidth - heartBounds.width() - marginX, row1Y, heartPaint)
+
+        // 段2左: ステージ（金）＋ レベル（緑）
+        roundPaint.textSize = subSize
+        levelPaint.textSize = subSize
+        if (isStoryMode) {
+            val stageText = "STAGE $stage"
+            canvas.drawText(stageText, marginX, row2Y, roundPaint)
+            val lvX = marginX + roundPaint.measureText(stageText) + screenWidth * 0.05f
+            canvas.drawText("Lv ${blobManager.level}", lvX, row2Y, levelPaint)
+        } else {
+            canvas.drawText("LEVEL ${blobManager.level}", marginX, row2Y, levelPaint)
+        }
 
         // 回復メッセージ（道中・ボス前の回復時に一定時間表示）
         if (healMessageTimer > 0) {
