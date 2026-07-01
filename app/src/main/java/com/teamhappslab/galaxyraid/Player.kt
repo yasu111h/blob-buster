@@ -24,6 +24,8 @@ class Player(
     var bulletLevel: Int = 1
         private set
     val playerRadius get() = width * 1.5f
+    /** 被弾判定に使う半径（見た目より小さめ）。従来の width×0.35 をさらに0.6倍 */
+    val hitRadius get() = width * 0.35f * 0.6f
 
     // デバッグ用: trueの間は弾段数が減衰しない（増えることはある）
     var bulletLevelNoDecay: Boolean = false

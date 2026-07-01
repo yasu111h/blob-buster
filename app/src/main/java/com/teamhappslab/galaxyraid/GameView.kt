@@ -176,6 +176,13 @@ class GameView(
     private val hitboxStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(230, 255, 80, 80); style = Paint.Style.STROKE; strokeWidth = 3f
     }
+    // 敵の当たり判定範囲デバッグ描画（半透明のシアンで塗り＋輪郭）
+    private val enemyHitboxFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(60, 0, 210, 255)
+    }
+    private val enemyHitboxStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(200, 0, 220, 255); style = Paint.Style.STROKE; strokeWidth = 2.5f
+    }
     private val dbgInfoBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(170, 0, 8, 20)
     }
@@ -1143,7 +1150,7 @@ class GameView(
         if (invincibleTimer <= 0) {
             for (blob in blobManager.blobs) {
                 val dy = player.y - blob.cy
-                val r  = player.width * 0.35f + blob.radius
+                val r  = player.hitRadius + blob.radius
                 if (dy > r || dy < -r) continue
                 val dx = player.x - blob.cx
                 if (dx * dx + dy * dy <= r * r) {
@@ -1162,7 +1169,7 @@ class GameView(
         boss?.let { b ->
             if (!b.isDying && invincibleTimer <= 0) {
                 val dy = player.y - b.y
-                val r  = player.width * 0.35f + b.radius * 0.85f
+                val r  = player.hitRadius + b.radius * 0.85f
                 if (dy <= r && dy >= -r) {
                     val dx = player.x - b.x
                     if (dx * dx + dy * dy <= r * r) {
@@ -1182,7 +1189,7 @@ class GameView(
             val sw = swIter.next()
             sw.update()
             if (sw.isDead) { swIter.remove(); continue }
-            if (!bossDyingNow && invincibleTimer <= 0 && sw.hitsPlayer(player.x, player.y, player.width * 0.35f)) {
+            if (!bossDyingNow && invincibleTimer <= 0 && sw.hitsPlayer(player.x, player.y, player.hitRadius)) {
                 if (!debugInvincible) hp--
                 invincibleTimer = invincibleDuration
                 soundManager.playPlayerDamaged()
@@ -1196,7 +1203,7 @@ class GameView(
             while (ebHitIter.hasNext()) {
                 val eb = ebHitIter.next()
                 val dy = player.y - eb.y
-                val r  = player.width * 0.35f + eb.radius
+                val r  = player.hitRadius + eb.radius
                 if (dy > r || dy < -r) continue
                 val dx = player.x - eb.x
                 if (dx * dx + dy * dy <= r * r) {
@@ -1319,9 +1326,22 @@ class GameView(
         // プレイヤー描画（無敵中は点滅）
         player.draw(canvas, invincibleTimer > 0, frameCount)
 
-        // デバッグ: 自機の当たり判定範囲（半径 = width×0.35）を可視化
+        // デバッグ: 当たり判定範囲を可視化（自機=赤 / 敵・ボス=シアン）
         if (debugShowHitbox) {
-            val hr = player.width * 0.35f
+            // 敵（通常敵）の判定円
+            for (blob in blobManager.blobs) {
+                canvas.drawCircle(blob.cx, blob.cy, blob.radius, enemyHitboxFillPaint)
+                canvas.drawCircle(blob.cx, blob.cy, blob.radius, enemyHitboxStrokePaint)
+            }
+            // ボスの判定円
+            boss?.let { b ->
+                if (!b.isGone) {
+                    canvas.drawCircle(b.x, b.y, b.radius, enemyHitboxFillPaint)
+                    canvas.drawCircle(b.x, b.y, b.radius, enemyHitboxStrokePaint)
+                }
+            }
+            // 自機の判定円（半径 = width×0.35×0.6）
+            val hr = player.hitRadius
             canvas.drawCircle(player.x, player.y, hr, hitboxFillPaint)
             canvas.drawCircle(player.x, player.y, hr, hitboxStrokePaint)
         }
