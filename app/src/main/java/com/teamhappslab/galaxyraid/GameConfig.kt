@@ -2,12 +2,12 @@ package com.teamhappslab.galaxyraid
 
 object GameConfig {
     /** 敵弾スピード倍率（1.0f = デフォルト、大きいほど速い） */
-    const val ENEMY_BULLET_SPEED_MULT: Float = 0.6f
+    const val ENEMY_BULLET_SPEED_MULT: Float = 0.7f
 
     // ── 敵の移動速さノブ ─────────────────────────────────
     // 通常敵(Blob)の「動く速さ」だけを変える倍率（弾速・発射頻度・ボスには影響しない）。
     // 1.0=従来 / 小さいほど敵がゆっくり動く。例: 0.85で15%遅い。
-    const val ENEMY_MOVE_SPEED_MULT: Float = 0.85f
+    const val ENEMY_MOVE_SPEED_MULT: Float = 0.9f
 
     // ── 敵弾の速さノブ ───────────────────────────────────
     // 敵・ボスが撃つ弾の「飛ぶ速さ」だけを変える倍率（移動速度や発射頻度には影響しない）。
