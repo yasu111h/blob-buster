@@ -48,8 +48,8 @@ data class StageConfig(
             StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.1f,  0.9f,   480, 3, 1.0f,   0,  0,  1, false, 1.0f),
             StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.0f,  1.0f,   650, 3, 1.0f,   0,  0,  1, false, 1.0f),
             StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 0.97f,  0,  0,  1, true,  0.9f),
-            StageConfig(5, 37, BlobSize.ENEMY8, 1.0f,  0.95f, 1.05f, 1150, 3, 0.93f,  0,  0,  1, true,  0.7f),
-            StageConfig(6, 40, BlobSize.ENEMY8, 1.1f,  0.9f,  1.05f, 1400, 3, 0.9f,   0,  0,  1, true,  0.7f),
+            StageConfig(5, 37, BlobSize.ENEMY8, 1.0f,  0.95f, 1.05f, 1150, 3, 0.97f,  0,  0,  1, true,  0.7f),
+            StageConfig(6, 40, BlobSize.ENEMY8, 1.1f,  0.9f,  1.05f, 1400, 3, 0.95f,  0,  0,  1, true,  0.7f),
         )
 
         /** ステージ番号(1〜5)に対応する設定を返す。範囲外はStage1にフォールバック。 */
