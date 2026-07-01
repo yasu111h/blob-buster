@@ -61,6 +61,7 @@ class GameView(
     private var bossWarningTimer: Int = 0          // WARNING演出の残りフレーム
     private var bossHpDisplayRatio: Float = 1f     // HPバーの減少アニメーション用
     private var clearTapDelayTimer: Int = 0        // CLEAR直後の誤タップ防止
+    private var gameOverTapDelayTimer: Int = 0     // GAME OVER直後の誤タップ防止
     private var clearAnimFrame: Int = 0            // CLEAR画面のアニメーション用カウンタ
     private var bossMinionTimer: Int = 0           // ボス戦中の雑魚出現タイマー
     private var bossExplosion: BossExplosion? = null      // ボス撃破爆発エフェクト
@@ -636,6 +637,7 @@ class GameView(
 
     private fun triggerGameOver() {
         gameState = GameState.GAME_OVER
+        gameOverTapDelayTimer = 30  // 約0.5秒はボタンを出さず誤タップを防ぐ
         soundManager.pauseBgmByUser()
         rankAchieved = HighScoreManager.saveScore(context, scoreManager.score)
     }
@@ -790,7 +792,8 @@ class GameView(
 
         if (gameState == GameState.GAME_OVER) {
             // Retry/Homeはそれぞれのボタンを押した時だけ反応する（画面どこでもリトライは廃止）
-            if (event.actionMasked == MotionEvent.ACTION_UP) {
+            // 誤タップ防止のためボタン表示遅延中は無反応
+            if (event.actionMasked == MotionEvent.ACTION_UP && gameOverTapDelayTimer <= 0) {
                 when {
                     gameOverRetryBtnRect.contains(event.x, event.y) -> initGame()
                     gameOverHomeBtnRect.contains(event.x, event.y)  -> onGoHome?.invoke()
@@ -875,6 +878,9 @@ class GameView(
             clearAnimFrame++
             if (clearTapDelayTimer > 0) clearTapDelayTimer--
             clearCelebration?.update()
+        }
+        if (gameState == GameState.GAME_OVER) {
+            if (gameOverTapDelayTimer > 0) gameOverTapDelayTimer--
         }
         if (gameState != GameState.PLAYING) return
 
@@ -1594,17 +1600,20 @@ class GameView(
                 drawRankBadge(canvas, screenHeight * 0.595f)
             }
 
-            // Retryボタン（緑・Homeボタンの上）。ここを押した時だけリトライする
-            canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBgPaint)
-            canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBorderPaint)
-            resumeBtnTextPaint.textSize = screenWidth * 0.058f
-            drawCenteredLabel(canvas, "↻  Retry", gameOverRetryBtnRect, resumeBtnTextPaint)
+            // Retry/Homeボタンは誤タップ防止のため約0.5秒遅れて表示する
+            if (gameOverTapDelayTimer <= 0) {
+                // Retryボタン（緑・Homeボタンの上）。ここを押した時だけリトライする
+                canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBgPaint)
+                canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBorderPaint)
+                resumeBtnTextPaint.textSize = screenWidth * 0.058f
+                drawCenteredLabel(canvas, "↻  Retry", gameOverRetryBtnRect, resumeBtnTextPaint)
 
-            // Homeボタン
-            canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBgPaint)
-            canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBorderPaint)
-            homeBtnTextPaint.textSize = screenWidth * 0.058f
-            drawCenteredLabel(canvas, "⌂  Home", gameOverHomeBtnRect, homeBtnTextPaint)
+                // Homeボタン
+                canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBgPaint)
+                canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBorderPaint)
+                homeBtnTextPaint.textSize = screenWidth * 0.058f
+                drawCenteredLabel(canvas, "⌂  Home", gameOverHomeBtnRect, homeBtnTextPaint)
+            }
         }
 
         // ── MISSION COMPLETE オーバーレイ（ボス撃破・ゲームクリア） ──
