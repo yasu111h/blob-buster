@@ -107,17 +107,17 @@ data class StageConfig(
                 BossPhasePattern(wideSpread = true, ring = 16, shockwave = true),      // P3: 5連射＋扇弾＋16リング＋衝撃波（頻度ベース）
             )
             4 -> listOf(
-                BossPhasePattern(spread = true, ring = 12, shockwave = true),          // P1: 5連射＋5方向扇弾＋12リング＋衝撃波
-                BossPhasePattern(burst = false, spread = true, wideSpread = true, ring = 16, freqMult = FREQ_MID), // P2: 5方向扇弾＋扇弾＋16リング・頻度中（5連射/衝撃波なし）
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID), // P3: 全部＋頻度中
+                BossPhasePattern(spread = true, ring = 12, shockwave = true),          // P1: 5連射＋5方向扇弾＋12リング＋衝撃波（ベース）
+                BossPhasePattern(burst = false, spread = true, wideSpread = true, ring = 16), // P2: 5方向扇弾＋扇弾＋16リング（ベース・5連射/衝撃波なし）
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true), // P3: 全部（ベース）
             )
             5 -> listOf(
-                BossPhasePattern(spread = true, wideSpread = true, ring = 12, shockwave = true, freqMult = FREQ_MID),  // P1: 頻度中
+                BossPhasePattern(spread = true, wideSpread = true, ring = 12, shockwave = true),  // P1: ベース
                 BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID),  // P2: 頻度中
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH), // P3: 頻度高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID),  // P3: 頻度中
             )
             else -> listOf( // STAGE FINAL（stage 6）
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH), // P1: 頻度高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID),  // P1: 頻度中
                 BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH), // P2: 頻度高
                 BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MAX),  // P3: 頻度最高
             )
