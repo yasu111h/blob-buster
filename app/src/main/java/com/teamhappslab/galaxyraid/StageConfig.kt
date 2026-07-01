@@ -102,24 +102,24 @@ data class StageConfig(
                 BossPhasePattern(spread = true, ring = 12, shockwave = true),          // P3: 5連射＋5方向扇弾＋12リング＋衝撃波
             )
             3 -> listOf(
-                BossPhasePattern(spread = true, ring = 16, shockwave = true),          // P1: 5連射＋5方向扇弾＋16リング＋衝撃波
+                BossPhasePattern(burst = false, spread = true, ring = 16),             // P1: 5方向扇弾＋16リング（5連射/衝撃波なし）
                 BossPhasePattern(wideSpread = true, ring = 16, shockwave = true),      // P2: 5連射＋扇弾＋16リング＋衝撃波
-                BossPhasePattern(wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID), // P3: ＋攻撃頻度中
+                BossPhasePattern(wideSpread = true, ring = 16, shockwave = true),      // P3: 5連射＋扇弾＋16リング＋衝撃波（頻度ベース）
             )
             4 -> listOf(
                 BossPhasePattern(spread = true, ring = 12, shockwave = true),          // P1: 5連射＋5方向扇弾＋12リング＋衝撃波
                 BossPhasePattern(burst = false, spread = true, wideSpread = true, ring = 16, freqMult = FREQ_MID), // P2: 5方向扇弾＋扇弾＋16リング・頻度中（5連射/衝撃波なし）
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH), // P3: 全部＋頻度高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID), // P3: 全部＋頻度中
             )
             5 -> listOf(
-                BossPhasePattern(spread = true, wideSpread = true, ring = 12, shockwave = true, freqMult = FREQ_MID),       // P1: 頻度中
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH),      // P2: 頻度高
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH_PLUS), // P3: 頻度高+
+                BossPhasePattern(spread = true, wideSpread = true, ring = 12, shockwave = true, freqMult = FREQ_MID),  // P1: 頻度中
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MID),  // P2: 頻度中
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH), // P3: 頻度高
             )
             else -> listOf( // STAGE FINAL（stage 6）
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH),      // P1: 頻度高
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MAX),       // P2: 頻度最高
-                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_SUPER_MAX), // P3: 頻度超最高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH), // P1: 頻度高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_HIGH), // P2: 頻度高
+                BossPhasePattern(spread = true, wideSpread = true, ring = 16, shockwave = true, freqMult = FREQ_MAX),  // P3: 頻度最高
             )
         }
     }
