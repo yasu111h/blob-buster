@@ -26,9 +26,9 @@ class BlobManager(
     val attackIntervalMult: Float
         get() = 0.9.pow(statTierCount.toDouble()).toFloat() * (stage?.enemyAttackIntervalMult ?: 1f)
 
-    // 敵移動速度倍率（Lv100〜で1.03倍ずつ加速）×ステージ倍率
+    // 敵移動速度倍率（Lv100〜で1.03倍ずつ加速）×ステージ倍率×全体ノブ
     val enemySpeedMult: Float
-        get() = 1.03.pow(statTierCount.toDouble()).toFloat() * (stage?.enemySpeedMult ?: 1f)
+        get() = 1.03.pow(statTierCount.toDouble()).toFloat() * (stage?.enemySpeedMult ?: 1f) * GameConfig.ENEMY_MOVE_SPEED_MULT
 
     // 敵HP倍率（ステージ難易度由来。エンドレスは1.0）
     private val enemyHpMult: Float get() = stage?.enemyHpMult ?: 1f
