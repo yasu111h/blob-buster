@@ -46,7 +46,7 @@ data class StageConfig(
         private val STAGES = listOf(
             StageConfig(1, 20, BlobSize.LARGE,  0.6f,  1.2f,  0.9f,   320, 3, 1.0f,   0,  0,  1, false, 1.0f),
             StageConfig(2, 25, BlobSize.HUGE,   0.75f, 1.1f,  0.9f,   480, 3, 1.0f,   0,  0,  1, false, 1.0f),
-            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.0f,  1.0f,   650, 3, 1.0f,   0,  0,  1, true,  1.0f),
+            StageConfig(3, 30, BlobSize.DRAGON, 0.9f,  1.0f,  1.0f,   650, 3, 1.0f,   0,  0,  1, false, 1.0f),
             StageConfig(4, 35, BlobSize.ENEMY8, 1.0f,  1.0f,  1.0f,   900, 3, 0.97f,  0,  0,  1, true,  0.9f),
             StageConfig(5, 37, BlobSize.ENEMY8, 1.0f,  0.95f, 1.05f, 1150, 3, 0.93f,  0,  0,  1, true,  0.7f),
             StageConfig(6, 40, BlobSize.ENEMY8, 1.1f,  0.9f,  1.05f, 1400, 3, 0.9f,   0,  0,  1, true,  0.7f),
@@ -79,12 +79,12 @@ data class StageConfig(
         }
 
         // ── 攻撃頻度倍率（小さいほど高頻度） ──
-        const val FREQ_BASE: Float = 0.8f    // 指定なし
-        const val FREQ_MID: Float = 0.7f     // 中
-        const val FREQ_HIGH: Float = 0.65f   // 高
-        const val FREQ_HIGH_PLUS: Float = 0.6f   // 高+
-        const val FREQ_MAX: Float = 0.55f    // 最高
-        const val FREQ_SUPER_MAX: Float = 0.5f   // 超最高
+        const val FREQ_BASE: Float = 0.9f    // 指定なし
+        const val FREQ_MID: Float = 0.8f     // 中
+        const val FREQ_HIGH: Float = 0.75f   // 高
+        const val FREQ_HIGH_PLUS: Float = 0.7f   // 高+
+        const val FREQ_MAX: Float = 0.65f    // 最高
+        const val FREQ_SUPER_MAX: Float = 0.6f   // 超最高
 
         /**
          * ステージごとのボス3フェーズ分の攻撃構成。
