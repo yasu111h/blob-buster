@@ -158,7 +158,7 @@ class Blob(
                 cx = cx.coerceIn(minX, maxX)
             }
         }
-        val bottomLimit = screenHeight * 0.88f
+        val bottomLimit = screenHeight * 0.92f
         if (cy > bottomLimit) isDead = true
     }
 

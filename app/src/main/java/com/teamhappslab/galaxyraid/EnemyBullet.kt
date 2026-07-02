@@ -40,7 +40,7 @@ class EnemyBullet(
         x += vx
         y += vy
         ttl--
-        if (ttl <= 0 || y > screenHeight * 0.88f || y < -radius ||
+        if (ttl <= 0 || y > screenHeight * 0.92f || y < -radius ||
             x < -radius || x > screenWidth + radius) {
             isDead = true
         }

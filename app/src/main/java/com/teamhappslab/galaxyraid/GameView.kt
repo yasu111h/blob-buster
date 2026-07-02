@@ -413,7 +413,7 @@ class GameView(
 
         // 星空を生成（多層パララックス：奥=小さく暗く遅い／手前=大きく明るく速い）
         val rng = Random(42)
-        val area = screenHeight * 0.88f
+        val area = screenHeight * 0.92f
         stars.clear()
         // 1ピクセルあたりのスケール（画面幅基準で星サイズを端末非依存に）
         val px = screenWidth / 1080f
@@ -473,7 +473,7 @@ class GameView(
         val dbgBtnW = screenWidth * 0.13f
         val dbgBtnH = screenWidth * 0.07f
         val dbgBtnX = screenWidth - dbgBtnW - screenWidth * 0.02f
-        val dbgBtnY = screenHeight * 0.895f
+        val dbgBtnY = screenHeight * 0.94f
         debugBtnRect = RectF(dbgBtnX, dbgBtnY, dbgBtnX + dbgBtnW, dbgBtnY + dbgBtnH)
         dbgBtnTextPaint.textSize = screenWidth * 0.035f
 
@@ -534,9 +534,9 @@ class GameView(
         // 一時停止ボタン（左下）
         pauseBtnRect = RectF(
             screenWidth * 0.02f,
-            screenHeight * 0.895f,
+            screenHeight * 0.94f,
             screenWidth * 0.02f + screenWidth * 0.13f,
-            screenHeight * 0.895f + screenWidth * 0.07f
+            screenHeight * 0.94f + screenWidth * 0.07f
         )
         pauseBtnTextPaint.textSize = screenWidth * 0.040f
 
@@ -882,7 +882,7 @@ class GameView(
                     val idx = event.findPointerIndex(dragPointerId)
                     if (idx != -1) {
                         player.x = event.getX(idx).coerceIn(player.width / 2f, screenWidth - player.width / 2f)
-                        player.y = event.getY(idx).coerceIn(screenHeight * 0.35f, screenHeight * 0.88f)
+                        player.y = event.getY(idx).coerceIn(screenHeight * 0.35f, screenHeight * 0.92f)
                     }
                 }
             }
@@ -1075,9 +1075,9 @@ class GameView(
 
         // 敵弾発射（上限チェック・混雑度による間隔制御込み）
         // 発射禁止ライン(0.80f)より下にいる敵は撃たせない。
-        // 削除ライン(0.88f=地面ライン)との間にバッファを設けることで、
+        // 削除ライン(0.92f=地面ライン)との間にバッファを設けることで、
         // 最速弾でも削除前に地面を越えることが数学上ありえない構造にする。
-        // プレイヤーも地面ライン(0.88f)より下には行けないため、下領域は純粋なUIエリア。
+        // プレイヤーも地面ライン(0.92f)より下には行けないため、下領域は純粋なUIエリア。
         if (debugEnemyCanShoot) {
             val noFireLine = screenHeight * 0.80f
             for (blob in blobManager.blobs) {
@@ -1268,7 +1268,7 @@ class GameView(
     }
 
     private fun drawInternal(canvas: Canvas, alpha: Float = 0f) {
-        val area = screenHeight * 0.88f
+        val area = screenHeight * 0.92f
 
         // 背景（背景色＋星雲を焼いた不透明Bitmapを等倍で貼るだけ）。無ければ従来の単色塗り。
         val bg = bgBitmap
@@ -1350,7 +1350,7 @@ class GameView(
             powerUpAuraPaint.alpha = (progress * 200).toInt()
             val auraR = player.width * (0.8f + (1f - progress) * 1.2f)
             canvas.save()
-            canvas.clipRect(0f, 0f, screenWidth.toFloat(), screenHeight * 0.88f)
+            canvas.clipRect(0f, 0f, screenWidth.toFloat(), screenHeight * 0.92f)
             canvas.drawCircle(player.x, player.y, auraR, powerUpAuraPaint)
             canvas.restore()
         }
@@ -1383,7 +1383,7 @@ class GameView(
         //   段2(下・小さめ・緑): モード名。ボスは「BOSS MODE  STAGE ○」（すべて緑）
         val marginX = screenWidth * 0.03f
         val row1Y = screenHeight * 0.048f
-        val row2Y = screenHeight * 0.088f
+        val row2Y = screenHeight * 0.078f
         val baseSize = screenWidth * 0.05f
         val subSize = screenWidth * 0.040f
 
@@ -1408,7 +1408,7 @@ class GameView(
             val modeText = "BOSS MODE"
             canvas.drawText(modeText, marginX, row2Y, levelPaint)          // 緑
             val stageText = StageConfig.titleOf(stage)                     // STAGE 1〜5 / STAGE FINAL
-            val stX = marginX + levelPaint.measureText(modeText) + screenWidth * 0.07f
+            val stX = marginX + levelPaint.measureText(modeText) + screenWidth * 0.045f
             canvas.drawText(stageText, stX, row2Y, levelPaint)             // 緑に統一
         } else {
             canvas.drawText("ENDLESS MODE", marginX, row2Y, levelPaint)    // 緑
