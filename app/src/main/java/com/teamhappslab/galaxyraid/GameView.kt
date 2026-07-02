@@ -1590,7 +1590,7 @@ class GameView(
             // 情報パネル（SCORE / LEVEL / RANK を囲むHUD枠）
             val hasRank = rankAchieved in 1..3
             val panel = RectF(screenWidth * 0.15f, screenHeight * 0.44f,
-                screenWidth * 0.85f, screenHeight * (if (hasRank) 0.635f else 0.575f))
+                screenWidth * 0.85f, screenHeight * (if (hasRank) 0.655f else 0.575f))
             val panelPath = UiKit.cutRectPath(panel, panel.height() * 0.10f)
             canvas.drawPath(panelPath, goPanelBgPaint)
             canvas.drawPath(panelPath, goPanelBorderPaint)
@@ -1779,17 +1779,18 @@ class GameView(
      * 塗りつぶし枠を使わず、金色テキスト＋下の細い飾り線で、Retry/Homeボタンと明確に区別する。
      */
     private fun drawRankBadge(canvas: Canvas, centerY: Float) {
-        val medal = if (rankAchieved == 1) "★  NEW RECORD  ★" else "★  RANK #$rankAchieved  ★"
-        rankInTextPaint.textSize = screenWidth * 0.058f
+        // 2行構成（★なし・全て大文字）: 1行目 NEW RECORD / 2行目 RANK #n
         rankInTextPaint.textAlign = Paint.Align.CENTER
+        rankInTextPaint.textSize = screenWidth * 0.050f
+        val cx = screenWidth / 2f
         val fm = rankInTextPaint.fontMetrics
-        val baseline = centerY - (fm.ascent + fm.descent) / 2f
-        canvas.drawText(medal, screenWidth / 2f, baseline, rankInTextPaint)
+        val vOff = -(fm.ascent + fm.descent) / 2f   // 視覚中心をターゲットYに合わせる補正
+        val half = screenWidth * 0.032f             // 行間の半分
+
+        canvas.drawText("NEW RECORD", cx, centerY - half + vOff, rankInTextPaint)
+        canvas.drawText("RANK #$rankAchieved", cx, centerY + half + vOff, rankInTextPaint)
+
         rankInTextPaint.textAlign = Paint.Align.LEFT
-        // 下の飾り線（ボタンの塗り枠と差をつけるための細いアクセント）
-        val lineHalf = screenWidth * 0.14f
-        val lineY = baseline + screenWidth * 0.030f
-        canvas.drawLine(screenWidth / 2f - lineHalf, lineY, screenWidth / 2f + lineHalf, lineY, rankInBorderPaint)
     }
 
     /**
