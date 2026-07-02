@@ -59,6 +59,7 @@ class GameView(
     private var boss: Boss? = null
     private var bossSpawned: Boolean = false       // ボスを一度出したか
     private var bossWaitTimer: Int = 0             // ボス出現レベル到達後、残存敵待ちのタイマー
+    private var bossHealDelayTimer: Int = 0        // 残存敵を全滅させてからボス前回復までのディレイ(約0.3秒)
     private var bossWarningTimer: Int = 0          // WARNING演出の残りフレーム
     private var bossHpDisplayRatio: Float = 1f     // HPバーの減少アニメーション用
     private var clearTapDelayTimer: Int = 0        // CLEAR直後の誤タップ防止
@@ -695,6 +696,7 @@ class GameView(
         boss = null
         bossSpawned = false
         bossWaitTimer = 0
+        bossHealDelayTimer = 0
         bossWarningTimer = 0
         bossHpDisplayRatio = 1f
         clearTapDelayTimer = 0
@@ -983,18 +985,23 @@ class GameView(
         }
 
         // ── ボス出現シーケンス（ストーリーモードのみ） ──────────
+        // 流れ: レベル到達 → 新規出現停止 → 表示中の敵を全滅 → 約0.3秒後にボス前回復 → WARNING → ボス登場
         if (isStoryMode && !bossSpawned && blobManager.level >= bossTriggerLevel) {
             // 通常敵の新規出現を停止
             blobManager.spawningEnabled = false
-            // ボス前回復（1回だけ・残存敵を待っている間に発動）
-            if (!preBossHealDone) {
+            if (bossWaitTimer < GameConfig.BOSS_WAIT_MAX_FRAMES) bossWaitTimer++
+            // 表示中の敵を全滅させたら（または待機上限を超えたら）回復ディレイを開始
+            val enemiesCleared = blobManager.blobs.isEmpty() || bossWaitTimer >= GameConfig.BOSS_WAIT_MAX_FRAMES
+            if (enemiesCleared && !preBossHealDone && bossHealDelayTimer == 0) {
+                bossHealDelayTimer = GameConfig.BOSS_PRE_HEAL_DELAY_FRAMES
+            }
+        }
+        // 全滅から約0.3秒後にボス前回復 → その後にWARNING演出を開始
+        if (bossHealDelayTimer > 0) {
+            bossHealDelayTimer--
+            if (bossHealDelayTimer == 0) {
                 preBossHealDone = true
                 stageConfig?.let { if (it.preBossHealAmount > 0) applyHeal(it.preBossHealAmount) }
-            }
-            if (bossWaitTimer < GameConfig.BOSS_WAIT_MAX_FRAMES) bossWaitTimer++
-            // 残存敵が掃けたら（または待機上限を超えたら）WARNING演出開始
-            if (bossWarningTimer == 0 &&
-                (blobManager.blobs.isEmpty() || bossWaitTimer >= GameConfig.BOSS_WAIT_MAX_FRAMES)) {
                 bossWarningTimer = GameConfig.BOSS_WARNING_FRAMES
             }
         }

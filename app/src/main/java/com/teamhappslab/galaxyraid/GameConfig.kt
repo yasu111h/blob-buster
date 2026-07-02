@@ -50,6 +50,8 @@ object GameConfig {
     const val BOSS_MAX_ENEMY_BULLETS: Int = 70
     /** レベル50到達後、残存敵が掃けるのを待つ最大フレーム数（超えたら強制的にボス登場） */
     const val BOSS_WAIT_MAX_FRAMES: Int = 300   // 5秒 @ 60fps
+    /** 残存敵を全滅させてから、ボス前回復が発動するまでのディレイ（約0.3秒） */
+    const val BOSS_PRE_HEAL_DELAY_FRAMES: Int = 18   // 約0.3秒
     /** WARNING演出の長さ（フレーム） */
     const val BOSS_WARNING_FRAMES: Int = 120    // 2秒 @ 60fps
     /** フェーズ移行直後の無敵時間（フレーム） */
