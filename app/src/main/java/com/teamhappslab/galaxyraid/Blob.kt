@@ -224,13 +224,13 @@ class Blob(
                 }
                 atkTimer2++
                 if (atkTimer2 >= (55 * attackIntervalMult * congestion).toInt()) { atkTimer2 = 0
-                    aimShot(playerX, playerY, tint = 1, speedMult = 1.6f)?.let { result.add(it) }
+                    aimShot(playerX, playerY, tint = 1, speedMult = 1.4f)?.let { result.add(it) }
                 }
             }
             BlobSize.DRAGON -> {
                 atkTimer1++
                 if (atkTimer1 >= (120 * attackIntervalMult * congestion).toInt()) { atkTimer1 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.30f, tint = 2, speedMult = 1.6f))
+                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.30f, tint = 2, speedMult = 1.4f))
                 }
                 atkTimer2++
                 if (atkTimer2 >= (180 * attackIntervalMult).toInt()) { atkTimer2 = 0
@@ -245,7 +245,7 @@ class Blob(
                 // 攻撃1: 5方向弾（約1.3秒間隔）
                 atkTimer1++
                 if (atkTimer1 >= (78 * attackIntervalMult * congestion).toInt()) { atkTimer1 = 0
-                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.35f, tint = 2, speedMult = 1.5f))
+                    result.addAll(spreadShot(playerX, playerY, count = 5, spread = 0.35f, tint = 2, speedMult = 1.4f))
                 }
                 // 攻撃2: 高速照準弾×5（約1.1秒間隔）速度差で縦に連なる
                 atkTimer2++
