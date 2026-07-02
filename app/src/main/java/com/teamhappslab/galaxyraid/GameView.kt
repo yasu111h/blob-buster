@@ -1362,9 +1362,13 @@ class GameView(
         val baseSize = screenWidth * 0.05f
         val subSize = screenWidth * 0.042f
 
-        // 段1左: SCORE（3桁区切りで読みやすく）
+        // 段1左: SCORE ＋ LEVEL（どちらも水色）
         scorePaint.textSize = baseSize
-        canvas.drawText("SCORE  ${"%,d".format(scoreManager.score)}", marginX, row1Y, scorePaint)
+        val scoreText = "SCORE  ${"%,d".format(scoreManager.score)}"
+        canvas.drawText(scoreText, marginX, row1Y, scorePaint)
+        val lvLabel = if (isStoryMode) "Lv ${blobManager.level}" else "LEVEL ${blobManager.level}"
+        val lvX = marginX + scorePaint.measureText(scoreText) + screenWidth * 0.05f
+        canvas.drawText(lvLabel, lvX, row1Y, scorePaint)
 
         // 段1右: HP（赤ハート・右寄せ）
         val heartText = "HP  " + "♥".repeat(hp.coerceAtLeast(0))
@@ -1373,16 +1377,17 @@ class GameView(
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
         canvas.drawText(heartText, screenWidth - heartBounds.width() - marginX, row1Y, heartPaint)
 
-        // 段2左: ステージ（金）＋ レベル（緑）
+        // 段2左: モード名（緑）＋ ボスはステージ名（金）
         roundPaint.textSize = subSize
         levelPaint.textSize = subSize
         if (isStoryMode) {
-            val stageText = "STAGE $stage"
-            canvas.drawText(stageText, marginX, row2Y, roundPaint)
-            val lvX = marginX + roundPaint.measureText(stageText) + screenWidth * 0.05f
-            canvas.drawText("Lv ${blobManager.level}", lvX, row2Y, levelPaint)
+            val modeText = "BOSS"
+            canvas.drawText(modeText, marginX, row2Y, levelPaint)          // 緑
+            val stageText = StageConfig.titleOf(stage)                     // STAGE 1〜5 / STAGE FINAL
+            val stX = marginX + levelPaint.measureText(modeText) + screenWidth * 0.05f
+            canvas.drawText(stageText, stX, row2Y, roundPaint)             // 金
         } else {
-            canvas.drawText("LEVEL ${blobManager.level}", marginX, row2Y, levelPaint)
+            canvas.drawText("ENDLESS", marginX, row2Y, levelPaint)         // 緑
         }
 
         // 回復メッセージ（道中・ボス前の回復時に一定時間表示）

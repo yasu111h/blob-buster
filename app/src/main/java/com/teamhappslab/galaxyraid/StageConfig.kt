@@ -63,7 +63,7 @@ data class StageConfig(
             3 -> "STAGE 3"
             4 -> "STAGE 4"
             5 -> "STAGE 5"
-            6 -> "FINAL STAGE"
+            6 -> "STAGE FINAL"
             else -> "STAGE $stage"
         }
 
