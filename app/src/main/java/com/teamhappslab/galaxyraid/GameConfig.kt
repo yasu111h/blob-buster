@@ -54,8 +54,8 @@ object GameConfig {
     const val BOSS_PRE_HEAL_DELAY_FRAMES: Int = 18   // 約0.3秒
     /** WARNING演出の長さ（フレーム） */
     const val BOSS_WARNING_FRAMES: Int = 120    // 2秒 @ 60fps
-    /** フェーズ移行直後の無敵時間（フレーム） */
-    const val BOSS_PHASE_INVINCIBLE_FRAMES: Int = 60
+    /** フェーズ移行直後の無敵時間（フレーム）。この間は攻撃も停止する。 */
+    const val BOSS_PHASE_INVINCIBLE_FRAMES: Int = 10
     /** 撃破演出（連続爆発）の長さ（フレーム） */
     const val BOSS_DYING_FRAMES: Int = 150      // 2.5秒 @ 60fps
 
