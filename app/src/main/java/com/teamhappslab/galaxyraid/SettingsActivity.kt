@@ -19,6 +19,11 @@ class SettingsActivity : AppCompatActivity() {
         settingsView.onResetScores = {
             setResult(Activity.RESULT_OK)
         }
+        settingsView.onResetBossProgress = {
+            android.widget.Toast.makeText(
+                this, "Boss mode progress reset", android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
         setContentView(settingsView)
 
         // DecorView生成後にフルスクリーン設定（setContentViewの後でないとNPE）

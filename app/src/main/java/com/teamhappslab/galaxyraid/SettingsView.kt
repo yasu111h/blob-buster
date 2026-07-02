@@ -19,6 +19,7 @@ class SettingsView(context: Context) : View(context) {
 
     var onBack: (() -> Unit)? = null
     var onResetScores: (() -> Unit)? = null
+    var onResetBossProgress: (() -> Unit)? = null
 
     private var animTick = 0
     private val handler = Handler(Looper.getMainLooper())
@@ -29,10 +30,11 @@ class SettingsView(context: Context) : View(context) {
     private var screenW = 0f
     private var screenH = 0f
 
-    private var bgmBtnRect   = RectF()
-    private var sfxBtnRect   = RectF()
-    private var resetBtnRect = RectF()
-    private var backBtnRect  = RectF()
+    private var bgmBtnRect       = RectF()
+    private var sfxBtnRect       = RectF()
+    private var resetBtnRect     = RectF()
+    private var resetBossBtnRect = RectF()
+    private var backBtnRect      = RectF()
 
     private var bgmOn = true
     private var sfxOn = true
@@ -106,10 +108,11 @@ class SettingsView(context: Context) : View(context) {
         val bw = w * 0.74f
         val bh = h * 0.078f
         val x = (w - bw) / 2f
-        bgmBtnRect   = RectF(x, h * 0.345f, x + bw, h * 0.345f + bh)
-        sfxBtnRect   = RectF(x, h * 0.450f, x + bw, h * 0.450f + bh)
-        resetBtnRect = RectF(x, h * 0.620f, x + bw, h * 0.620f + bh)
-        backBtnRect  = RectF(x, h * 0.840f, x + bw, h * 0.840f + bh)
+        bgmBtnRect       = RectF(x, h * 0.345f, x + bw, h * 0.345f + bh)
+        sfxBtnRect       = RectF(x, h * 0.450f, x + bw, h * 0.450f + bh)
+        resetBtnRect     = RectF(x, h * 0.600f, x + bw, h * 0.600f + bh)
+        resetBossBtnRect = RectF(x, h * 0.705f, x + bw, h * 0.705f + bh)
+        backBtnRect      = RectF(x, h * 0.840f, x + bw, h * 0.840f + bh)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -129,10 +132,11 @@ class SettingsView(context: Context) : View(context) {
         drawToggle(canvas, bgmBtnRect, "BGM", bgmOn, 0f)
         drawToggle(canvas, sfxBtnRect, "SOUND EFFECTS", sfxOn, 0.6f)
 
-        canvas.drawLine(screenW * 0.13f, screenH * 0.560f, screenW * 0.87f, screenH * 0.560f, dividerPaint)
+        canvas.drawLine(screenW * 0.13f, screenH * 0.555f, screenW * 0.87f, screenH * 0.555f, dividerPaint)
 
         // RESET（危険）・BACK
         drawActionButton(canvas, resetBtnRect, "RESET HIGH SCORES", cRed, 1.2f)
+        drawActionButton(canvas, resetBossBtnRect, "RESET BOSS PROGRESS", cRed, 1.5f)
         drawActionButton(canvas, backBtnRect, "◀  BACK", cCyan, 1.8f)
     }
 
@@ -203,6 +207,16 @@ class SettingsView(context: Context) : View(context) {
                         .setPositiveButton("Yes") { _, _ ->
                             HighScoreManager.resetScores(context)
                             onResetScores?.invoke()
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+                resetBossBtnRect.contains(tx, ty) -> {
+                    android.app.AlertDialog.Builder(context)
+                        .setMessage("Reset boss mode progress?")
+                        .setPositiveButton("Yes") { _, _ ->
+                            AppPrefs.resetStoryProgress(context)
+                            onResetBossProgress?.invoke()
                         }
                         .setNegativeButton("Cancel", null)
                         .show()

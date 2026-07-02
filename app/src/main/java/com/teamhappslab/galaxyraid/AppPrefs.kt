@@ -37,4 +37,10 @@ object AppPrefs {
     /** そのステージが解放済みか。Stage1・2は常に解放、以降は(クリア済み+1)まで解放。 */
     fun isStageUnlocked(context: Context, stage: Int): Boolean =
         stage <= maxOf(2, getStoryClearedStage(context) + 1)
+
+    /** ボスモード（ストーリー）の進捗をリセット。クリア済みステージを0に戻す。 */
+    fun resetStoryProgress(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove("story_cleared_stage").apply()
+    }
 }
