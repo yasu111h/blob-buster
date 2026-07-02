@@ -1364,41 +1364,40 @@ class GameView(
         }
 
         // ── 上部ステータス（2段構成）──
-        //   段1(上・小さめ): モード名（緑）。ボスは「BOSS MODE  STAGE ○」（STAGEは金）
-        //   段2(下): SCORE ＋ LEVEL（水色）／ HP（右・赤）
+        //   段1(上): SCORE ＋ LEVEL（水色）／ HP（右・赤）
+        //   段2(下・小さめ・緑): モード名。ボスは「BOSS MODE  STAGE ○」（すべて緑）
         val marginX = screenWidth * 0.03f
-        val row1Y = screenHeight * 0.045f
+        val row1Y = screenHeight * 0.048f
         val row2Y = screenHeight * 0.088f
         val baseSize = screenWidth * 0.05f
         val subSize = screenWidth * 0.040f
 
-        // 段1（上・小さめ・緑）: モード名。ボスはSTAGE名（金）も併記
-        levelPaint.textSize = subSize
-        roundPaint.textSize = subSize
-        if (isStoryMode) {
-            val modeText = "BOSS MODE"
-            canvas.drawText(modeText, marginX, row1Y, levelPaint)          // 緑
-            val stageText = StageConfig.titleOf(stage)                     // STAGE 1〜5 / STAGE FINAL
-            val stX = marginX + levelPaint.measureText(modeText) + screenWidth * 0.07f
-            canvas.drawText(stageText, stX, row1Y, roundPaint)             // 金
-        } else {
-            canvas.drawText("ENDLESS MODE", marginX, row1Y, levelPaint)    // 緑
-        }
-
-        // 段2左（水色）: SCORE ＋ LEVEL
+        // 段1左（水色）: SCORE ＋ LEVEL
         scorePaint.textSize = baseSize
         val scoreText = "SCORE  ${"%,d".format(scoreManager.score)}"
-        canvas.drawText(scoreText, marginX, row2Y, scorePaint)
+        canvas.drawText(scoreText, marginX, row1Y, scorePaint)
         val lvLabel = if (isStoryMode) "Lv ${blobManager.level}" else "LEVEL ${blobManager.level}"
         val lvX = marginX + scorePaint.measureText(scoreText) + screenWidth * 0.05f
-        canvas.drawText(lvLabel, lvX, row2Y, scorePaint)
+        canvas.drawText(lvLabel, lvX, row1Y, scorePaint)
 
-        // 段2右: HP（赤ハート・右寄せ）
+        // 段1右: HP（赤ハート・右寄せ）
         val heartText = "HP  " + "♥".repeat(hp.coerceAtLeast(0))
         heartPaint.textSize = baseSize
         val heartBounds = Rect()
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
-        canvas.drawText(heartText, screenWidth - heartBounds.width() - marginX, row2Y, heartPaint)
+        canvas.drawText(heartText, screenWidth - heartBounds.width() - marginX, row1Y, heartPaint)
+
+        // 段2（下・小さめ・緑）: モード名。ボスはSTAGE名も緑で併記
+        levelPaint.textSize = subSize
+        if (isStoryMode) {
+            val modeText = "BOSS MODE"
+            canvas.drawText(modeText, marginX, row2Y, levelPaint)          // 緑
+            val stageText = StageConfig.titleOf(stage)                     // STAGE 1〜5 / STAGE FINAL
+            val stX = marginX + levelPaint.measureText(modeText) + screenWidth * 0.07f
+            canvas.drawText(stageText, stX, row2Y, levelPaint)             // 緑に統一
+        } else {
+            canvas.drawText("ENDLESS MODE", marginX, row2Y, levelPaint)    // 緑
+        }
 
         // 回復メッセージ（道中・ボス前の回復時に一定時間表示）
         if (healMessageTimer > 0) {
