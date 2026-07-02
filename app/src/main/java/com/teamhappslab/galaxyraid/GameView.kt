@@ -371,6 +371,11 @@ class GameView(
     init {
         holder.addCallback(this)
         isFocusable = true
+        // プレイ中HUD等のフォントも他画面と統一（Saira）。
+        // ここで設定するのは、各Paintの初期化子より後（宣言順）で typeface を確定させるため。
+        for (p in listOf(scorePaint, heartPaint, roundPaint, levelPaint, bossLabelPaint)) {
+            p.typeface = goUiTypeface
+        }
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -382,7 +387,7 @@ class GameView(
         Player.initBitmap(context, screenWidth * 0.08f)
         Bullet.initSharedPaints(screenWidth)
         EnemyBullet.initSharedPaints(screenWidth)
-        PowerUpItem.initPaints(screenWidth)
+        PowerUpItem.initPaints(screenWidth, goUiTypeface)
         Boss.initBitmap(context, screenWidth * GameConfig.BOSS_WIDTH_RATIO)
         bulletPool = BulletPool(screenWidth, screenHeight, initialSize = 60)
 

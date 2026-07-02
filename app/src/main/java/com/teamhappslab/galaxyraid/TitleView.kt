@@ -46,17 +46,9 @@ class TitleView(context: Context) : View(context) {
         invalidate()
     }
 
-    // ── フォント（Saira 可変フォント。太字＝800 / UI＝600） ──────────────
-    private val titleTypeface: Typeface = loadSaira(800)
-    private val uiTypeface: Typeface = loadSaira(600)
-    private fun loadSaira(weight: Int): Typeface = try {
-        Typeface.Builder(context.assets, "fonts/saira_var.ttf")
-            .setFontVariationSettings("'wght' $weight")
-            .build() ?: Typeface.createFromAsset(context.assets, "fonts/saira_var.ttf")
-    } catch (e: Exception) {
-        try { Typeface.createFromAsset(context.assets, "fonts/saira_var.ttf") }
-        catch (e2: Exception) { Typeface.DEFAULT_BOLD }
-    }
+    // ── フォント（Saira 可変フォント。太字＝800 / UI＝600）。共有の UiKit.loadSaira に統一 ──
+    private val titleTypeface: Typeface = UiKit.loadSaira(context, 800)
+    private val uiTypeface: Typeface = UiKit.loadSaira(context, 600)
 
     // 共通の宇宙背景（背景色＋星雲＋多層星）
     private val space = SpaceBackground()

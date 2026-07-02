@@ -3,6 +3,7 @@ package com.teamhappslab.galaxyraid
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Typeface
 import kotlin.math.sin
 
 class PowerUpItem(
@@ -33,8 +34,9 @@ class PowerUpItem(
             isFakeBoldText = true
         }
 
-        fun initPaints(screenWidth: Int) {
+        fun initPaints(screenWidth: Int, uiTypeface: Typeface) {
             textPaint.textSize = screenWidth * 0.028f
+            textPaint.typeface = uiTypeface  // 他画面と統一（Saira）
         }
     }
 
