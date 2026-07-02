@@ -248,12 +248,6 @@ class GameView(
     // ────────────────────────────────────────────────────
 
     // ── ティアアップエフェクト ────────────────────────────
-    private var tierUpTimer: Int = 0  // ティアアップエフェクトの残りフレーム
-    private var tierUpNumber: Int = 0 // 何ティアになったか
-    private val tierUpBgPaint = Paint().apply { color = Color.argb(0, 0, 0, 0) }  // 動的に変更
-    private val tierUpTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FFD740"); isFakeBoldText = true
-    }
     // ────────────────────────────────────────────────────
 
     private var screenWidth: Int = 0
@@ -1002,15 +996,11 @@ class GameView(
         // Blob更新（プレイヤー座標とスコアを渡す）
         blobManager.update(player.x, player.y, scoreManager.score)
 
-        // ティアアップ検知
+        // ティアアップ検知（表示は出さず、HP+1回復のみ。演出はボス前回復と統一）
         if (blobManager.tierUpEvent) {
             blobManager.tierUpEvent = false
-            tierUpTimer = 180  // 3秒間エフェクト
-            tierUpNumber = blobManager.globalTier
-            // ティアアップ時にHP+1回復。エフェクトはボス前回復と統一（applyHeal）
             applyHeal(1)
         }
-        if (tierUpTimer > 0) tierUpTimer--
         if (healMessageTimer > 0) healMessageTimer--
 
         // ── 道中回復（ストーリーのステージ設定で指定レベル到達時に1回） ──
@@ -1554,40 +1544,7 @@ class GameView(
             pauseBtnRect.centerY() + plBounds.height() / 2f,
             pauseBtnTextPaint)
 
-        // ティアアップエフェクト
-        if (tierUpTimer > 0) {
-            val progress = tierUpTimer.toFloat() / 180f
-            // フラッシュ効果（最初の30フレームは白くフラッシュ）
-            if (tierUpTimer > 150) {
-                val flashA = ((tierUpTimer - 150).toFloat() / 30f * 120).toInt()
-                tierUpBgPaint.color = Color.argb(flashA, 255, 215, 0)
-                canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), tierUpBgPaint)
-            }
-            val alpha = (progress * 255).toInt().coerceIn(0, 255)
-            val hasEnemyPowerUp = tierUpNumber >= 3  // Lv100〜から敵強化
-
-            // TIER N
-            tierUpTextPaint.textSize = screenWidth * 0.10f
-            tierUpTextPaint.color = Color.argb(alpha, 255, 215, 0)
-            val line1 = "TIER $tierUpNumber"
-            val b1 = android.graphics.Rect(); tierUpTextPaint.getTextBounds(line1, 0, line1.length, b1)
-            val baseY = if (hasEnemyPowerUp) screenHeight * 0.30f else screenHeight * 0.35f
-            canvas.drawText(line1, (screenWidth - b1.width()) / 2f, baseY, tierUpTextPaint)
-
-            // ENEMY POWER UP（Lv100〜のみ）
-            if (hasEnemyPowerUp) {
-                tierUpTextPaint.textSize = screenWidth * 0.08f
-                tierUpTextPaint.color = Color.argb(alpha, 255, 100, 100)
-                val line2 = "ENEMY POWER UP"
-                val b2 = android.graphics.Rect(); tierUpTextPaint.getTextBounds(line2, 0, line2.length, b2)
-                canvas.drawText(line2, (screenWidth - b2.width()) / 2f, baseY + screenHeight * 0.10f, tierUpTextPaint)
-            }
-
-            // ※ HP+1回復のエフェクトは applyHeal（緑「HP RECOVERED」表示）に統一。ここでは表示しない。
-
-            // 色をリセット
-            tierUpTextPaint.color = Color.parseColor("#FFD740")
-        }
+        // ティアアップ表示は廃止（「TIER N」等は出さない）。回復のみ applyHeal で演出する。
 
         // PAUSED オーバーレイ
         if (gameState == GameState.PAUSED) {
