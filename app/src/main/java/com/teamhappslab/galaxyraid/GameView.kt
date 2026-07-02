@@ -351,7 +351,7 @@ class GameView(
         color = Color.WHITE; typeface = goUiTypeface
     }
     private val gameOverScorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE; typeface = goUiTypeface; letterSpacing = 0.06f
+        color = Color.parseColor("#40C4FF"); typeface = goUiTypeface; letterSpacing = 0.06f  // プレイ中HUDと同じ水色
     }
     // 情報パネル（SCORE/LEVEL/RANKを囲むHUD枠）
     private val goPanelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(130, 8, 18, 38) }
@@ -1417,16 +1417,18 @@ class GameView(
         heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
         canvas.drawText(heartText, screenWidth - heartBounds.width() - marginX, row1Y, heartPaint)
 
-        // 段2（下・小さめ・緑）: モード名。ボスはSTAGE名も緑で併記
+        // 段2（下・小さめ）: モード名。ホーム画面のボタン色に合わせる（BOSS=赤 / ENDLESS=紫）
         levelPaint.textSize = subSize
         if (isStoryMode) {
+            levelPaint.color = Color.parseColor("#FF4557")                 // 赤（ホームのBOSS MODEと同じ）
             val modeText = "BOSS MODE"
-            canvas.drawText(modeText, marginX, row2Y, levelPaint)          // 緑
+            canvas.drawText(modeText, marginX, row2Y, levelPaint)
             val stageText = StageConfig.titleOf(stage)                     // STAGE 1〜5 / STAGE FINAL
             val stX = marginX + levelPaint.measureText(modeText) + screenWidth * 0.045f
-            canvas.drawText(stageText, stX, row2Y, levelPaint)             // 緑に統一
+            canvas.drawText(stageText, stX, row2Y, levelPaint)
         } else {
-            canvas.drawText("ENDLESS MODE", marginX, row2Y, levelPaint)    // 緑
+            levelPaint.color = Color.parseColor("#B06BFF")                 // 紫（ホームのENDLESSと同じ）
+            canvas.drawText("ENDLESS MODE", marginX, row2Y, levelPaint)
         }
 
         // 回復メッセージ（道中・ボス前の回復時に一定時間表示）
@@ -1619,8 +1621,8 @@ class GameView(
             canvas.drawPath(panelPath, goPanelBgPaint)
             canvas.drawPath(panelPath, goPanelBorderPaint)
 
-            // スコア（1行目）とレベル（2行目）を別行で表示
-            gameOverScorePaint.color = Color.WHITE
+            // スコア（1行目）とレベル（2行目）を別行で表示（プレイ中HUDと同じ水色）
+            gameOverScorePaint.color = Color.parseColor("#40C4FF")
             val scoreText = "SCORE  ${scoreManager.score}"
             val scoreBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
