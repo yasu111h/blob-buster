@@ -214,10 +214,11 @@ class GameView(
     private val pauseBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(220, 64, 255, 128); isFakeBoldText = true
     }
-    private val pauseOverlayPaint = Paint().apply { color = Color.argb(180, 0, 0, 0) }
-    private val pauseLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE; isFakeBoldText = true
-    }
+    private val pauseOverlayPaint = Paint().apply { color = Color.argb(190, 4, 8, 18) }
+    // "PAUSED" タイトル（メタリックシアン＋発光。フォント・シェーダはsurfaceCreatedで設定）
+    private val pauseLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pauseGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pauseSubPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val resumeBtnBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(220, 30, 140, 60)
     }
@@ -400,6 +401,27 @@ class GameView(
         gameOverGlowPaint.maskFilter = BlurMaskFilter(screenWidth * 0.02f, BlurMaskFilter.Blur.NORMAL)
         retryPaint.textSize = screenWidth * 0.06f
         gameOverScorePaint.textSize = screenWidth * 0.07f
+
+        // PAUSED タイトル（メタリックシアン＋発光）とサブテキスト
+        pauseLabelPaint.textSize = screenWidth * 0.12f
+        pauseLabelPaint.typeface = goTitleTypeface
+        pauseLabelPaint.letterSpacing = 0.06f
+        pauseLabelPaint.shader = LinearGradient(
+            0f, screenHeight * 0.375f, 0f, screenHeight * 0.425f,
+            intArrayOf(Color.parseColor("#EAF6FF"), Color.WHITE, Color.parseColor("#CDEBFF"),
+                Color.parseColor("#6FB6E6"), Color.parseColor("#2C74A8")),
+            floatArrayOf(0f, 0.40f, 0.52f, 0.74f, 1f), Shader.TileMode.CLAMP
+        )
+        pauseGlowPaint.textSize = screenWidth * 0.12f
+        pauseGlowPaint.typeface = goTitleTypeface
+        pauseGlowPaint.letterSpacing = 0.06f
+        pauseGlowPaint.color = Color.argb(150, 60, 200, 255)
+        pauseGlowPaint.maskFilter = BlurMaskFilter(screenWidth * 0.02f, BlurMaskFilter.Blur.NORMAL)
+        pauseSubPaint.textSize = screenWidth * 0.032f
+        pauseSubPaint.typeface = goUiTypeface
+        pauseSubPaint.color = Color.argb(160, 130, 195, 235)
+        pauseSubPaint.letterSpacing = 0.22f
+
         bossLabelPaint.textSize = screenWidth * 0.038f
         warningTextPaint.textSize = screenWidth * 0.13f
         clearTextPaint.textSize = screenWidth * 0.10f
@@ -1570,12 +1592,18 @@ class GameView(
         // PAUSED オーバーレイ
         if (gameState == GameState.PAUSED) {
             canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), pauseOverlayPaint)
-            // "PAUSED" テキスト
-            pauseLabelPaint.textSize = screenWidth * 0.12f
+            // "PAUSED"（発光＋メタリックシアン）
             val pausedText = "PAUSED"
             val pausedBounds = Rect()
             pauseLabelPaint.getTextBounds(pausedText, 0, pausedText.length, pausedBounds)
-            canvas.drawText(pausedText, (screenWidth - pausedBounds.width()) / 2f, screenHeight * 0.42f, pauseLabelPaint)
+            val pausedX = (screenWidth - pausedBounds.width()) / 2f
+            val pausedY = screenHeight * 0.41f
+            canvas.drawText(pausedText, pausedX, pausedY, pauseGlowPaint)
+            canvas.drawText(pausedText, pausedX, pausedY, pauseLabelPaint)
+            // サブテキスト
+            val pSub = "GAME PAUSED"
+            canvas.drawText(pSub, (screenWidth - pauseSubPaint.measureText(pSub)) / 2f,
+                pausedY + screenHeight * 0.035f, pauseSubPaint)
             // 中央再開ボタン
             canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBgPaint)
             canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBorderPaint)
