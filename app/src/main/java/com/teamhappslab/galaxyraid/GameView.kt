@@ -60,6 +60,7 @@ class GameView(
     private var bossSpawned: Boolean = false       // ボスを一度出したか
     private var bossWaitTimer: Int = 0             // ボス出現レベル到達後、残存敵待ちのタイマー
     private var bossHealDelayTimer: Int = 0        // 残存敵を全滅させてからボス前回復までのディレイ(約0.3秒)
+    private var bossWarningDelayTimer: Int = 0     // ボス前回復からWARNING演出開始までのディレイ(約0.3秒)
     private var bossWarningTimer: Int = 0          // WARNING演出の残りフレーム
     private var bossHpDisplayRatio: Float = 1f     // HPバーの減少アニメーション用
     private var clearTapDelayTimer: Int = 0        // CLEAR直後の誤タップ防止
@@ -710,6 +711,7 @@ class GameView(
         bossSpawned = false
         bossWaitTimer = 0
         bossHealDelayTimer = 0
+        bossWarningDelayTimer = 0
         bossWarningTimer = 0
         bossHpDisplayRatio = 1f
         clearTapDelayTimer = 0
@@ -983,8 +985,8 @@ class GameView(
             blobManager.tierUpEvent = false
             tierUpTimer = 180  // 3秒間エフェクト
             tierUpNumber = blobManager.globalTier
-            // ティアアップ時にHP+1回復（最大HPを超えない）
-            hp = minOf(hp + 1, maxHp)
+            // ティアアップ時にHP+1回復。エフェクトはボス前回復と統一（applyHeal）
+            applyHeal(1)
         }
         if (tierUpTimer > 0) tierUpTimer--
         if (healMessageTimer > 0) healMessageTimer--
@@ -1009,12 +1011,20 @@ class GameView(
                 bossHealDelayTimer = GameConfig.BOSS_PRE_HEAL_DELAY_FRAMES
             }
         }
-        // 全滅から約0.3秒後にボス前回復 → その後にWARNING演出を開始
+        // 全滅から約0.3秒後にボス前回復
         if (bossHealDelayTimer > 0) {
             bossHealDelayTimer--
             if (bossHealDelayTimer == 0) {
                 preBossHealDone = true
                 stageConfig?.let { if (it.preBossHealAmount > 0) applyHeal(it.preBossHealAmount) }
+                // 回復のさらに約0.3秒後にWARNING演出を開始
+                bossWarningDelayTimer = GameConfig.BOSS_PRE_HEAL_DELAY_FRAMES
+            }
+        }
+        // 回復から約0.3秒後にWARNING演出を開始
+        if (bossWarningDelayTimer > 0) {
+            bossWarningDelayTimer--
+            if (bossWarningDelayTimer == 0) {
                 bossWarningTimer = GameConfig.BOSS_WARNING_FRAMES
             }
         }
@@ -1549,13 +1559,7 @@ class GameView(
                 canvas.drawText(line2, (screenWidth - b2.width()) / 2f, baseY + screenHeight * 0.10f, tierUpTextPaint)
             }
 
-            // HP +1 回復（毎回表示）
-            tierUpTextPaint.textSize = screenWidth * 0.075f
-            tierUpTextPaint.color = Color.argb(alpha, 100, 255, 150)
-            val lineHp = "♥  HP +1"
-            val bHp = android.graphics.Rect(); tierUpTextPaint.getTextBounds(lineHp, 0, lineHp.length, bHp)
-            val hpY = if (hasEnemyPowerUp) baseY + screenHeight * 0.20f else baseY + screenHeight * 0.12f
-            canvas.drawText(lineHp, (screenWidth - bHp.width()) / 2f, hpY, tierUpTextPaint)
+            // ※ HP+1回復のエフェクトは applyHeal（緑「HP RECOVERED」表示）に統一。ここでは表示しない。
 
             // 色をリセット
             tierUpTextPaint.color = Color.parseColor("#FFD740")
