@@ -955,7 +955,7 @@ class GameView(
             var dashHit = false
             for (blob in blobManager.blobs) {
                 if (segmentCircleDist(prevPlayerX, prevPlayerY, player.x, player.y, blob.cx, blob.cy)
-                    <= blob.radius + player.width / 2f) { dashHit = true; break }
+                    <= blob.collisionRadius + player.width / 2f) { dashHit = true; break }
             }
             if (!dashHit) {
                 for (eb in enemyBullets) {
@@ -1146,7 +1146,7 @@ class GameView(
                 // 画面上部（まだほぼ見えていない敵）は当たり判定をスキップ
                 if (blob.cy < blob.radius) continue
                 val dy = bullet.y - blob.cy
-                val r  = bullet.radius + blob.radius
+                val r  = bullet.radius + blob.collisionRadius
                 if (dy > r || dy < -r) continue
                 val dx = bullet.x - blob.cx
                 if (dx * dx + dy * dy <= r * r) {
@@ -1209,7 +1209,7 @@ class GameView(
         if (invincibleTimer <= 0) {
             for (blob in blobManager.blobs) {
                 val dy = player.y - blob.cy
-                val r  = player.hitRadius + blob.radius
+                val r  = player.hitRadius + blob.collisionRadius
                 if (dy > r || dy < -r) continue
                 val dx = player.x - blob.cx
                 if (dx * dx + dy * dy <= r * r) {
@@ -1389,8 +1389,8 @@ class GameView(
         if (debugShowHitbox) {
             // 敵（通常敵）の判定円
             for (blob in blobManager.blobs) {
-                canvas.drawCircle(blob.cx, blob.cy, blob.radius, enemyHitboxFillPaint)
-                canvas.drawCircle(blob.cx, blob.cy, blob.radius, enemyHitboxStrokePaint)
+                canvas.drawCircle(blob.cx, blob.cy, blob.collisionRadius, enemyHitboxFillPaint)
+                canvas.drawCircle(blob.cx, blob.cy, blob.collisionRadius, enemyHitboxStrokePaint)
             }
             // ボスの判定円
             boss?.let { b ->

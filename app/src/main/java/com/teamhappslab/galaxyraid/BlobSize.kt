@@ -108,6 +108,20 @@ enum class BlobSize {
         ENEMY8 -> 1.0f  // Leviathan: radius=18%で既に最大
     }
 
+    /**
+     * 当たり判定半径の倍率（見た目の円に対する割合）。
+     * 見た目より実体が小さい敵を、接触・被弾の両判定で小さくするために使う。
+     * 1.0=見た目通り。
+     */
+    fun hitboxScale(): Float = when (this) {
+        SPEEDY -> 0.9f
+        LARGE  -> 0.4f   // 蜘蛛
+        HUGE   -> 0.8f   // 赤目
+        DRAGON -> 0.85f
+        ENEMY8 -> 0.8f   // リヴァイアサン
+        else   -> 1.0f
+    }
+
     /** この敵が出現するのに必要な最低レベル（実際の出現レベルと一致） */
     fun minLevel(): Int = when (this) {
         TINY   -> 1

@@ -34,6 +34,8 @@ class Blob(
     var prevCx: Float = cx   // 補間用: 前回更新時の中心座標
     var prevCy: Float = cy
     val radius: Float = size.radius(screenWidth) * size.displayScale()
+    /** 当たり判定用の半径（見た目より小さい敵向け。接触・被弾の両方で使用） */
+    val collisionRadius: Float = radius * size.hitboxScale()
     // ステージ倍率を反映したHP。四捨五入し最低1を保証（HP1雑魚はどの倍率でも1）
     private val scaledMaxHp: Int = (size.maxHp() * hpMult).roundToInt().coerceAtLeast(1)
     var hp: Int = scaledMaxHp
