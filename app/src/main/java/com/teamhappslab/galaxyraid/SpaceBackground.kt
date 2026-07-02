@@ -26,7 +26,9 @@ class SpaceBackground {
     private class S(
         val x: Float, val y: Float, val r: Float,
         val alphaBase: Int, val color: Int,
-        val glow: Boolean, val twinkle: Boolean, val phase: Float
+        val glow: Boolean, val twinkle: Boolean, val phase: Float,
+        val speed: Float,  // 縦方向のゆっくりした流れ（px/フレーム。奥=遅い/手前=速い）
+        val sway: Float    // 横方向のわずかな揺れ幅（px。0=揺れなし）
     )
     private val stars = ArrayList<S>()
     private val starPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -82,7 +84,8 @@ class SpaceBackground {
         val rng = Random(seed)
         val px = w / 1080f
         stars.clear()
-        fun add(count: Int, rMin: Float, rMax: Float, aMin: Int, aMax: Int, color: Int, glow: Boolean, twChance: Float) {
+        fun add(count: Int, rMin: Float, rMax: Float, aMin: Int, aMax: Int, color: Int, glow: Boolean,
+                twChance: Float, spMin: Float, spMax: Float, swayMax: Float) {
             repeat(count) {
                 stars.add(S(
                     x = rng.nextFloat() * w,
@@ -91,14 +94,16 @@ class SpaceBackground {
                     alphaBase = aMin + rng.nextInt((aMax - aMin).coerceAtLeast(1)),
                     color = color, glow = glow,
                     twinkle = rng.nextFloat() < twChance,
-                    phase = rng.nextFloat() * 6.28f
+                    phase = rng.nextFloat() * 6.28f,
+                    speed = (spMin + rng.nextFloat() * (spMax - spMin)) * px,
+                    sway = rng.nextFloat() * swayMax * px
                 ))
             }
         }
-        // 遠景・中景・近景・アクセント
-        add(55, 0.6f * px, 1.2f * px, 30, 80, Color.rgb(180, 200, 230), false, 0.15f)
-        add(30, 1.0f * px, 1.9f * px, 80, 150, Color.rgb(200, 222, 255), false, 0.3f)
-        add(10, 1.9f * px, 3.0f * px, 150, 220, Color.rgb(232, 242, 255), true, 0.35f)
+        // 遠景（遅い）・中景・近景（速い）・アクセント。奥ほど遅く動かして奥行きを出す。
+        add(55, 0.6f * px, 1.2f * px, 30, 80, Color.rgb(180, 200, 230), false, 0.15f, 0.06f, 0.14f, 0f)
+        add(30, 1.0f * px, 1.9f * px, 80, 150, Color.rgb(200, 222, 255), false, 0.3f, 0.14f, 0.26f, 3f)
+        add(10, 1.9f * px, 3.0f * px, 150, 220, Color.rgb(232, 242, 255), true, 0.35f, 0.28f, 0.50f, 6f)
         val accent = intArrayOf(Color.rgb(64, 196, 255), Color.rgb(255, 80, 140), Color.rgb(255, 215, 96))
         repeat(5) {
             stars.add(S(
@@ -106,28 +111,35 @@ class SpaceBackground {
                 r = (2.0f + rng.nextFloat() * 1.4f) * px,
                 alphaBase = 130 + rng.nextInt(70),
                 color = accent[rng.nextInt(accent.size)], glow = true,
-                twinkle = rng.nextFloat() < 0.5f, phase = rng.nextFloat() * 6.28f
+                twinkle = rng.nextFloat() < 0.5f, phase = rng.nextFloat() * 6.28f,
+                speed = (0.16f + rng.nextFloat() * 0.18f) * px,
+                sway = (2f + rng.nextFloat() * 5f) * px
             ))
         }
     }
 
-    /** @param tick アニメーションカウンタ（明滅に使用） */
+    /** @param tick アニメーションカウンタ（流れ・揺れ・明滅に使用） */
     fun draw(canvas: Canvas, tick: Int) {
         val b = bg
         if (b != null) canvas.drawBitmap(b, 0f, 0f, null)
         else { starPaint.color = Color.parseColor("#080E1A"); canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), starPaint) }
+        val hf = h.toFloat()
         for (s in stars) {
+            // ゆっくり縦に流れ、画面外へ出たら上に回り込む（パララックス）
+            var sy = (s.y + tick * s.speed) % hf
+            if (sy < 0f) sy += hf
+            val sx = if (s.sway != 0f) s.x + sin(tick * 0.02f + s.phase) * s.sway else s.x
             val a = if (s.twinkle)
                 (s.alphaBase * (0.7f + 0.3f * sin(tick * 0.05f + s.phase))).toInt().coerceIn(0, 255)
             else s.alphaBase
             if (s.glow) {
                 glowPaint.color = s.color
                 glowPaint.alpha = (a * 0.28f).toInt().coerceIn(0, 255)
-                canvas.drawCircle(s.x, s.y, s.r * 2.4f, glowPaint)
+                canvas.drawCircle(sx, sy, s.r * 2.4f, glowPaint)
             }
             starPaint.color = s.color
             starPaint.alpha = a
-            canvas.drawCircle(s.x, s.y, s.r, starPaint)
+            canvas.drawCircle(sx, sy, s.r, starPaint)
         }
     }
 
