@@ -576,7 +576,15 @@ class GameView(
         // アイテム取得オーラ
         powerUpAuraPaint.strokeWidth = screenWidth * 0.018f
 
-        initGame()
+        if (!::player.isInitialized) {
+            // 初回のSurface生成時のみ新規ゲーム開始。
+            initGame()
+        } else if (gameState == GameState.PLAYING) {
+            // バックグラウンド復帰などでSurfaceが作り直された場合は、
+            // ゲームをリセットせず自動的に一時停止する。
+            gameState = GameState.PAUSED
+            soundManager.pauseBgmByUser()
+        }
         startThread()
     }
 
