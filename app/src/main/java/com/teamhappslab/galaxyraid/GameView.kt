@@ -1414,7 +1414,7 @@ class GameView(
             if (!b.isGone) {
                 val barH = screenHeight * 0.018f
                 val barMargin = screenWidth * 0.04f
-                val barTop = screenHeight * 0.065f
+                val barTop = screenHeight * 0.115f  // 上部HUD(2段目)と被らないよう下げる
                 val barRect = RectF(barMargin, barTop, screenWidth - barMargin, barTop + barH)
                 canvas.drawRoundRect(barRect, barH / 2, barH / 2, bossHpBarBgPaint)
                 val actualRatio = b.hp.toFloat() / b.maxHp
