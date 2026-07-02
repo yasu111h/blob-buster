@@ -2,6 +2,7 @@ package com.teamhappslab.galaxyraid
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
@@ -335,17 +336,25 @@ class GameView(
     private val overlayPaint = Paint().apply {
         color = Color.parseColor("#AA000000")
     }
+    // GAME OVER / CLEAR 用フォント（他画面と統一：Saira）
+    private val goTitleTypeface = UiKit.loadSaira(context, 800)
+    private val goUiTypeface = UiKit.loadSaira(context, 600)
     private val gameOverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.RED
-        isFakeBoldText = true
+        color = Color.parseColor("#FF3B4E"); typeface = goTitleTypeface; letterSpacing = 0.05f
+    }
+    private val gameOverGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(150, 255, 40, 60); typeface = goTitleTypeface; letterSpacing = 0.05f
     }
     private val retryPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        isFakeBoldText = true
+        color = Color.WHITE; typeface = goUiTypeface
     }
     private val gameOverScorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        isFakeBoldText = true
+        color = Color.WHITE; typeface = goUiTypeface; letterSpacing = 0.06f
+    }
+    // 情報パネル（SCORE/LEVEL/RANKを囲むHUD枠）
+    private val goPanelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(130, 8, 18, 38) }
+    private val goPanelBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(120, 70, 200, 255); style = Paint.Style.STROKE; strokeWidth = 1.8f
     }
     private val rankInBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(220, 180, 120, 0)
@@ -355,7 +364,7 @@ class GameView(
         style = Paint.Style.STROKE; strokeWidth = 3f
     }
     private val rankInTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FFD740"); isFakeBoldText = true
+        color = Color.parseColor("#FFD740"); typeface = goTitleTypeface; letterSpacing = 0.06f
     }
 
     init {
@@ -380,6 +389,8 @@ class GameView(
         scorePaint.textSize = textSize
         roundPaint.textSize = textSize
         gameOverPaint.textSize = screenWidth * 0.12f
+        gameOverGlowPaint.textSize = screenWidth * 0.12f
+        gameOverGlowPaint.maskFilter = BlurMaskFilter(screenWidth * 0.02f, BlurMaskFilter.Blur.NORMAL)
         retryPaint.textSize = screenWidth * 0.06f
         gameOverScorePaint.textSize = screenWidth * 0.07f
         bossLabelPaint.textSize = screenWidth * 0.038f
@@ -1569,40 +1580,47 @@ class GameView(
         if (gameState == GameState.GAME_OVER) {
             canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), overlayPaint)
 
-            // GAME OVER テキスト
+            // GAME OVER テキスト（発光＋メタリック赤）
             val goText = "GAME OVER"
             val goBounds = Rect()
             gameOverPaint.getTextBounds(goText, 0, goText.length, goBounds)
-            canvas.drawText(
-                goText,
-                (screenWidth - goBounds.width()) / 2f,
-                screenHeight * 0.38f,
-                gameOverPaint
-            )
+            val goX = (screenWidth - goBounds.width()) / 2f
+            val goY = screenHeight * 0.375f
+            canvas.drawText(goText, goX, goY, gameOverGlowPaint)
+            canvas.drawText(goText, goX, goY, gameOverPaint)
+
+            // 情報パネル（SCORE / LEVEL / RANK を囲むHUD枠）
+            val hasRank = rankAchieved in 1..3
+            val panel = RectF(screenWidth * 0.15f, screenHeight * 0.44f,
+                screenWidth * 0.85f, screenHeight * (if (hasRank) 0.635f else 0.575f))
+            val panelPath = UiKit.cutRectPath(panel, panel.height() * 0.10f)
+            canvas.drawPath(panelPath, goPanelBgPaint)
+            canvas.drawPath(panelPath, goPanelBorderPaint)
 
             // スコア（1行目）とレベル（2行目）を別行で表示
-            val scoreText = "SCORE: ${scoreManager.score}"
+            gameOverScorePaint.color = Color.WHITE
+            val scoreText = "SCORE  ${scoreManager.score}"
             val scoreBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
             canvas.drawText(
                 scoreText,
                 (screenWidth - scoreBounds.width()) / 2f,
-                screenHeight * 0.48f,
+                screenHeight * 0.495f,
                 gameOverScorePaint
             )
-            val levelText = "Lv.${GameConfig.levelForScore(scoreManager.score)}"
+            val levelText = "LEVEL ${GameConfig.levelForScore(scoreManager.score)}"
             val levelBounds = Rect()
             gameOverScorePaint.getTextBounds(levelText, 0, levelText.length, levelBounds)
             canvas.drawText(
                 levelText,
                 (screenWidth - levelBounds.width()) / 2f,
-                screenHeight * 0.535f,
+                screenHeight * 0.55f,
                 gameOverScorePaint
             )
 
             // ランクイン表示（ボタンではなくお祝いラベル）
-            if (rankAchieved in 1..3) {
-                drawRankBadge(canvas, screenHeight * 0.595f)
+            if (hasRank) {
+                drawRankBadge(canvas, screenHeight * 0.605f)
             }
 
             // Retry/Homeボタンは誤タップ防止のため約0.5秒遅れて表示する
@@ -1663,7 +1681,7 @@ class GameView(
             val sBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreLine, 0, scoreLine.length, sBounds)
             canvas.drawText(scoreLine, (screenWidth - sBounds.width()) / 2f, screenHeight * 0.535f, gameOverScorePaint)
-            val levelLine = "Lv.${GameConfig.levelForScore(scoreManager.score)}"
+            val levelLine = "LEVEL ${GameConfig.levelForScore(scoreManager.score)}"
             val lBounds = Rect()
             gameOverScorePaint.getTextBounds(levelLine, 0, levelLine.length, lBounds)
             canvas.drawText(levelLine, (screenWidth - lBounds.width()) / 2f, screenHeight * 0.585f, gameOverScorePaint)
@@ -1763,8 +1781,7 @@ class GameView(
      * 塗りつぶし枠を使わず、金色テキスト＋下の細い飾り線で、Retry/Homeボタンと明確に区別する。
      */
     private fun drawRankBadge(canvas: Canvas, centerY: Float) {
-        val place = when (rankAchieved) { 1 -> "1位"; 2 -> "2位"; else -> "3位" }
-        val medal = "★  ランキング $place  ★"
+        val medal = if (rankAchieved == 1) "★  NEW RECORD  ★" else "★  RANK #$rankAchieved  ★"
         rankInTextPaint.textSize = screenWidth * 0.058f
         rankInTextPaint.textAlign = Paint.Align.CENTER
         val fm = rankInTextPaint.fontMetrics
