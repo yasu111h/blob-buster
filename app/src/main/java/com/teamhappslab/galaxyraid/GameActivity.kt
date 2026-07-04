@@ -1,5 +1,6 @@
 package com.teamhappslab.galaxyraid
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -21,6 +22,15 @@ class GameActivity : AppCompatActivity() {
         val stage = intent.getIntExtra("stage", 0)
         gameView = GameView(this, soundManager, gameMode, stage)
         gameView.onGoHome = { finish() }
+        // Homeボタンはタイトル(MainActivity)まで戻る。ボスモードは
+        // ホーム→ステージ選択→ゲームの順で開かれるため、finish()だけだと
+        // ステージ選択に戻ってしまう。間の画面をクリアしてタイトルへ。
+        gameView.onGoTitle = {
+            val intent = Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            startActivity(intent)
+            finish()
+        }
         setContentView(gameView)
 
         // DecorView生成後にフルスクリーン設定（setContentViewの後でないとNPE）

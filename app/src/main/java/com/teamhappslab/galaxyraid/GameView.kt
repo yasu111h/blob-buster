@@ -202,7 +202,8 @@ class GameView(
     private var gameOverHomeBtnRect = RectF()  // GAME_OVERオーバーレイのHomeボタン
     private var gameOverRetryBtnRect = RectF() // GAME_OVERオーバーレイのRetryボタン
     private var clearReturnBtnRect = RectF()   // CLEARオーバーレイのReturnボタン（ステージ選択へ）
-    var onGoHome: (() -> Unit)? = null   // ホーム画面へ戻るコールバック
+    var onGoHome: (() -> Unit)? = null   // 直前の画面へ戻る（CLEAR時のステージ選択へのReturn等）
+    var onGoTitle: (() -> Unit)? = null  // タイトル(ホーム)画面へ戻るコールバック
 
     private val pauseBtnPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(160, 20, 80, 40)
@@ -847,8 +848,8 @@ class GameView(
                         gameState = GameState.PLAYING
                         soundManager.resumeBgmByUser()
                     }
-                    // Homeボタン（即帰還）
-                    homeBtnRect.contains(tx, ty) -> onGoHome?.invoke()
+                    // Homeボタン（タイトル画面へ戻る）
+                    homeBtnRect.contains(tx, ty) -> onGoTitle?.invoke()
                 }
             }
             return true
@@ -869,7 +870,7 @@ class GameView(
             if (event.actionMasked == MotionEvent.ACTION_UP && gameOverTapDelayTimer <= 0) {
                 when {
                     gameOverRetryBtnRect.contains(event.x, event.y) -> initGame()
-                    gameOverHomeBtnRect.contains(event.x, event.y)  -> onGoHome?.invoke()
+                    gameOverHomeBtnRect.contains(event.x, event.y)  -> onGoTitle?.invoke()
                 }
             }
             return true
