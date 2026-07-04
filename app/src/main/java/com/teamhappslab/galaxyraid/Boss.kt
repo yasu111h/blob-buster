@@ -43,7 +43,7 @@ class Boss(
     var y: Float = -width * 0.6f          // 画面外上から登場
     private var prevX: Float = x          // 補間用: 前回更新時の位置
     private var prevY: Float = y
-    private val targetY: Float = screenHeight * 0.22f  // 定位置（画面上部1/4あたり）
+    private val targetY: Float = screenHeight * 0.30f  // 定位置（上部HUD2段目＋HPバーと重ならないよう下げる）
     private val enterSpeed: Float = screenHeight * 0.004f
 
     val maxHp: Int = bossMaxHp
