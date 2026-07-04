@@ -1600,54 +1600,53 @@ class GameView(
         if (gameState == GameState.GAME_OVER) {
             canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), overlayPaint)
 
-            // GAME OVER テキスト（発光＋メタリック赤）
+            val sh = screenHeight.toFloat()
+
+            // GAME OVER テキスト（発光＋メタリック赤）。少し上へ
             val goText = "GAME OVER"
             val goBounds = Rect()
             gameOverPaint.getTextBounds(goText, 0, goText.length, goBounds)
             val goX = (screenWidth - goBounds.width()) / 2f
-            val goY = screenHeight * 0.375f
+            val goY = sh * 0.335f
             canvas.drawText(goText, goX, goY, gameOverGlowPaint)
             canvas.drawText(goText, goX, goY, gameOverPaint)
 
-            // 情報パネル（SCORE / LEVEL / RANK を囲むHUD枠）
+            // ── 情報パネル：NEW RECORDの有無で高さが変わっても全体が釣り合う動的レイアウト ──
             val hasRank = rankAchieved in 1..3
-            val panel = RectF(screenWidth * 0.15f, screenHeight * 0.44f,
-                screenWidth * 0.85f, screenHeight * (if (hasRank) 0.655f else 0.575f))
-            val panelPath = UiKit.cutRectPath(panel, panel.height() * 0.10f)
+            val panelTop = sh * 0.40f
+            val scoreY = panelTop + sh * 0.060f
+            val lvY = scoreY + sh * 0.052f
+            val rankCenterY = lvY + sh * 0.078f
+            val panelBottom = if (hasRank) rankCenterY + sh * 0.070f else lvY + sh * 0.032f
+            val panel = RectF(screenWidth * 0.15f, panelTop, screenWidth * 0.85f, panelBottom)
+            val panelPath = UiKit.cutRectPath(panel, panel.height() * 0.12f)
             canvas.drawPath(panelPath, goPanelBgPaint)
             canvas.drawPath(panelPath, goPanelBorderPaint)
 
-            // スコア（1行目）とレベル（2行目）を別行で表示（プレイ中HUDと同じ水色）
+            // SCORE / Lv（画面中央付近・プレイ中HUDと同じ水色）
             gameOverScorePaint.color = Color.parseColor("#40C4FF")
             val scoreText = "SCORE  ${"%,d".format(scoreManager.score)}"
             val scoreBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
-            canvas.drawText(
-                scoreText,
-                (screenWidth - scoreBounds.width()) / 2f,
-                screenHeight * 0.495f,
-                gameOverScorePaint
-            )
+            canvas.drawText(scoreText, (screenWidth - scoreBounds.width()) / 2f, scoreY, gameOverScorePaint)
             val levelText = "Lv ${GameConfig.levelForScore(scoreManager.score)}"
             val levelBounds = Rect()
             gameOverScorePaint.getTextBounds(levelText, 0, levelText.length, levelBounds)
-            canvas.drawText(
-                levelText,
-                (screenWidth - levelBounds.width()) / 2f,
-                screenHeight * 0.55f,
-                gameOverScorePaint
-            )
+            canvas.drawText(levelText, (screenWidth - levelBounds.width()) / 2f, lvY, gameOverScorePaint)
 
-            // ランクイン表示（ボタンではなくお祝いラベル）
-            if (hasRank) {
-                drawRankBadge(canvas, screenHeight * 0.605f)
-            }
+            // NEW RECORD / RANK（あるときだけ・大きめ）
+            if (hasRank) drawRankBadge(canvas, rankCenterY)
 
-            // Retry/Homeボタンは誤タップ防止のため約0.5秒遅れて表示する（SFボタン様式）
-            if (gameOverTapDelayTimer <= 0) {
-                drawSfButton(canvas, gameOverRetryBtnRect, "↻", "Retry", Color.parseColor("#4DFF9E"))
-                drawSfButton(canvas, gameOverHomeBtnRect, "⌂", "Home", Color.parseColor("#FFC93C"))
-            }
+            // Retry / Home はパネル下端から一定間隔で配置（枠が伸縮しても間隔一定＝バランス維持）
+            val bw = screenWidth * 0.48f
+            val bh = sh * 0.078f
+            val bx = (screenWidth - bw) / 2f
+            val retryTop = panelBottom + sh * 0.034f
+            gameOverRetryBtnRect = RectF(bx, retryTop, bx + bw, retryTop + bh)
+            val homeTop = retryTop + bh + sh * 0.028f
+            gameOverHomeBtnRect = RectF(bx, homeTop, bx + bw, homeTop + bh)
+            drawSfButton(canvas, gameOverRetryBtnRect, "↻", "Retry", Color.parseColor("#4DFF9E"))
+            drawSfButton(canvas, gameOverHomeBtnRect, "⌂", "Home", Color.parseColor("#FFC93C"))
         }
 
         // ── MISSION COMPLETE オーバーレイ（ボス撃破・ゲームクリア） ──
