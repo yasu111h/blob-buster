@@ -204,7 +204,9 @@ class GameView(
     private var clearReturnBtnRect = RectF()   // CLEARオーバーレイのReturnボタン（ステージ選択へ）
     // オーバーレイ画面（一時停止/クリア/失敗）で、その画面表示後にDOWNを受けたボタン。
     // 同じボタン上でUPしたときのみ押下成立とする（ドラッグ流入での誤タップ防止）。
-    private var armedBtn: RectF? = null
+    // ※矩形オブジェクトは毎フレーム作り直されるため、識別子(enum)で保持すること（同一比較===は使わない）。
+    private enum class OverlayBtn { RESUME, PAUSE_HOME, CLEAR_RETURN, GAMEOVER_RETRY, GAMEOVER_HOME }
+    private var armedBtn: OverlayBtn? = null
     var onGoHome: (() -> Unit)? = null   // 直前の画面へ戻る（CLEAR時のステージ選択へのReturn等）
     var onGoTitle: (() -> Unit)? = null  // タイトル(ホーム)画面へ戻るコールバック
 
@@ -828,8 +830,8 @@ class GameView(
                 // 再開/Homeボタンは、この画面上でDOWNを受けたときだけ「押下候補」として武装する
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                     armedBtn = when {
-                        resumeBtnRect.contains(tx, ty) -> resumeBtnRect
-                        homeBtnRect.contains(tx, ty)   -> homeBtnRect
+                        resumeBtnRect.contains(tx, ty) -> OverlayBtn.RESUME
+                        homeBtnRect.contains(tx, ty)   -> OverlayBtn.PAUSE_HOME
                         else -> null
                     }
                 }
@@ -857,12 +859,12 @@ class GameView(
                         // DBGボタン
                         DEBUG_MODE && debugBtnRect.contains(tx, ty) -> debugPanelOpen = !debugPanelOpen
                         // 再開ボタン（同じボタン上でDOWN→UPしたときのみ）
-                        armedBtn === resumeBtnRect && resumeBtnRect.contains(tx, ty) -> {
+                        armedBtn == OverlayBtn.RESUME && resumeBtnRect.contains(tx, ty) -> {
                             gameState = GameState.PLAYING
                             soundManager.resumeBgmByUser()
                         }
                         // Homeボタン（タイトル画面へ戻る。同じボタン上でDOWN→UPしたときのみ）
-                        armedBtn === homeBtnRect && homeBtnRect.contains(tx, ty) -> onGoTitle?.invoke()
+                        armedBtn == OverlayBtn.PAUSE_HOME && homeBtnRect.contains(tx, ty) -> onGoTitle?.invoke()
                     }
                     armedBtn = null
                 }
@@ -876,9 +878,9 @@ class GameView(
             val tx = event.getX(event.actionIndex); val ty = event.getY(event.actionIndex)
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN ->
-                    armedBtn = if (clearReturnBtnRect.contains(tx, ty)) clearReturnBtnRect else null
+                    armedBtn = if (clearReturnBtnRect.contains(tx, ty)) OverlayBtn.CLEAR_RETURN else null
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                    if (clearTapDelayTimer <= 0 && armedBtn === clearReturnBtnRect &&
+                    if (clearTapDelayTimer <= 0 && armedBtn == OverlayBtn.CLEAR_RETURN &&
                         clearReturnBtnRect.contains(tx, ty)) {
                         onGoHome?.invoke()
                     }
@@ -896,16 +898,16 @@ class GameView(
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                     armedBtn = when {
-                        gameOverRetryBtnRect.contains(tx, ty) -> gameOverRetryBtnRect
-                        gameOverHomeBtnRect.contains(tx, ty)  -> gameOverHomeBtnRect
+                        gameOverRetryBtnRect.contains(tx, ty) -> OverlayBtn.GAMEOVER_RETRY
+                        gameOverHomeBtnRect.contains(tx, ty)  -> OverlayBtn.GAMEOVER_HOME
                         else -> null
                     }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
                     if (gameOverTapDelayTimer <= 0) {
                         when {
-                            armedBtn === gameOverRetryBtnRect && gameOverRetryBtnRect.contains(tx, ty) -> initGame()
-                            armedBtn === gameOverHomeBtnRect && gameOverHomeBtnRect.contains(tx, ty)  -> onGoTitle?.invoke()
+                            armedBtn == OverlayBtn.GAMEOVER_RETRY && gameOverRetryBtnRect.contains(tx, ty) -> initGame()
+                            armedBtn == OverlayBtn.GAMEOVER_HOME && gameOverHomeBtnRect.contains(tx, ty)  -> onGoTitle?.invoke()
                         }
                     }
                     armedBtn = null
