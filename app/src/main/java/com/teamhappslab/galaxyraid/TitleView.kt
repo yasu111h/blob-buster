@@ -160,7 +160,7 @@ class TitleView(context: Context) : View(context) {
         scoreHeaderPaint.textSize = w * 0.030f
         scoreRankPaint.textSize   = w * 0.040f
         scoreValuePaint.textSize  = w * 0.044f
-        scoreLevelPaint.textSize  = w * 0.032f
+        scoreLevelPaint.textSize  = w * 0.044f  // スコア値と同じサイズに統一
         scoreEmptyPaint.textSize  = w * 0.034f
 
         btnTextPaint.textSize = w * 0.052f
