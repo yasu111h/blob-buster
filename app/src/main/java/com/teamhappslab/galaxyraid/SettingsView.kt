@@ -194,8 +194,9 @@ class SettingsView(context: Context) : View(context) {
     private fun drawActionButton(canvas: Canvas, rect: RectF, label: String, accent: Int, phase: Float) {
         val pulse = sin(animTick * 0.05f + phase) * 0.35f + 0.65f
         drawFrame(canvas, rect, accent, pulse)
-        val textAlpha = (180 * pulse + 75).toInt().coerceIn(0, 255)
-        btnTextPaint.color = Color.argb(textAlpha, Color.red(accent), Color.green(accent), Color.blue(accent))
+        // 文字は明滅させず常に明るい固定色にする（枠のグローは脈動のまま）
+        btnTextPaint.color = accent
+        btnTextPaint.alpha = 255
         canvas.drawText(label, (screenW - btnTextPaint.measureText(label)) / 2f,
             rect.centerY() + btnTextPaint.textSize * 0.34f, btnTextPaint)
     }

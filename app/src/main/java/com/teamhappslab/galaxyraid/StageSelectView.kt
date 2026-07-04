@@ -145,7 +145,7 @@ class StageSelectView(context: Context) : View(context) {
 
         // ── タイトル「BOSS MODE」＋ミッションタグライン ──
         drawTitle(canvas, "BOSS MODE", screenH * 0.095f)
-        taglinePaint.alpha = (sin(animTick * 0.06f) * 50 + 205).toInt().coerceIn(0, 255)
+        taglinePaint.alpha = 255   // 明滅させず常に明るく固定
         val tag = "⚠  ENGAGE THE GUARDIANS  ⚠"
         canvas.drawText(tag, (screenW - taglinePaint.measureText(tag)) / 2f, screenH * 0.140f, taglinePaint)
 

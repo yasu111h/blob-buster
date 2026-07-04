@@ -334,9 +334,10 @@ class TitleView(context: Context) : View(context) {
             Color.red(accent), Color.green(accent), Color.blue(accent))
         canvas.drawPath(path, btnBorderPaint)
 
-        // ラベル（アイコン＝システム字形 ＋ 単語＝Saira）
-        val textAlpha = (180 * pulse + 75).toInt().coerceIn(0, 255)
-        btnTextPaint.color = Color.argb(textAlpha, Color.red(accent), Color.green(accent), Color.blue(accent))
+        // ラベル（アイコン＝システム字形 ＋ 単語＝Saira）。
+        // 文字・アイコンは明滅させず常に明るい固定色にする（枠のグロー/ブラケットは脈動のまま）。
+        btnTextPaint.color = accent
+        btnTextPaint.alpha = 255
         btnTextPaint.letterSpacing = 0.14f
         iconPaint.color = btnTextPaint.color
         val wordW = btnTextPaint.measureText(label)
