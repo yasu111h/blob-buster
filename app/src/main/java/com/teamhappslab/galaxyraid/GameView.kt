@@ -202,6 +202,9 @@ class GameView(
     private var gameOverHomeBtnRect = RectF()  // GAME_OVERオーバーレイのHomeボタン
     private var gameOverRetryBtnRect = RectF() // GAME_OVERオーバーレイのRetryボタン
     private var clearReturnBtnRect = RectF()   // CLEARオーバーレイのReturnボタン（ステージ選択へ）
+    // オーバーレイ画面（一時停止/クリア/失敗）で、その画面表示後にDOWNを受けたボタン。
+    // 同じボタン上でUPしたときのみ押下成立とする（ドラッグ流入での誤タップ防止）。
+    private var armedBtn: RectF? = null
     var onGoHome: (() -> Unit)? = null   // 直前の画面へ戻る（CLEAR時のステージ選択へのReturn等）
     var onGoTitle: (() -> Unit)? = null  // タイトル(ホーム)画面へ戻るコールバック
 
@@ -769,6 +772,7 @@ class GameView(
         preBossHealDone = false
         healMessageTimer = 0
         dragPointerId = -1
+        armedBtn = null
         synchronized(pendingBullets) { pendingBullets.clear() }
         prevPlayerX = screenWidth / 2f
         prevPlayerY = screenHeight * 0.85f
@@ -819,59 +823,94 @@ class GameView(
 
         // PAUSED中: 再開・DBGボタン・デバッグパネル操作を受け付ける
         if (gameState == GameState.PAUSED) {
-            if (event.actionMasked == MotionEvent.ACTION_UP) {
-                val tx = event.x; val ty = event.y
-                when {
-                    // デバッグパネルが開いている場合の操作
-                    debugPanelOpen && dbgCloseRect.contains(tx, ty)    -> debugPanelOpen = false
-                    debugPanelOpen && dbgToggle1Rect.contains(tx, ty)  -> debugShowEnemies = !debugShowEnemies
-                    debugPanelOpen && dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
-                    debugPanelOpen && dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
-                    debugPanelOpen && dbgInvincibleRect.contains(tx, ty)  -> debugInvincible = !debugInvincible
-                    debugPanelOpen && dbgNoDecayRect.contains(tx, ty)    -> player.bulletLevelNoDecay = !player.bulletLevelNoDecay
-                    debugPanelOpen && dbgHitboxRect.contains(tx, ty)     -> debugShowHitbox = !debugShowHitbox
-                    debugPanelOpen && dbgLvlMinus10Rect.contains(tx, ty) -> { blobManager.setLevel(blobManager.level - 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
-                    debugPanelOpen && dbgLvlMinusRect.contains(tx, ty)   -> { blobManager.setLevel(blobManager.level - 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
-                    debugPanelOpen && dbgLvlPlusRect.contains(tx, ty)    -> { blobManager.setLevel(blobManager.level + 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
-                    debugPanelOpen && dbgLvlPlus10Rect.contains(tx, ty)  -> { blobManager.setLevel(blobManager.level + 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
-                    debugPanelOpen && dbgBullet1Rect.contains(tx, ty)    -> player.setBulletLevel(1)
-                    debugPanelOpen && dbgBullet3Rect.contains(tx, ty)    -> player.setBulletLevel(3)
-                    debugPanelOpen && dbgBullet5Rect.contains(tx, ty)    -> player.setBulletLevel(5)
-                    debugPanelOpen && dbgHp1Rect.contains(tx, ty)        -> hp = 1
-                    debugPanelOpen && dbgHp2Rect.contains(tx, ty)        -> hp = 2
-                    debugPanelOpen && dbgHp3Rect.contains(tx, ty)        -> hp = 3
-                    debugPanelOpen && !debugPanelRect.contains(tx, ty)   -> debugPanelOpen = false
-                    // DBGボタン
-                    DEBUG_MODE && debugBtnRect.contains(tx, ty) -> debugPanelOpen = !debugPanelOpen
-                    // 再開ボタン
-                    resumeBtnRect.contains(tx, ty) -> {
-                        gameState = GameState.PLAYING
-                        soundManager.resumeBgmByUser()
+            val tx = event.getX(event.actionIndex); val ty = event.getY(event.actionIndex)
+            when (event.actionMasked) {
+                // 再開/Homeボタンは、この画面上でDOWNを受けたときだけ「押下候補」として武装する
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                    armedBtn = when {
+                        resumeBtnRect.contains(tx, ty) -> resumeBtnRect
+                        homeBtnRect.contains(tx, ty)   -> homeBtnRect
+                        else -> null
                     }
-                    // Homeボタン（タイトル画面へ戻る）
-                    homeBtnRect.contains(tx, ty) -> onGoTitle?.invoke()
                 }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                    when {
+                        // デバッグパネルが開いている場合の操作（開発用・従来通りUPで判定）
+                        debugPanelOpen && dbgCloseRect.contains(tx, ty)    -> debugPanelOpen = false
+                        debugPanelOpen && dbgToggle1Rect.contains(tx, ty)  -> debugShowEnemies = !debugShowEnemies
+                        debugPanelOpen && dbgToggle2Rect.contains(tx, ty)  -> debugEnemyCanShoot = !debugEnemyCanShoot
+                        debugPanelOpen && dbgToggle3Rect.contains(tx, ty)  -> debugShowInfo = !debugShowInfo
+                        debugPanelOpen && dbgInvincibleRect.contains(tx, ty)  -> debugInvincible = !debugInvincible
+                        debugPanelOpen && dbgNoDecayRect.contains(tx, ty)    -> player.bulletLevelNoDecay = !player.bulletLevelNoDecay
+                        debugPanelOpen && dbgHitboxRect.contains(tx, ty)     -> debugShowHitbox = !debugShowHitbox
+                        debugPanelOpen && dbgLvlMinus10Rect.contains(tx, ty) -> { blobManager.setLevel(blobManager.level - 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                        debugPanelOpen && dbgLvlMinusRect.contains(tx, ty)   -> { blobManager.setLevel(blobManager.level - 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                        debugPanelOpen && dbgLvlPlusRect.contains(tx, ty)    -> { blobManager.setLevel(blobManager.level + 1);  scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                        debugPanelOpen && dbgLvlPlus10Rect.contains(tx, ty)  -> { blobManager.setLevel(blobManager.level + 10); scoreManager.setScore(blobManager.levelThreshold(blobManager.level)) }
+                        debugPanelOpen && dbgBullet1Rect.contains(tx, ty)    -> player.setBulletLevel(1)
+                        debugPanelOpen && dbgBullet3Rect.contains(tx, ty)    -> player.setBulletLevel(3)
+                        debugPanelOpen && dbgBullet5Rect.contains(tx, ty)    -> player.setBulletLevel(5)
+                        debugPanelOpen && dbgHp1Rect.contains(tx, ty)        -> hp = 1
+                        debugPanelOpen && dbgHp2Rect.contains(tx, ty)        -> hp = 2
+                        debugPanelOpen && dbgHp3Rect.contains(tx, ty)        -> hp = 3
+                        debugPanelOpen && !debugPanelRect.contains(tx, ty)   -> debugPanelOpen = false
+                        // DBGボタン
+                        DEBUG_MODE && debugBtnRect.contains(tx, ty) -> debugPanelOpen = !debugPanelOpen
+                        // 再開ボタン（同じボタン上でDOWN→UPしたときのみ）
+                        armedBtn === resumeBtnRect && resumeBtnRect.contains(tx, ty) -> {
+                            gameState = GameState.PLAYING
+                            soundManager.resumeBgmByUser()
+                        }
+                        // Homeボタン（タイトル画面へ戻る。同じボタン上でDOWN→UPしたときのみ）
+                        armedBtn === homeBtnRect && homeBtnRect.contains(tx, ty) -> onGoTitle?.invoke()
+                    }
+                    armedBtn = null
+                }
+                MotionEvent.ACTION_CANCEL -> armedBtn = null
             }
             return true
         }
 
         // CLEAR中: Returnボタンを押した時だけステージ選択へ戻る（onGoHome=GameActivity.finish）
         if (gameState == GameState.CLEAR) {
-            if (event.actionMasked == MotionEvent.ACTION_UP && clearTapDelayTimer <= 0 &&
-                clearReturnBtnRect.contains(event.x, event.y)) {
-                onGoHome?.invoke()
+            val tx = event.getX(event.actionIndex); val ty = event.getY(event.actionIndex)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN ->
+                    armedBtn = if (clearReturnBtnRect.contains(tx, ty)) clearReturnBtnRect else null
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                    if (clearTapDelayTimer <= 0 && armedBtn === clearReturnBtnRect &&
+                        clearReturnBtnRect.contains(tx, ty)) {
+                        onGoHome?.invoke()
+                    }
+                    armedBtn = null
+                }
+                MotionEvent.ACTION_CANCEL -> armedBtn = null
             }
             return true
         }
 
         if (gameState == GameState.GAME_OVER) {
-            // Retry/Homeはそれぞれのボタンを押した時だけ反応する（画面どこでもリトライは廃止）
-            // 誤タップ防止のためボタン表示遅延中は無反応
-            if (event.actionMasked == MotionEvent.ACTION_UP && gameOverTapDelayTimer <= 0) {
-                when {
-                    gameOverRetryBtnRect.contains(event.x, event.y) -> initGame()
-                    gameOverHomeBtnRect.contains(event.x, event.y)  -> onGoTitle?.invoke()
+            // Retry/Homeは、この画面上でDOWN→同じボタン上でUPしたときだけ反応する
+            // （ドラッグ中の失敗遷移で指を離しても誤爆しないように）。表示遅延中は無反応。
+            val tx = event.getX(event.actionIndex); val ty = event.getY(event.actionIndex)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                    armedBtn = when {
+                        gameOverRetryBtnRect.contains(tx, ty) -> gameOverRetryBtnRect
+                        gameOverHomeBtnRect.contains(tx, ty)  -> gameOverHomeBtnRect
+                        else -> null
+                    }
                 }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                    if (gameOverTapDelayTimer <= 0) {
+                        when {
+                            armedBtn === gameOverRetryBtnRect && gameOverRetryBtnRect.contains(tx, ty) -> initGame()
+                            armedBtn === gameOverHomeBtnRect && gameOverHomeBtnRect.contains(tx, ty)  -> onGoTitle?.invoke()
+                        }
+                    }
+                    armedBtn = null
+                }
+                MotionEvent.ACTION_CANCEL -> armedBtn = null
             }
             return true
         }
