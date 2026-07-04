@@ -26,28 +26,19 @@ class StageSelectActivity : AppCompatActivity() {
         setContentView(stageSelectView)
 
         // DecorView生成後にフルスクリーン設定
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.let { controller ->
-                controller.hide(
-                    android.view.WindowInsets.Type.statusBars() or
-                    android.view.WindowInsets.Type.navigationBars()
-                )
-                controller.systemBarsBehavior =
-                    android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        } else {
-            window.decorView.systemUiVisibility = (
-                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
-                android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            )
-        }
+        UiKit.applyImmersive(window)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) UiKit.applyImmersive(window)
+    }
+
     override fun onResume() {
         super.onResume()
+        UiKit.applyImmersive(window)
         stageSelectView.startAnimation()
         stageSelectView.refresh()   // ゲームから戻ったとき解放状況を更新
     }

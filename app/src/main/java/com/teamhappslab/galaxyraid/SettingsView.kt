@@ -39,6 +39,14 @@ class SettingsView(context: Context) : View(context) {
     private var bgmOn = true
     private var sfxOn = true
 
+    // ── アプリ内確認モーダル（OSのAlertDialogを使わずここで描画。バーの出入り＝画面ずれを防ぐ） ──
+    private var confirmVisible = false
+    private var confirmMessage = ""
+    private var confirmAction: (() -> Unit)? = null
+    private var confirmYesRect = RectF()
+    private var confirmCancelRect = RectF()
+    private val dimPaint = Paint()
+
     private val space = SpaceBackground()
     private val titleTypeface = UiKit.loadSaira(context, 800)
     private val uiTypeface = UiKit.loadSaira(context, 600)
@@ -138,6 +146,9 @@ class SettingsView(context: Context) : View(context) {
         drawActionButton(canvas, resetBtnRect, "RESET HIGH SCORES", cRed, 1.2f)
         drawActionButton(canvas, resetBossBtnRect, "RESET BOSS PROGRESS", cRed, 1.5f)
         drawActionButton(canvas, backBtnRect, "◀  BACK", cCyan, 1.8f)
+
+        // 確認モーダル（最前面）
+        if (confirmVisible) drawConfirmModal(canvas)
     }
 
     private fun drawGlowTitle(canvas: Canvas, text: String, baseY: Float) {
@@ -195,35 +206,91 @@ class SettingsView(context: Context) : View(context) {
             rect.centerY() + btnTextPaint.textSize * 0.34f, btnTextPaint)
     }
 
+    /** アプリ内確認モーダルを開く。 */
+    private fun showConfirm(message: String, action: () -> Unit) {
+        confirmMessage = message
+        confirmAction = action
+        confirmVisible = true
+        invalidate()
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // モーダル表示中はモーダルのタップだけを処理し、下のボタンには触れさせない
+        if (confirmVisible) {
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                val tx = event.x; val ty = event.y
+                when {
+                    confirmYesRect.contains(tx, ty) -> {
+                        val a = confirmAction
+                        confirmVisible = false; confirmAction = null; invalidate()
+                        a?.invoke()
+                    }
+                    confirmCancelRect.contains(tx, ty) -> {
+                        confirmVisible = false; confirmAction = null; invalidate()
+                    }
+                }
+            }
+            return true
+        }
         if (event.actionMasked == MotionEvent.ACTION_UP) {
             val tx = event.x; val ty = event.y
             when {
                 bgmBtnRect.contains(tx, ty) -> { bgmOn = !bgmOn; AppPrefs.setBgmEnabled(context, bgmOn); invalidate() }
                 sfxBtnRect.contains(tx, ty) -> { sfxOn = !sfxOn; AppPrefs.setSfxEnabled(context, sfxOn); invalidate() }
-                resetBtnRect.contains(tx, ty) -> {
-                    android.app.AlertDialog.Builder(context)
-                        .setMessage("Reset all high scores?")
-                        .setPositiveButton("Yes") { _, _ ->
-                            HighScoreManager.resetScores(context)
-                            onResetScores?.invoke()
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
+                resetBtnRect.contains(tx, ty) -> showConfirm("Reset all high scores?") {
+                    HighScoreManager.resetScores(context)
+                    onResetScores?.invoke()
                 }
-                resetBossBtnRect.contains(tx, ty) -> {
-                    android.app.AlertDialog.Builder(context)
-                        .setMessage("Reset boss mode progress?")
-                        .setPositiveButton("Yes") { _, _ ->
-                            AppPrefs.resetStoryProgress(context)
-                            onResetBossProgress?.invoke()
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
+                resetBossBtnRect.contains(tx, ty) -> showConfirm("Reset boss mode progress?") {
+                    AppPrefs.resetStoryProgress(context)
+                    onResetBossProgress?.invoke()
                 }
                 backBtnRect.contains(tx, ty) -> onBack?.invoke()
             }
         }
         return true
+    }
+
+    /** 確認モーダルの描画（暗幕＋SFパネル＋メッセージ＋YES/CANCEL）。 */
+    private fun drawConfirmModal(canvas: Canvas) {
+        // 暗幕
+        dimPaint.color = Color.argb(205, 2, 6, 14)
+        canvas.drawRect(0f, 0f, screenW, screenH, dimPaint)
+
+        // パネル
+        val pw = screenW * 0.82f
+        val ph = screenH * 0.26f
+        val px = (screenW - pw) / 2f
+        val py = (screenH - ph) / 2f
+        val panel = RectF(px, py, px + pw, py + ph)
+        drawFrame(canvas, panel, cCyan, 1f)
+
+        // メッセージ（labelPaintを一時的に小さくして中央1行で表示）
+        val prevSize = labelPaint.textSize
+        labelPaint.textSize = screenW * 0.040f
+        labelPaint.color = Color.argb(235, 210, 230, 255)
+        canvas.drawText(confirmMessage,
+            (screenW - labelPaint.measureText(confirmMessage)) / 2f,
+            py + ph * 0.34f, labelPaint)
+        labelPaint.textSize = prevSize
+
+        // YES / CANCEL ボタン
+        val bw = pw * 0.38f
+        val bh = ph * 0.30f
+        val by = py + ph * 0.58f
+        val gapHalf = pw * 0.04f
+        confirmCancelRect = RectF(px + pw * 0.5f - gapHalf - bw, by, px + pw * 0.5f - gapHalf, by + bh)
+        confirmYesRect = RectF(px + pw * 0.5f + gapHalf, by, px + pw * 0.5f + gapHalf + bw, by + bh)
+        drawModalButton(canvas, confirmCancelRect, "CANCEL", cCyan)
+        drawModalButton(canvas, confirmYesRect, "YES", cRed)
+    }
+
+    /** モーダル内ボタン（枠内中央にラベル）。 */
+    private fun drawModalButton(canvas: Canvas, rect: RectF, label: String, accent: Int) {
+        drawFrame(canvas, rect, accent, 1f)
+        btnTextPaint.color = accent
+        canvas.drawText(label,
+            rect.centerX() - btnTextPaint.measureText(label) / 2f,
+            rect.centerY() + btnTextPaint.textSize * 0.34f, btnTextPaint)
     }
 }
