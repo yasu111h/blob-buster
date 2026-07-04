@@ -392,10 +392,15 @@ class GameView(
             // 各種ボタン: 一時停止(II) / RESUME・Retry・Return / Home / SFボタン共通ラベル
             pauseBtnTextPaint, resumeBtnTextPaint, homeBtnTextPaint, sfBtnTextPaint,
             // デバッグパネル（開発用）
-            dbgBtnTextPaint, dbgLabelPaint, dbgOnPaint, dbgOffPaint, dbgInfoTextPaint
+            dbgBtnTextPaint, dbgLabelPaint, dbgOnPaint, dbgOffPaint, dbgInfoTextPaint,
+            // クリア画面の小見出し（STAGE CLEAR案内）
+            clearBonusPaint
         )) {
             p.typeface = goUiTypeface
         }
+        // クリア画面の大見出しは太字(800)で統一
+        congratsPaint.typeface = goTitleTypeface
+        clearTextPaint.typeface = goTitleTypeface
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -1613,7 +1618,7 @@ class GameView(
 
             // スコア（1行目）とレベル（2行目）を別行で表示（プレイ中HUDと同じ水色）
             gameOverScorePaint.color = Color.parseColor("#40C4FF")
-            val scoreText = "SCORE  ${scoreManager.score}"
+            val scoreText = "SCORE  ${"%,d".format(scoreManager.score)}"
             val scoreBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreText, 0, scoreText.length, scoreBounds)
             canvas.drawText(
@@ -1622,7 +1627,7 @@ class GameView(
                 screenHeight * 0.495f,
                 gameOverScorePaint
             )
-            val levelText = "LEVEL ${GameConfig.levelForScore(scoreManager.score)}"
+            val levelText = "Lv ${GameConfig.levelForScore(scoreManager.score)}"
             val levelBounds = Rect()
             gameOverScorePaint.getTextBounds(levelText, 0, levelText.length, levelBounds)
             canvas.drawText(
@@ -1666,7 +1671,7 @@ class GameView(
             val b1 = Rect(); clearTextPaint.getTextBounds(line1, 0, line1.length, b1)
             val b2 = Rect(); clearTextPaint.getTextBounds(line2, 0, line2.length, b2)
             canvas.drawText(line1, (screenWidth - b1.width()) / 2f, screenHeight * 0.30f, clearTextPaint)
-            canvas.drawText(line2, (screenWidth - b2.width()) / 2f, screenHeight * 0.38f, clearTextPaint)
+            canvas.drawText(line2, (screenWidth - b2.width()) / 2f, screenHeight * 0.358f, clearTextPaint)  // 行間を詰める
 
             // 撃破ボーナス（textSizeを明示的に戻す：他描画で変更されている場合に備える）
             clearBonusPaint.textSize = screenWidth * 0.055f
@@ -1681,12 +1686,12 @@ class GameView(
 
             // 撃破ボーナスは撃破の瞬間にスコア加算済みのため、ここでは表示しない
 
-            // 最終スコア（1行目）とレベル（2行目）を別行で表示
-            val scoreLine = "SCORE: ${scoreManager.score}"
+            // 最終スコア（1行目）とレベル（2行目）を別行で表示（プレイ画面と同じ表記）
+            val scoreLine = "SCORE  ${"%,d".format(scoreManager.score)}"
             val sBounds = Rect()
             gameOverScorePaint.getTextBounds(scoreLine, 0, scoreLine.length, sBounds)
             canvas.drawText(scoreLine, (screenWidth - sBounds.width()) / 2f, screenHeight * 0.535f, gameOverScorePaint)
-            val levelLine = "LEVEL ${GameConfig.levelForScore(scoreManager.score)}"
+            val levelLine = "Lv ${GameConfig.levelForScore(scoreManager.score)}"
             val lBounds = Rect()
             gameOverScorePaint.getTextBounds(levelLine, 0, levelLine.length, lBounds)
             canvas.drawText(levelLine, (screenWidth - lBounds.width()) / 2f, screenHeight * 0.585f, gameOverScorePaint)
@@ -1816,11 +1821,11 @@ class GameView(
     private fun drawRankBadge(canvas: Canvas, centerY: Float) {
         // 2行構成（★なし・全て大文字）: 1行目 NEW RECORD / 2行目 RANK #n
         rankInTextPaint.textAlign = Paint.Align.CENTER
-        rankInTextPaint.textSize = screenWidth * 0.050f
+        rankInTextPaint.textSize = screenWidth * 0.072f   // 大きめに（NEW RECORDを目立たせる）
         val cx = screenWidth / 2f
         val fm = rankInTextPaint.fontMetrics
         val vOff = -(fm.ascent + fm.descent) / 2f   // 視覚中心をターゲットYに合わせる補正
-        val half = screenWidth * 0.032f             // 行間の半分
+        val half = screenWidth * 0.044f             // 行間の半分（文字が大きくなった分ひろげる）
 
         canvas.drawText("NEW RECORD", cx, centerY - half + vOff, rankInTextPaint)
         canvas.drawText("RANK #$rankAchieved", cx, centerY + half + vOff, rankInTextPaint)
