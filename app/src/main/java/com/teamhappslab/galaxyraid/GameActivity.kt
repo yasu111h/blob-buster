@@ -52,6 +52,7 @@ class GameActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        MenuBgm.pause()   // プレイ中はメニューBGMを止める
         gameView.resume()
         soundManager.resumeBgmBySystem()
     }

@@ -39,10 +39,12 @@ class SettingsActivity : AppCompatActivity() {
         super.onResume()
         UiKit.applyImmersive(window)
         settingsView.startAnimation()
+        MenuBgm.resume(this)
     }
 
     override fun onPause() {
         super.onPause()
         settingsView.stopAnimation()
+        MenuBgm.pause()
     }
 }

@@ -41,10 +41,12 @@ class StageSelectActivity : AppCompatActivity() {
         UiKit.applyImmersive(window)
         stageSelectView.startAnimation()
         stageSelectView.refresh()   // ゲームから戻ったとき解放状況を更新
+        MenuBgm.resume(this)
     }
 
     override fun onPause() {
         super.onPause()
         stageSelectView.stopAnimation()
+        MenuBgm.pause()
     }
 }

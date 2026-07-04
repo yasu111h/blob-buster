@@ -238,7 +238,7 @@ class SettingsView(context: Context) : View(context) {
         if (event.actionMasked == MotionEvent.ACTION_UP) {
             val tx = event.x; val ty = event.y
             when {
-                bgmBtnRect.contains(tx, ty) -> { bgmOn = !bgmOn; AppPrefs.setBgmEnabled(context, bgmOn); invalidate() }
+                bgmBtnRect.contains(tx, ty) -> { bgmOn = !bgmOn; AppPrefs.setBgmEnabled(context, bgmOn); MenuBgm.applyEnabled(context); invalidate() }
                 sfxBtnRect.contains(tx, ty) -> { sfxOn = !sfxOn; AppPrefs.setSfxEnabled(context, sfxOn); invalidate() }
                 resetBtnRect.contains(tx, ty) -> showConfirm("Reset all high scores?") {
                     HighScoreManager.resetScores(context)

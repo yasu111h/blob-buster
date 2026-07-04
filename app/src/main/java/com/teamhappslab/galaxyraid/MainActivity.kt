@@ -65,10 +65,12 @@ class MainActivity : AppCompatActivity() {
         titleView.startAnimation()
         titleView.resetLoading()
         titleView.updateHighScores(HighScoreManager.getTopScores(this))
+        MenuBgm.resume(this)
     }
 
     override fun onPause() {
         super.onPause()
         titleView.stopAnimation()
+        MenuBgm.pause()
     }
 }
