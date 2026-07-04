@@ -703,7 +703,7 @@ class GameView(
 
     private fun triggerGameOver() {
         gameState = GameState.GAME_OVER
-        gameOverTapDelayTimer = 30  // 約0.5秒はボタンを出さず誤タップを防ぐ
+        gameOverTapDelayTimer = 0   // 遅延なし（ボタンを即表示）
         soundManager.pauseBgmByUser()
         rankAchieved = HighScoreManager.saveScore(context, scoreManager.score)
     }
@@ -711,7 +711,7 @@ class GameView(
     /** ボス撃破演出完了後に呼ばれる。CLEAR状態へ（撃破ボーナスは撃破の瞬間に加算済み） */
     private fun triggerClear() {
         gameState = GameState.CLEAR
-        clearTapDelayTimer = 60  // 1秒間は誤タップでホームに戻らないように
+        clearTapDelayTimer = 0   // 遅延なし（Returnボタンを即表示）
         soundManager.pauseBgmByUser()       // 戦闘BGMを停止
         soundManager.playClearJingle(context)  // 勝利ジングル（bgm_clearがあれば再生・無ければ代用ファンファーレ）
         clearCelebration = ClearCelebration(screenWidth, screenHeight)
