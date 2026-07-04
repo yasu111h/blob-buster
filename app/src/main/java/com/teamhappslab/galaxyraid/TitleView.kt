@@ -334,17 +334,6 @@ class TitleView(context: Context) : View(context) {
             Color.red(accent), Color.green(accent), Color.blue(accent))
         canvas.drawPath(path, btnBorderPaint)
 
-        // コーナーブラケット
-        btnBracketPaint.color = accent
-        val bl = rect.height() * 0.30f
-        val ins = rect.height() * 0.16f
-        // 左上
-        canvas.drawLine(rect.left + ins, rect.top + ins, rect.left + ins + bl, rect.top + ins, btnBracketPaint)
-        canvas.drawLine(rect.left + ins, rect.top + ins, rect.left + ins, rect.top + ins + bl, btnBracketPaint)
-        // 右下
-        canvas.drawLine(rect.right - ins, rect.bottom - ins, rect.right - ins - bl, rect.bottom - ins, btnBracketPaint)
-        canvas.drawLine(rect.right - ins, rect.bottom - ins, rect.right - ins, rect.bottom - ins - bl, btnBracketPaint)
-
         // ラベル（アイコン＝システム字形 ＋ 単語＝Saira）
         val textAlpha = (180 * pulse + 75).toInt().coerceIn(0, 255)
         btnTextPaint.color = Color.argb(textAlpha, Color.red(accent), Color.green(accent), Color.blue(accent))

@@ -176,14 +176,6 @@ class SettingsView(context: Context) : View(context) {
         borderPaint.color = Color.argb((150 * pulse + 80).toInt().coerceIn(0, 255),
             Color.red(accent), Color.green(accent), Color.blue(accent))
         canvas.drawPath(path, borderPaint)
-        // コーナーブラケット（左上・右下）
-        bracketPaint.color = accent
-        val bl = rect.height() * 0.30f
-        val ins = rect.height() * 0.18f
-        canvas.drawLine(rect.left + ins, rect.top + ins, rect.left + ins + bl, rect.top + ins, bracketPaint)
-        canvas.drawLine(rect.left + ins, rect.top + ins, rect.left + ins, rect.top + ins + bl, bracketPaint)
-        canvas.drawLine(rect.right - ins, rect.bottom - ins, rect.right - ins - bl, rect.bottom - ins, bracketPaint)
-        canvas.drawLine(rect.right - ins, rect.bottom - ins, rect.right - ins, rect.bottom - ins - bl, bracketPaint)
     }
 
     private fun drawToggle(canvas: Canvas, rect: RectF, label: String, isOn: Boolean, phase: Float) {

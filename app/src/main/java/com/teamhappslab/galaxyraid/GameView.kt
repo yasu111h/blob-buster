@@ -1830,14 +1830,6 @@ class GameView(
         // 枠線
         sfBtnBorderPaint.color = accent
         canvas.drawPath(path, sfBtnBorderPaint)
-        // コーナーブラケット（左上・右下）
-        sfBtnBracketPaint.color = accent
-        val bl = rect.height() * 0.30f
-        val ins = rect.height() * 0.18f
-        canvas.drawLine(rect.left + ins, rect.top + ins, rect.left + ins + bl, rect.top + ins, sfBtnBracketPaint)
-        canvas.drawLine(rect.left + ins, rect.top + ins, rect.left + ins, rect.top + ins + bl, sfBtnBracketPaint)
-        canvas.drawLine(rect.right - ins, rect.bottom - ins, rect.right - ins - bl, rect.bottom - ins, sfBtnBracketPaint)
-        canvas.drawLine(rect.right - ins, rect.bottom - ins, rect.right - ins, rect.bottom - ins - bl, sfBtnBracketPaint)
         // ラベル（アイコン＝システム字形 ＋ 単語＝Saira）
         val ts = rect.height() * 0.40f
         sfBtnTextPaint.textSize = ts; sfBtnTextPaint.color = accent
