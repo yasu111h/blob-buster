@@ -274,7 +274,7 @@ class TitleView(context: Context) : View(context) {
 
         // ボタン
         drawButton(canvas, storyButtonRect, "BOSS MODE", "▶", Color.parseColor("#FF4557"), 0f)   // 赤
-        drawButton(canvas, endlessButtonRect, if (endlessLoading) "NOW LOADING..." else "ENDLESS",
+        drawButton(canvas, endlessButtonRect, if (endlessLoading) "NOW LOADING..." else "ENDLESS MODE",
             if (endlessLoading) null else "∞", Color.parseColor("#B06BFF"), 1.0f)                 // 紫
         drawButton(canvas, settingsButtonRect, "SETTINGS", "⚙", Color.parseColor("#88A6C4"), 2.0f)
 
