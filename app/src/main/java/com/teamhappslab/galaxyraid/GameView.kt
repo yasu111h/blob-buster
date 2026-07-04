@@ -1366,6 +1366,12 @@ class GameView(
     private fun drawInternal(canvas: Canvas, alpha: Float = 0f) {
         val area = screenHeight * 0.92f
 
+        // まずキャンバス全体を背景色で塗る（保険）。
+        // 画面サイズが後から変わっても screenHeight は surfaceChanged が空で更新されないため、
+        // bgBitmap（screenHeight高）より実キャンバスが高いと下端に塗り残し＝未初期化バッファの
+        // ゴミ（色付きの四角＝紙吹雪が溜まって見える現象）が残る。全面塗りで物理的に防ぐ。
+        canvas.drawColor(bgPaint.color)
+
         // 背景（背景色＋星雲を焼いた不透明Bitmapを等倍で貼るだけ）。無ければ従来の単色塗り。
         val bg = bgBitmap
         if (bg != null) canvas.drawBitmap(bg, 0f, 0f, null)
