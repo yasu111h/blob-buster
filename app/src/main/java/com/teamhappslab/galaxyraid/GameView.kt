@@ -70,21 +70,22 @@ class GameView(
     private var bossExplosion: BossExplosion? = null      // ボス撃破爆発エフェクト
     private var clearCelebration: ClearCelebration? = null // クリア画面の紙吹雪演出
 
+    // ボスHPバーは毒々しいトキシックグリーン（ボスらしく汚めだが派手で目立つ色）
     private val bossHpBarBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(160, 30, 0, 0)
+        color = Color.argb(170, 10, 20, 4)
     }
     private val bossHpBarTrailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(200, 255, 200, 80)
+        color = Color.argb(210, 225, 255, 140)
     }
     private val bossHpBarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF1744")
+        color = Color.parseColor("#8FE01E")
     }
     private val bossHpBarBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(200, 255, 80, 80)
+        color = Color.argb(210, 180, 255, 100)
         style = Paint.Style.STROKE; strokeWidth = 2f
     }
     private val bossLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF5252"); isFakeBoldText = true
+        color = Color.parseColor("#A6F03C"); isFakeBoldText = true
     }
     private val warningTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FF1744"); isFakeBoldText = true
@@ -344,7 +345,7 @@ class GameView(
         isFakeBoldText = true
     }
     private val heartPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF1744")  // ネオンレッド
+        color = Color.parseColor("#FF4D9E")  // ピンク
     }
     private val roundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFD740")  // ネオンゴールド
@@ -1483,7 +1484,7 @@ class GameView(
         }
 
         // ── 上部ステータス（2段構成）──
-        //   段1(上): SCORE ＋ LEVEL（水色）／ HP（右・赤）
+        //   段1(上): SCORE ＋ LEVEL（水色）／ HP（右・ピンク）
         //   段2(下・小さめ・緑): モード名。ボスは「BOSS MODE  STAGE ○」（すべて緑）
         val marginX = screenWidth * 0.03f
         val row1Y = screenHeight * 0.048f
@@ -1499,7 +1500,7 @@ class GameView(
         val lvX = marginX + scorePaint.measureText(scoreText) + screenWidth * 0.05f
         canvas.drawText(lvLabel, lvX, row1Y, scorePaint)
 
-        // 段1右: HP（赤ハート・右寄せ）
+        // 段1右: HP（ピンクのハート・右寄せ）
         val heartText = "HP  " + "♥".repeat(hp.coerceAtLeast(0))
         heartPaint.textSize = baseSize
         val heartBounds = Rect()
