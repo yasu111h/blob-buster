@@ -1487,7 +1487,7 @@ class GameView(
         scorePaint.textSize = baseSize
         val scoreText = "SCORE  ${"%,d".format(scoreManager.score)}"
         canvas.drawText(scoreText, marginX, row1Y, scorePaint)
-        val lvLabel = if (isStoryMode) "Lv ${blobManager.level}" else "LEVEL ${blobManager.level}"
+        val lvLabel = "Lv ${blobManager.level}"
         val lvX = marginX + scorePaint.measureText(scoreText) + screenWidth * 0.05f
         canvas.drawText(lvLabel, lvX, row1Y, scorePaint)
 
