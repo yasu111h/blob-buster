@@ -112,11 +112,12 @@ class TitleView(context: Context) : View(context) {
     private val scoreRankPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = titleTypeface; color = Color.argb(220, 90, 200, 255)
     }
+    // スコア値・Lvは同じ水色（ランク「#1」やゲーム内スコア表記と統一）
     private val scoreValuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = uiTypeface; color = Color.argb(230, 215, 240, 255)
+        typeface = uiTypeface; color = Color.argb(235, 110, 205, 255)
     }
     private val scoreLevelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = uiTypeface; color = Color.argb(210, 150, 230, 170)
+        typeface = uiTypeface; color = Color.argb(235, 110, 205, 255)
     }
     private val scoreEmptyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = uiTypeface; color = Color.argb(90, 110, 160, 205)
