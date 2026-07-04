@@ -239,6 +239,24 @@ class GameView(
     private val homeBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(230, 255, 210, 60); isFakeBoldText = true
     }
+    // ── SFボタン様式（ホーム画面と同じ角カット＋四隅ブラケット＋発光）用のPaint ──
+    private val sfBtnBgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val sfBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = 2f
+    }
+    private val sfBtnBracketPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = 2.6f; strokeCap = Paint.Cap.SQUARE
+    }
+    private val sfBtnGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = 3f
+        maskFilter = android.graphics.BlurMaskFilter(10f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+    }
+    private val sfBtnTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        isFakeBoldText = true; letterSpacing = 0.12f
+    }
+    private val sfBtnIconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
     // ── アイテム取得エフェクト ────────────────────────────
     private var powerUpFlashTimer = 0
     private val powerUpAuraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -371,8 +389,8 @@ class GameView(
         // ここで設定するのは、各Paintの初期化子より後（宣言順）で typeface を確定させるため。
         for (p in listOf(
             scorePaint, heartPaint, roundPaint, levelPaint, bossLabelPaint,
-            // 各種ボタン: 一時停止(II) / RESUME・Retry・Return / Home
-            pauseBtnTextPaint, resumeBtnTextPaint, homeBtnTextPaint,
+            // 各種ボタン: 一時停止(II) / RESUME・Retry・Return / Home / SFボタン共通ラベル
+            pauseBtnTextPaint, resumeBtnTextPaint, homeBtnTextPaint, sfBtnTextPaint,
             // デバッグパネル（開発用）
             dbgBtnTextPaint, dbgLabelPaint, dbgOnPaint, dbgOffPaint, dbgInfoTextPaint
         )) {
@@ -1567,28 +1585,9 @@ class GameView(
             val pSub = "GAME PAUSED"
             canvas.drawText(pSub, (screenWidth - pauseSubPaint.measureText(pSub)) / 2f,
                 pausedY + screenHeight * 0.035f, pauseSubPaint)
-            // 中央再開ボタン
-            canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBgPaint)
-            canvas.drawRoundRect(resumeBtnRect, 24f, 24f, resumeBtnBorderPaint)
-            resumeBtnTextPaint.textSize = screenWidth * 0.07f
-            val rLabel = "▶  Play"
-            val rBounds = Rect()
-            resumeBtnTextPaint.getTextBounds(rLabel, 0, rLabel.length, rBounds)
-            canvas.drawText(rLabel,
-                resumeBtnRect.centerX() - rBounds.width() / 2f,
-                resumeBtnRect.centerY() + rBounds.height() / 2f,
-                resumeBtnTextPaint)
-
-            // Homeボタン
-            canvas.drawRoundRect(homeBtnRect, 24f, 24f, homeBtnBgPaint)
-            canvas.drawRoundRect(homeBtnRect, 24f, 24f, homeBtnBorderPaint)
-            val hLabel = "⌂  Home"
-            val hBounds = Rect()
-            homeBtnTextPaint.getTextBounds(hLabel, 0, hLabel.length, hBounds)
-            canvas.drawText(hLabel,
-                homeBtnRect.centerX() - hBounds.width() / 2f,
-                homeBtnRect.centerY() + hBounds.height() / 2f,
-                homeBtnTextPaint)
+            // 中央再開ボタン / Homeボタン（SFボタン様式）
+            drawSfButton(canvas, resumeBtnRect, "▶", "Play", Color.parseColor("#4DFF9E"))
+            drawSfButton(canvas, homeBtnRect, "⌂", "Home", Color.parseColor("#FFC93C"))
         }
 
         // GAME OVER オーバーレイ
@@ -1638,19 +1637,10 @@ class GameView(
                 drawRankBadge(canvas, screenHeight * 0.605f)
             }
 
-            // Retry/Homeボタンは誤タップ防止のため約0.5秒遅れて表示する
+            // Retry/Homeボタンは誤タップ防止のため約0.5秒遅れて表示する（SFボタン様式）
             if (gameOverTapDelayTimer <= 0) {
-                // Retryボタン（緑・Homeボタンの上）。ここを押した時だけリトライする
-                canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBgPaint)
-                canvas.drawRoundRect(gameOverRetryBtnRect, 24f, 24f, resumeBtnBorderPaint)
-                resumeBtnTextPaint.textSize = screenWidth * 0.058f
-                drawCenteredLabel(canvas, "↻  Retry", gameOverRetryBtnRect, resumeBtnTextPaint)
-
-                // Homeボタン
-                canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBgPaint)
-                canvas.drawRoundRect(gameOverHomeBtnRect, 24f, 24f, homeBtnBorderPaint)
-                homeBtnTextPaint.textSize = screenWidth * 0.058f
-                drawCenteredLabel(canvas, "⌂  Home", gameOverHomeBtnRect, homeBtnTextPaint)
+                drawSfButton(canvas, gameOverRetryBtnRect, "↻", "Retry", Color.parseColor("#4DFF9E"))
+                drawSfButton(canvas, gameOverHomeBtnRect, "⌂", "Home", Color.parseColor("#FFC93C"))
             }
         }
 
@@ -1706,18 +1696,9 @@ class GameView(
                 drawRankBadge(canvas, screenHeight * 0.645f)
             }
 
-            // Returnボタン（ステージ選択へ戻る）。誤タップ防止の待機が明けてから表示
+            // Returnボタン（ステージ選択へ戻る）。誤タップ防止の待機が明けてから表示（SFボタン様式）
             if (clearTapDelayTimer <= 0) {
-                canvas.drawRoundRect(clearReturnBtnRect, 24f, 24f, resumeBtnBgPaint)
-                canvas.drawRoundRect(clearReturnBtnRect, 24f, 24f, resumeBtnBorderPaint)
-                resumeBtnTextPaint.textSize = screenWidth * 0.065f
-                val returnLabel = "↩  Return"
-                val returnBounds = Rect()
-                resumeBtnTextPaint.getTextBounds(returnLabel, 0, returnLabel.length, returnBounds)
-                canvas.drawText(returnLabel,
-                    clearReturnBtnRect.centerX() - returnBounds.width() / 2f,
-                    clearReturnBtnRect.centerY() + returnBounds.height() / 2f,
-                    resumeBtnTextPaint)
+                drawSfButton(canvas, clearReturnBtnRect, "↩", "Return", Color.parseColor("#4DFF9E"))
             }
         }
 
@@ -1782,6 +1763,43 @@ class GameView(
     }
 
     /** ボタン矩形の中にラベルを縦横中央で描く（フォントメトリクス基準で正確に中央化） */
+    /**
+     * ホーム画面と同じSFボタン様式で描く：角カットの枠＋暗い半透明背景＋外周グロー＋四隅ブラケット、
+     * アイコン（システム字形）＋ラベル（Saira）をアクセント色で中央寄せ。
+     */
+    private fun drawSfButton(canvas: Canvas, rect: RectF, icon: String?, label: String, accent: Int) {
+        val path = UiKit.cutRectPath(rect, rect.height() * 0.30f)
+        // 外周グロー
+        sfBtnGlowPaint.color = Color.argb(75, Color.red(accent), Color.green(accent), Color.blue(accent))
+        canvas.drawPath(path, sfBtnGlowPaint)
+        // 背景（暗い半透明）
+        sfBtnBgPaint.color = Color.argb(180, 8, 18, 36)
+        canvas.drawPath(path, sfBtnBgPaint)
+        // 枠線
+        sfBtnBorderPaint.color = accent
+        canvas.drawPath(path, sfBtnBorderPaint)
+        // コーナーブラケット（左上・右下）
+        sfBtnBracketPaint.color = accent
+        val bl = rect.height() * 0.30f
+        val ins = rect.height() * 0.18f
+        canvas.drawLine(rect.left + ins, rect.top + ins, rect.left + ins + bl, rect.top + ins, sfBtnBracketPaint)
+        canvas.drawLine(rect.left + ins, rect.top + ins, rect.left + ins, rect.top + ins + bl, sfBtnBracketPaint)
+        canvas.drawLine(rect.right - ins, rect.bottom - ins, rect.right - ins - bl, rect.bottom - ins, sfBtnBracketPaint)
+        canvas.drawLine(rect.right - ins, rect.bottom - ins, rect.right - ins, rect.bottom - ins - bl, sfBtnBracketPaint)
+        // ラベル（アイコン＝システム字形 ＋ 単語＝Saira）
+        val ts = rect.height() * 0.40f
+        sfBtnTextPaint.textSize = ts; sfBtnTextPaint.color = accent
+        sfBtnIconPaint.textSize = ts; sfBtnIconPaint.color = accent
+        val wordW = sfBtnTextPaint.measureText(label)
+        val gap = if (icon != null) rect.width() * 0.03f else 0f
+        val iconW = if (icon != null) sfBtnIconPaint.measureText(icon) else 0f
+        var cx = rect.centerX() - (iconW + gap + wordW) / 2f
+        val fm = sfBtnTextPaint.fontMetrics
+        val cy = rect.centerY() - (fm.ascent + fm.descent) / 2f
+        if (icon != null) { canvas.drawText(icon, cx, cy, sfBtnIconPaint); cx += iconW + gap }
+        canvas.drawText(label, cx, cy, sfBtnTextPaint)
+    }
+
     private fun drawCenteredLabel(canvas: Canvas, label: String, rect: RectF, paint: Paint) {
         val prevAlign = paint.textAlign
         paint.textAlign = Paint.Align.CENTER
