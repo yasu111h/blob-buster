@@ -78,7 +78,7 @@ class GameView(
         color = Color.argb(210, 225, 255, 140)
     }
     private val bossHpBarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#8FE01E")
+        color = Color.parseColor("#379B0C")  // 濃いめのトキシックグリーン
     }
     private val bossHpBarBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(210, 180, 255, 100)
@@ -345,7 +345,7 @@ class GameView(
         isFakeBoldText = true
     }
     private val heartPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF4D9E")  // ピンク
+        color = Color.parseColor("#FF2EA6")  // 鮮やかなピンク（「HP」文字とハート共通）
     }
     private val roundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFD740")  // ネオンゴールド
