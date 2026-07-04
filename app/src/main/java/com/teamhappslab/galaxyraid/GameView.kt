@@ -367,9 +367,15 @@ class GameView(
     init {
         holder.addCallback(this)
         isFocusable = true
-        // プレイ中HUD等のフォントも他画面と統一（Saira）。
+        // プレイ中HUD・各種ボタンのフォントも他画面と統一（Saira）。
         // ここで設定するのは、各Paintの初期化子より後（宣言順）で typeface を確定させるため。
-        for (p in listOf(scorePaint, heartPaint, roundPaint, levelPaint, bossLabelPaint)) {
+        for (p in listOf(
+            scorePaint, heartPaint, roundPaint, levelPaint, bossLabelPaint,
+            // 各種ボタン: 一時停止(II) / RESUME・Retry・Return / Home
+            pauseBtnTextPaint, resumeBtnTextPaint, homeBtnTextPaint,
+            // デバッグパネル（開発用）
+            dbgBtnTextPaint, dbgLabelPaint, dbgOnPaint, dbgOffPaint, dbgInfoTextPaint
+        )) {
             p.typeface = goUiTypeface
         }
     }
