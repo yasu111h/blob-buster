@@ -41,10 +41,12 @@ class SettingsView(context: Context) : View(context) {
 
     // ── アプリ内確認モーダル（OSのAlertDialogを使わずここで描画。バーの出入り＝画面ずれを防ぐ） ──
     private var confirmVisible = false
+    private var confirmDone = false            // YES実行後の「完了」表示中か
     private var confirmMessage = ""
     private var confirmAction: (() -> Unit)? = null
     private var confirmYesRect = RectF()
     private var confirmCancelRect = RectF()
+    private var confirmOkRect = RectF()        // 完了表示中のOKボタン
     private val dimPaint = Paint()
 
     private val space = SpaceBackground()
@@ -211,6 +213,7 @@ class SettingsView(context: Context) : View(context) {
         confirmMessage = message
         confirmAction = action
         confirmVisible = true
+        confirmDone = false
         invalidate()
     }
 
@@ -219,11 +222,18 @@ class SettingsView(context: Context) : View(context) {
         if (confirmVisible) {
             if (event.actionMasked == MotionEvent.ACTION_UP) {
                 val tx = event.x; val ty = event.y
-                when {
+                if (confirmDone) {
+                    // 「完了」表示中：OKで閉じる
+                    if (confirmOkRect.contains(tx, ty)) {
+                        confirmVisible = false; confirmDone = false; invalidate()
+                    }
+                } else when {
                     confirmYesRect.contains(tx, ty) -> {
-                        val a = confirmAction
-                        confirmVisible = false; confirmAction = null; invalidate()
-                        a?.invoke()
+                        // 実行してから「完了」表示に切り替える（モーダルは閉じない）
+                        confirmAction?.invoke()
+                        confirmAction = null
+                        confirmDone = true
+                        invalidate()
                     }
                     confirmCancelRect.contains(tx, ty) -> {
                         confirmVisible = false; confirmAction = null; invalidate()
@@ -263,26 +273,32 @@ class SettingsView(context: Context) : View(context) {
         val px = (screenW - pw) / 2f
         val py = (screenH - ph) / 2f
         val panel = RectF(px, py, px + pw, py + ph)
-        drawFrame(canvas, panel, cCyan, 1f)
+        drawFrame(canvas, panel, if (confirmDone) cGreen else cCyan, 1f)
 
         // メッセージ（labelPaintを一時的に小さくして中央1行で表示）
+        val msg = if (confirmDone) "RESET COMPLETE" else confirmMessage
         val prevSize = labelPaint.textSize
         labelPaint.textSize = screenW * 0.040f
-        labelPaint.color = Color.argb(235, 210, 230, 255)
-        canvas.drawText(confirmMessage,
-            (screenW - labelPaint.measureText(confirmMessage)) / 2f,
-            py + ph * 0.34f, labelPaint)
+        labelPaint.color = if (confirmDone) cGreen else Color.argb(235, 210, 230, 255)
+        canvas.drawText(msg, (screenW - labelPaint.measureText(msg)) / 2f, py + ph * 0.34f, labelPaint)
         labelPaint.textSize = prevSize
 
-        // YES / CANCEL ボタン
-        val bw = pw * 0.38f
         val bh = ph * 0.30f
         val by = py + ph * 0.58f
-        val gapHalf = pw * 0.04f
-        confirmCancelRect = RectF(px + pw * 0.5f - gapHalf - bw, by, px + pw * 0.5f - gapHalf, by + bh)
-        confirmYesRect = RectF(px + pw * 0.5f + gapHalf, by, px + pw * 0.5f + gapHalf + bw, by + bh)
-        drawModalButton(canvas, confirmCancelRect, "CANCEL", cCyan)
-        drawModalButton(canvas, confirmYesRect, "YES", cRed)
+        if (confirmDone) {
+            // 完了：中央にOKボタン1つ
+            val okw = pw * 0.42f
+            confirmOkRect = RectF(px + (pw - okw) / 2f, by, px + (pw + okw) / 2f, by + bh)
+            drawModalButton(canvas, confirmOkRect, "OK", cGreen)
+        } else {
+            // YES / CANCEL ボタン
+            val bw = pw * 0.38f
+            val gapHalf = pw * 0.04f
+            confirmCancelRect = RectF(px + pw * 0.5f - gapHalf - bw, by, px + pw * 0.5f - gapHalf, by + bh)
+            confirmYesRect = RectF(px + pw * 0.5f + gapHalf, by, px + pw * 0.5f + gapHalf + bw, by + bh)
+            drawModalButton(canvas, confirmCancelRect, "CANCEL", cCyan)
+            drawModalButton(canvas, confirmYesRect, "YES", cRed)
+        }
     }
 
     /** モーダル内ボタン（枠内中央にラベル）。 */

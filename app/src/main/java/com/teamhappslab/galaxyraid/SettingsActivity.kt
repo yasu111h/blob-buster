@@ -20,9 +20,7 @@ class SettingsActivity : AppCompatActivity() {
             setResult(Activity.RESULT_OK)
         }
         settingsView.onResetBossProgress = {
-            android.widget.Toast.makeText(
-                this, "Boss mode progress reset", android.widget.Toast.LENGTH_SHORT
-            ).show()
+            // 完了表示はアプリ内モーダルで行う（OSのトーストは出さない）
         }
         setContentView(settingsView)
 
