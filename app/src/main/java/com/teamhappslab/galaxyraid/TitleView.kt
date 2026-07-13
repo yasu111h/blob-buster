@@ -49,8 +49,9 @@ class TitleView(context: Context) : View(context) {
     private val titleTypeface: Typeface = UiKit.loadSaira(context, 800)
     private val uiTypeface: Typeface = UiKit.loadSaira(context, 600)
 
-    // 共通の宇宙背景（背景色＋星雲＋多層星）
-    private val space = SpaceBackground()
+    // ホーム背景（地球の写真）。最背面に敷き、上に薄い暗幕を重ねて文字の可読性を確保する。
+    private var bgScaled: Bitmap? = null
+    private val scrimPaint = Paint()
 
     private var storyButtonRect    = RectF()
     private var endlessButtonRect  = RectF()
@@ -159,8 +160,26 @@ class TitleView(context: Context) : View(context) {
 
         ringCx = w / 2f
 
-        // 共通の宇宙背景を構築（背景色＋星雲＋多層星）
-        space.configure(w, h, 99L)
+        // ホーム背景（地球写真）を画面サイズにカバー配置（縦横比維持・はみ出しは中央クロップ）で
+        // スケールして用意する。毎フレームの拡縮を避けるため1回だけ作る。
+        val opts = BitmapFactory.Options().apply { inScaled = false }
+        val src = BitmapFactory.decodeResource(resources, R.drawable.title_bg, opts)
+        bgScaled?.recycle()
+        bgScaled = if (src != null) buildCoverBitmap(src, w, h).also { src.recycle() } else null
+
+        // 文字を読みやすくする薄い暗幕（縦グラデ）。上部の銀河は見せ、日の出直下（サブコピー帯）と
+        // 下端（ボタン）だけ少し落とす。alphaを上げるほど背景が暗く＝主張が弱くなる（調整用ノブ）。
+        scrimPaint.shader = LinearGradient(
+            0f, 0f, 0f, h.toFloat(),
+            intArrayOf(
+                Color.argb(60, 3, 7, 18),   // 上端
+                Color.argb(30, 3, 7, 18),   // 上部：銀河を見せる（最も薄い）
+                Color.argb(85, 3, 7, 18),   // 中央：サブコピー帯の可読性
+                Color.argb(55, 3, 7, 18),   // 下部：スコア/ボタン域（各UIに自前の下地あり）
+                Color.argb(110, 3, 7, 18)   // 下端：ボタン・バージョンを引き締める
+            ),
+            floatArrayOf(0f, 0.30f, 0.46f, 0.70f, 1f), Shader.TileMode.CLAMP
+        )
 
         // メタリックなタイトル塗り（上＝明るい→中央ハイライト→下＝濃いブルー）
         titlePaint.shader = LinearGradient(
@@ -196,8 +215,11 @@ class TitleView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         if (screenW == 0f) return
 
-        // 背景（共通の宇宙背景：背景色＋星雲＋多層星）
-        space.draw(canvas, animTick)
+        // 背景（地球の写真＋可読性のための薄い暗幕）。未取得時は従来の単色でフォールバック。
+        val bg = bgScaled
+        if (bg != null) canvas.drawBitmap(bg, 0f, 0f, null)
+        else canvas.drawColor(Color.parseColor("#080E1A"))
+        canvas.drawRect(0f, 0f, screenW, screenH, scrimPaint)
 
         // 主役の星（十字フレア）
         val heroX = ringCx
@@ -277,6 +299,19 @@ class TitleView(context: Context) : View(context) {
         lineTo(r.left, r.bottom - cut)
         lineTo(r.left, r.top + cut)
         close()
+    }
+
+    /** srcを dstW×dstH にカバー配置（縦横比維持・はみ出しは中央クロップ）でスケールした不透明ビットマップを返す。 */
+    private fun buildCoverBitmap(src: Bitmap, dstW: Int, dstH: Int): Bitmap {
+        val out = Bitmap.createBitmap(dstW, dstH, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val scale = maxOf(dstW.toFloat() / src.width, dstH.toFloat() / src.height)
+        val sw = src.width * scale
+        val sh = src.height * scale
+        val left = (dstW - sw) / 2f
+        val top = (dstH - sh) / 2f
+        c.drawBitmap(src, null, RectF(left, top, left + sw, top + sh), Paint(Paint.FILTER_BITMAP_FLAG))
+        return out
     }
 
     private fun drawButton(canvas: Canvas, rect: RectF, label: String, icon: String?, accent: Int, phaseOffset: Float) {
