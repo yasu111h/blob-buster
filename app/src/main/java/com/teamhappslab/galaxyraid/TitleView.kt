@@ -6,7 +6,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
 import android.view.View
-import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -67,22 +66,8 @@ class TitleView(context: Context) : View(context) {
     private var titleTopY = 0f
     private var titleBotY = 0f
     private var ringCx = 0f
-    private var ringCy = 0f
-    private var ringR = 0f
 
     // Paints
-    private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 1.4f
-        color = Color.argb(40, 120, 200, 255)
-        pathEffect = DashPathEffect(floatArrayOf(6f, 14f), 0f)
-    }
-    private val ringTickPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 2.2f
-        strokeCap = Paint.Cap.ROUND
-        color = Color.argb(110, 140, 215, 255)
-    }
     private val heroStarPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val heroGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
@@ -173,8 +158,6 @@ class TitleView(context: Context) : View(context) {
         titleBotY   = raidBaseY + raidSize * 0.06f
 
         ringCx = w / 2f
-        ringCy = (titleTopY + titleBotY) / 2f
-        ringR  = w * 0.46f
 
         // 共通の宇宙背景を構築（背景色＋星雲＋多層星）
         space.configure(w, h, 99L)
@@ -215,25 +198,6 @@ class TitleView(context: Context) : View(context) {
 
         // 背景（共通の宇宙背景：背景色＋星雲＋多層星）
         space.draw(canvas, animTick)
-
-        // HUDリング
-        canvas.drawCircle(ringCx, ringCy, ringR, ringPaint)
-        // 左右のブラケット目盛り
-        for (side in listOf(-1f, 1f)) {
-            val bx = ringCx + side * ringR
-            canvas.drawLine(bx, ringCy - ringR * 0.10f, bx, ringCy + ringR * 0.10f, ringTickPaint)
-            canvas.drawLine(bx - side * ringR * 0.05f, ringCy - ringR * 0.10f, bx, ringCy - ringR * 0.10f, ringTickPaint)
-            canvas.drawLine(bx - side * ringR * 0.05f, ringCy + ringR * 0.10f, bx, ringCy + ringR * 0.10f, ringTickPaint)
-        }
-        // 上部の短いセグメント目盛り
-        for (k in -2..2) {
-            val ang = (-90f + k * 16f) * Math.PI.toFloat() / 180f
-            val r0 = ringR + 4f; val r1 = ringR + 12f
-            canvas.drawLine(
-                ringCx + cos(ang) * r0, ringCy + sin(ang) * r0,
-                ringCx + cos(ang) * r1, ringCy + sin(ang) * r1, ringTickPaint
-            )
-        }
 
         // 主役の星（十字フレア）
         val heroX = ringCx
