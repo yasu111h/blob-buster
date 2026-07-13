@@ -493,16 +493,16 @@ class GameView(
         // 1ピクセルあたりのスケール（画面幅基準で星サイズを端末非依存に）
         val px = screenWidth / 1080f
 
-        // 遠景：小さく暗い青白・ゆっくり
-        repeat(70) {
+        // 遠景：小さく暗い青白・ゆっくり（縦棒を減らした補填で70→76に微増）
+        repeat(76) {
             stars.add(makeStar(rng, area,
                 rMin = 0.6f * px, rMax = 1.2f * px,
                 speedMin = 0.20f, speedMax = 0.38f,
                 alphaMin = 35, alphaMax = 85,
                 color = Color.rgb(180, 200, 230), glow = false, twinkleChance = 0.15f))
         }
-        // 中景：青白・少しシアン寄り
-        repeat(38) {
+        // 中景：青白・少しシアン寄り（縦棒を減らした補填で38→41に微増）
+        repeat(41) {
             stars.add(makeStar(rng, area,
                 rMin = 1.0f * px, rMax = 1.9f * px,
                 speedMin = 0.5f, speedMax = 0.85f,
@@ -528,9 +528,10 @@ class GameView(
                 color = accentColors[rng.nextInt(accentColors.size)], glow = true, twinkleChance = 0.5f))
         }
 
-        // 近景スターストリーク（縦の光線）
+        // 近景スターストリーク（縦の光線）。頻度を10→6にやや減らし、
+        // 減らした分は目立たない奥の星（遠景・中景）を少し増やして密度感を補う。
         streaks.clear()
-        repeat(10) {
+        repeat(6) {
             streaks.add(Streak(
                 x = rng.nextFloat() * screenWidth,
                 baseY = rng.nextFloat() * area,
