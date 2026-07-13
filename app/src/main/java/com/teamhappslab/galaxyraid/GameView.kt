@@ -1112,6 +1112,11 @@ class GameView(
         if (isStoryMode && !bossSpawned && blobManager.level >= bossTriggerLevel) {
             // 通常敵の新規出現を停止
             blobManager.spawningEnabled = false
+            // まだ十分に画面へ入っていない（＝当たり判定スキップ域 cy<radius＝撃てない／画面上端の外）の
+            // 雑魚を毎フレーム除去する。ボス到達"前"のレベルで画面上端の外へ正規スポーン済みだった敵が、
+            // 新規出現停止後もそのまま無条件降下し、表示中の敵を倒し切った後にゆっくり降りてきて
+            // 「もう1匹現れる」症状の原因になっていた。表示中で撃てる敵(cy>=radius)は残し通常通り倒させる。
+            blobManager.blobs.removeAll { it.cy < it.radius }
             if (bossWaitTimer < GameConfig.BOSS_WAIT_MAX_FRAMES) bossWaitTimer++
             // 表示中の敵を全滅させたら（または待機上限を超えたら）回復ディレイを開始
             val enemiesCleared = blobManager.blobs.isEmpty() || bossWaitTimer >= GameConfig.BOSS_WAIT_MAX_FRAMES
