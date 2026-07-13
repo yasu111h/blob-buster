@@ -52,6 +52,8 @@ class TitleView(context: Context) : View(context) {
     // ホーム背景（地球の写真）。最背面に敷き、上に薄い暗幕を重ねて文字の可読性を確保する。
     private var bgScaled: Bitmap? = null
     private val scrimPaint = Paint()
+    // 背景写真の「空の部分（地球より上）」だけに薄く重ねる動く星。惑星の上には出さない。
+    private val starField = StarField()
 
     private var storyButtonRect    = RectF()
     private var endlessButtonRect  = RectF()
@@ -181,6 +183,9 @@ class TitleView(context: Context) : View(context) {
             floatArrayOf(0f, 0.30f, 0.46f, 0.70f, 1f), Shader.TileMode.CLAMP
         )
 
+        // 動く星を生成。地球の空（上部35%）だけに配置し、地平線手前で自然にフェードさせる
+        starField.configure(w, h, 7L, 0.35f)
+
         // メタリックなタイトル塗り（上＝明るい→中央ハイライト→下＝濃いブルー）
         titlePaint.shader = LinearGradient(
             0f, titleTopY, 0f, titleBotY,
@@ -220,6 +225,8 @@ class TitleView(context: Context) : View(context) {
         if (bg != null) canvas.drawBitmap(bg, 0f, 0f, null)
         else canvas.drawColor(Color.parseColor("#080E1A"))
         canvas.drawRect(0f, 0f, screenW, screenH, scrimPaint)
+        // 空（地球より上）にだけ動く星を薄く重ねる
+        starField.draw(canvas, animTick)
 
         // 主役の星（十字フレア）
         val heroX = ringCx
