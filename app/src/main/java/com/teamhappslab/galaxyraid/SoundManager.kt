@@ -29,6 +29,9 @@ class SoundManager {
 
     // ── SFXプール ──────────────────────────────────────────────────
     @Volatile private var sfxReady = false
+    // プール初期化スレッドを起動済みか。これで「一度だけ」生成を保証し、
+    // リトライのたびにAudioTrackを18本ずつ作り直して枯渇→クラッシュするのを防ぐ。
+    @Volatile private var sfxInitStarted = false
     private val killPool   = arrayOfNulls<AudioTrack>(12)
     private val damagePool = arrayOfNulls<AudioTrack>(3)
     private val itemPool   = arrayOfNulls<AudioTrack>(3)
@@ -102,6 +105,25 @@ class SoundManager {
         return track
     }
 
+    /**
+     * SFXプール（AudioTrack計18本）をバックグラウンドで初回のみ生成する。
+     * sfxInitStarted で二重起動を防ぐため、startBgm/restartBgmから何度呼んでも安全。
+     * 生成に失敗しても（AudioTrack上限到達など）例外を握り潰し、無音で続行する。
+     */
+    private fun ensureSfxPool() {
+        if (sfxInitStarted) return
+        sfxInitStarted = true
+        Thread {
+            try {
+                val kb = genKillBuf(); val db = genDamageBuf(); val ib = genItemBuf()
+                for (i in killPool.indices)   killPool[i]   = makeStaticTrack(kb)
+                for (i in damagePool.indices) damagePool[i] = makeStaticTrack(db)
+                for (i in itemPool.indices)   itemPool[i]   = makeStaticTrack(ib)
+                sfxReady = true
+            } catch (_: Exception) { /* SFX生成失敗時は無音で続行 */ }
+        }.apply { isDaemon = true; start() }
+    }
+
     private fun playFromPool(pool: Array<AudioTrack?>, idxRef: IntArray): Boolean {
         if (!sfxReady) return false
         val idx = idxRef[0] % pool.size
@@ -132,14 +154,8 @@ class SoundManager {
         if (bgmRunning) return
         bgmRunning = true
 
-        // SFXプールをバックグラウンドスレッドで初期化（UIをブロックしない）
-        Thread {
-            val kb = genKillBuf(); val db = genDamageBuf(); val ib = genItemBuf()
-            for (i in killPool.indices)   killPool[i]   = makeStaticTrack(kb)
-            for (i in damagePool.indices) damagePool[i] = makeStaticTrack(db)
-            for (i in itemPool.indices)   itemPool[i]   = makeStaticTrack(ib)
-            sfxReady = true
-        }.apply { isDaemon = true; start() }
+        // SFXプールをバックグラウンドスレッドで初期化（UIをブロックしない・初回のみ）
+        ensureSfxPool()
 
         // BGM: MediaPlayer で MP3再生（bgmEnabledがtrueのときのみ）
         if (bgmEnabled) {
@@ -155,42 +171,32 @@ class SoundManager {
 
     /** リトライ時など: BGMを先頭から0.5秒後に再生する */
     fun restartBgm(context: Context) {
-        if (!bgmRunning || mediaPlayer == null) {
-            // 初回: MediaPlayer生成後に0.5秒待って再生
-            bgmRunning = true
-            Thread {
-                val kb = genKillBuf(); val db = genDamageBuf(); val ib = genItemBuf()
-                for (i in killPool.indices)   killPool[i]   = makeStaticTrack(kb)
-                for (i in damagePool.indices) damagePool[i] = makeStaticTrack(db)
-                for (i in itemPool.indices)   itemPool[i]   = makeStaticTrack(ib)
-                sfxReady = true
-            }.apply { isDaemon = true; start() }
-            if (bgmEnabled) {
-                try {
-                    mediaPlayer = MediaPlayer.create(context, R.raw.bgm)?.apply {
-                        isLooping = true
-                        setVolume(1.0f, 1.0f)
-                    }
-                    Thread {
-                        Thread.sleep(500)
-                        if (!bgmUserPaused && !bgmActivityPaused) {
-                            try { mediaPlayer?.start() } catch (_: Exception) {}
-                        }
-                    }.apply { isDaemon = true; start() }
-                } catch (_: Exception) {}
-            }
+        // SFXプールは初回のみ生成（sfxInitStartedでガード）。
+        // 以前は「mediaPlayer==null」を初回条件にしていたため、BGM設定OFFのユーザーは
+        // リトライのたびにAudioTrackを18本ずつ作り直し、旧トラックを解放せず枯渇→クラッシュしていた。
+        ensureSfxPool()
+        bgmRunning = true
+        bgmUserPaused = false
+        if (!bgmEnabled) return
+
+        // MediaPlayerは未生成なら作り、生成済みなら頭出しだけ行う（再生成しない）。
+        if (mediaPlayer == null) {
+            try {
+                mediaPlayer = MediaPlayer.create(context, R.raw.bgm)?.apply {
+                    isLooping = true
+                    setVolume(1.0f, 1.0f)
+                }
+            } catch (_: Exception) { /* BGM失敗しても続行 */ }
         } else {
-            bgmUserPaused = false
-            if (bgmEnabled) {
-                try { mediaPlayer?.seekTo(0) } catch (_: Exception) {}
-                Thread {
-                    Thread.sleep(500)
-                    if (!bgmUserPaused && !bgmActivityPaused) {
-                        try { mediaPlayer?.start() } catch (_: Exception) {}
-                    }
-                }.apply { isDaemon = true; start() }
-            }
+            try { mediaPlayer?.seekTo(0) } catch (_: Exception) {}
         }
+        // 0.5秒後に再生（その間にポーズ/画面クローズされたら鳴らさない）
+        Thread {
+            Thread.sleep(500)
+            if (!bgmUserPaused && !bgmActivityPaused) {
+                try { mediaPlayer?.start() } catch (_: Exception) {}
+            }
+        }.apply { isDaemon = true; start() }
     }
 
     /**
@@ -248,6 +254,7 @@ class SoundManager {
         clearPlayer = null
         bgmRunning = false
         sfxReady = false
+        sfxInitStarted = false  // 次回のstart/restartでプールを作り直せるように戻す
         for (pool in arrayOf(killPool, damagePool, itemPool)) {
             for (t in pool) { try { t?.stop(); t?.release() } catch (_: Exception) {} }
         }

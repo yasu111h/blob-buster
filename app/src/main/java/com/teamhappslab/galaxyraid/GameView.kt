@@ -30,11 +30,22 @@ class GameView(
 ) : SurfaceView(context), SurfaceHolder.Callback {
 
     companion object {
-        /** デバッグモード：false にするとデバッグボタン・パネルが完全無効化される（リリース用） */
-        const val DEBUG_MODE = true
+        /**
+         * デバッグモード：デバッグボタン・パネルの有効/無効。
+         * BuildConfig.DEBUG に連動させ、debugビルド(=手元の実機テスト)ではtrue、
+         * リリースビルド(=Google Play配信版)では自動的にfalseになる。
+         * これにより公開版で一般ユーザーがデバッグパネル(無敵・レベル操作等)を開けなくなる。
+         */
+        val DEBUG_MODE = BuildConfig.DEBUG
     }
 
     private var gameThread: GameThread? = null
+
+    // リトライ要求フラグ。GAME_OVER画面のRetryはUIスレッドで押されるが、
+    // リセット処理(initGame)を直接呼ぶと、描画中のGameThreadと弾リスト等の操作が競合して
+    // ConcurrentModificationExceptionで落ちる。そこでUIスレッドはこのフラグを立てるだけにし、
+    // 実際のリセットはGameThreadのupdate()冒頭で行う（リスト操作を1スレッドに統一）。
+    @Volatile private var pendingReset = false
 
     // マルチタッチ管理
     private var dragPointerId: Int = -1   // プレイヤー移動用の指
@@ -907,7 +918,7 @@ class GameView(
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
                     if (gameOverTapDelayTimer <= 0) {
                         when {
-                            armedBtn == OverlayBtn.GAMEOVER_RETRY && gameOverRetryBtnRect.contains(tx, ty) -> initGame()
+                            armedBtn == OverlayBtn.GAMEOVER_RETRY && gameOverRetryBtnRect.contains(tx, ty) -> pendingReset = true
                             armedBtn == OverlayBtn.GAMEOVER_HOME && gameOverHomeBtnRect.contains(tx, ty)  -> onGoTitle?.invoke()
                         }
                     }
@@ -990,6 +1001,12 @@ class GameView(
     }
 
     fun update() {
+        // リトライ要求の処理（GameThread上で実行＝リスト操作の競合を回避）
+        if (pendingReset) {
+            pendingReset = false
+            initGame()
+            return
+        }
         if (gameState == GameState.CLEAR) {
             clearAnimFrame++
             if (clearTapDelayTimer > 0) clearTapDelayTimer--
@@ -1361,8 +1378,16 @@ class GameView(
         val canvas: Canvas = holder.lockCanvas() ?: return
         try {
             drawInternal(canvas, alpha)
+        } catch (e: Exception) {
+            // 描画中の例外でゲームスレッド(=アプリ)を巻き込んで落とさない
         } finally {
-            holder.unlockCanvasAndPost(canvas)
+            // surface破棄と描画が競合するとunlockが例外を投げることがある。
+            // ここで握り潰さないとGameThread上のuncaught例外でアプリごとクラッシュする。
+            try {
+                holder.unlockCanvasAndPost(canvas)
+            } catch (e: Exception) {
+                // 次フレームで再取得するので無視
+            }
         }
     }
 

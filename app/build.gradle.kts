@@ -12,6 +12,11 @@ android {
         versionCode = 4
         versionName = "1.2"
     }
+    buildFeatures {
+        // BuildConfig.DEBUG を参照するために必要（AGP 8以降はデフォルト無効）。
+        // これで DEBUG_MODE をビルド種別に自動連動させ、リリース版でデバッグ機能を封じる。
+        buildConfig = true
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
