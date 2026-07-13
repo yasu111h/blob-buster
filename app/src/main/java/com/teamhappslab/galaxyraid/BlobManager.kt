@@ -88,6 +88,11 @@ class BlobManager(
         // ボス戦準備〜ボス戦中は新規出現しない
         if (!spawningEnabled) return
 
+        // ボス出現レベルに到達したら新規出現を止める（ストーリーモードのみ）。
+        // GameView側のspawningEnabled切替はblobManager.update()の"後"に走るため、
+        // レベルがボス到達フレームで先にここのスポーンが1体だけ湧いてしまうのを防ぐ。
+        stage?.let { if (level >= it.bossTriggerLevel) return }
+
         // 予算蓄積
         if (blobs.size < maxBlobs) {
             spawnBudget += budgetPerFrame
