@@ -358,6 +358,12 @@ class GameView(
     private val heartPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FF2EA6")  // 鮮やかなピンク（「HP」文字とハート共通）
     }
+    // HUD文字列のキャッシュ（毎フレームの String.format / "♥".repeat / Rect生成を避けてGCゴミを減らす）
+    private var cachedScoreValue: Int = Int.MIN_VALUE
+    private var cachedScoreText: String = ""
+    private var cachedHp: Int = Int.MIN_VALUE
+    private var cachedHeartText: String = ""
+    private val heartBoundsReuse = Rect()
     private val roundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFD740")  // ネオンゴールド
         isFakeBoldText = true
@@ -1519,18 +1525,26 @@ class GameView(
 
         // 段1左（水色）: SCORE ＋ LEVEL
         scorePaint.textSize = baseSize
-        val scoreText = "SCORE  ${"%,d".format(scoreManager.score)}"
+        if (scoreManager.score != cachedScoreValue) {
+            cachedScoreValue = scoreManager.score
+            cachedScoreText = "SCORE  ${"%,d".format(cachedScoreValue)}"
+        }
+        val scoreText = cachedScoreText
         canvas.drawText(scoreText, marginX, row1Y, scorePaint)
         val lvLabel = "Lv ${blobManager.level}"
         val lvX = marginX + scorePaint.measureText(scoreText) + screenWidth * 0.05f
         canvas.drawText(lvLabel, lvX, row1Y, scorePaint)
 
         // 段1右: HP（ピンクのハート・右寄せ）
-        val heartText = "HP  " + "♥".repeat(hp.coerceAtLeast(0))
+        val hpForDraw = hp.coerceAtLeast(0)
+        if (hpForDraw != cachedHp) {
+            cachedHp = hpForDraw
+            cachedHeartText = "HP  " + "♥".repeat(hpForDraw)
+        }
+        val heartText = cachedHeartText
         heartPaint.textSize = baseSize
-        val heartBounds = Rect()
-        heartPaint.getTextBounds(heartText, 0, heartText.length, heartBounds)
-        canvas.drawText(heartText, screenWidth - heartBounds.width() - marginX, row1Y, heartPaint)
+        heartPaint.getTextBounds(heartText, 0, heartText.length, heartBoundsReuse)
+        canvas.drawText(heartText, screenWidth - heartBoundsReuse.width() - marginX, row1Y, heartPaint)
 
         // 段2（下・小さめ）: モード名。ホーム画面のボタン色に合わせる（BOSS=赤 / ENDLESS=紫）
         levelPaint.textSize = subSize

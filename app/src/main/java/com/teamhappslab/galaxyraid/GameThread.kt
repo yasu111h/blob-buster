@@ -29,9 +29,15 @@ class GameThread(private val gameView: GameView) : Thread() {
          * 1ループでまとめて進められる最大遅れ時間（ナノ秒）。
          * 一瞬大きく処理落ちしても、ここで上限を切ることで
          * update()を一度に何十回も呼ぶ「暴走（spiral of death）」を防ぐ。
-         * 上限を超える極端な処理落ち時のみ、わずかにスロー寄りになる。
+         *
+         * ★×5→×2に縮小（2026-07-13）: 1回のupdate()自体が重くなる起動直後は、
+         *   ×5だと1描画あたりupdate()を最大5回まわし、描画の合間に弾が5ステップ進む一方で
+         *   補間(alpha)は直前1ステップ分しか埋めないため、弾が飛び飛び＝「静止して見える」ほど
+         *   カクついていた。×2なら1描画あたりupdate()は最大2回に制限され、描画テンポの崩壊と
+         *   補間破綻を大幅に抑えられる。トレードオフは、上限を超える極端な処理落ちが続く間だけ
+         *   ゲームがわずかにスロー寄りになること（フリーズ表示より体感は良い）。
          */
-        val MAX_FRAME_NS = STEP_NS * 5
+        val MAX_FRAME_NS = STEP_NS * 2
     }
 
     /**
@@ -45,6 +51,12 @@ class GameThread(private val gameView: GameView) : Thread() {
      * 固定刻みで複数回呼ぶ。描画が遅れても進行速度は実時間に対して一定になる。
      */
     override fun run() {
+        // ★ゲームループのスレッド優先度を上げる（2026-07-13）。
+        //   起動直後は画面生成・画像デコード・JITコンパイル・他アプリ復帰でCPUが混雑し、
+        //   既定優先度のままだとこの数秒間ゲームスレッドが十分なCPU時間をもらえず飢餓して激重になる。
+        //   低バッテリー/省電力でCPUクロックが絞られている時ほど効く。描画スレッド相当の優先度にする。
+        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DISPLAY)
+
         var lastTime = System.nanoTime()
         var accumulator = 0L
 
