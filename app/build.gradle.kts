@@ -13,8 +13,8 @@ android {
         // API 28 からGPU描画で正式サポートされるため、下限を上げて根本解決する。
         minSdk = 28
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.2"
+        versionCode = 5
+        versionName = "2.0"
     }
     buildFeatures {
         // BuildConfig.DEBUG を参照するために必要（AGP 8以降はデフォルト無効）。
