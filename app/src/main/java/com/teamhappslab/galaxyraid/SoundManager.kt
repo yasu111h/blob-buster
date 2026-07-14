@@ -5,6 +5,8 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -45,6 +47,17 @@ class SoundManager {
     @Volatile private var bgmActivityPaused = false
     private var mediaPlayer: MediaPlayer? = null
     private var clearPlayer: MediaPlayer? = null  // クリアジングル用
+
+    // このSoundManagerが破棄済みか。生成中のSFXプールスレッドや遅延再生から参照し、
+    // release後に新しいAudioTrack/再生が湧いてリークするのを防ぐ。
+    @Volatile private var released = false
+
+    // BGM遅延再生用（旧実装は使い捨てThread+sleepでキャンセル不能だった）。
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var bgmStartRunnable: Runnable? = null
+
+    // bgm_clear のリソースID（getIdentifierは重いので初回だけ引く。0=音源なし、-1=未取得）
+    private var clearResIdCache: Int = -1
 
     // ── SE バッファ生成 ────────────────────────────────────────────
 
@@ -111,7 +124,7 @@ class SoundManager {
      * 生成に失敗しても（AudioTrack上限到達など）例外を握り潰し、無音で続行する。
      */
     private fun ensureSfxPool() {
-        if (sfxInitStarted) return
+        if (sfxInitStarted || released) return
         sfxInitStarted = true
         Thread {
             try {
@@ -119,9 +132,26 @@ class SoundManager {
                 for (i in killPool.indices)   killPool[i]   = makeStaticTrack(kb)
                 for (i in damagePool.indices) damagePool[i] = makeStaticTrack(db)
                 for (i in itemPool.indices)   itemPool[i]   = makeStaticTrack(ib)
-                sfxReady = true
+                if (released) {
+                    // 生成中に画面が閉じられた（release済み）。このままだと18本が
+                    // 誰にも解放されずネイティブメモリに残り、繰り返すとAudioTrackの
+                    // システム上限に達して端末再起動までSEが全て無音になる。自分で始末する。
+                    releaseAllTracks()
+                } else {
+                    sfxReady = true
+                }
             } catch (_: Exception) { /* SFX生成失敗時は無音で続行 */ }
         }.apply { isDaemon = true; start() }
+    }
+
+    /** SFXプールのAudioTrackを全て停止・解放して参照を切る。 */
+    private fun releaseAllTracks() {
+        for (pool in arrayOf(killPool, damagePool, itemPool)) {
+            for (i in pool.indices) {
+                try { pool[i]?.stop(); pool[i]?.release() } catch (_: Exception) {}
+                pool[i] = null
+            }
+        }
     }
 
     private fun playFromPool(pool: Array<AudioTrack?>, idxRef: IntArray): Boolean {
@@ -190,13 +220,28 @@ class SoundManager {
         } else {
             try { mediaPlayer?.seekTo(0) } catch (_: Exception) {}
         }
-        // 0.5秒後に再生（その間にポーズ/画面クローズされたら鳴らさない）
-        Thread {
-            Thread.sleep(500)
-            if (!bgmUserPaused && !bgmActivityPaused) {
+        // 0.5秒後に再生。旧実装は使い捨てThread+sleepでキャンセルできず、
+        // 「Retry直後にホームへ戻る」とpause済みのBGMを後から再生してしまい、
+        // バックグラウンドで鳴り続けていた。Handlerにしてpause/release時に取り消す。
+        scheduleBgmStart()
+    }
+
+    /** 0.5秒後のBGM再生を予約する（既存の予約はキャンセル）。 */
+    private fun scheduleBgmStart() {
+        cancelBgmStart()
+        val r = Runnable {
+            if (!bgmUserPaused && !bgmActivityPaused && !released && bgmEnabled) {
                 try { mediaPlayer?.start() } catch (_: Exception) {}
             }
-        }.apply { isDaemon = true; start() }
+        }
+        bgmStartRunnable = r
+        mainHandler.postDelayed(r, 500)
+    }
+
+    /** 予約済みのBGM遅延再生を取り消す。 */
+    private fun cancelBgmStart() {
+        bgmStartRunnable?.let { mainHandler.removeCallbacks(it) }
+        bgmStartRunnable = null
     }
 
     /**
@@ -206,31 +251,57 @@ class SoundManager {
      * 無ければアイテム取得音を3回連続再生してファンファーレ風に代用する。
      */
     fun playClearJingle(context: Context) {
-        try {
-            val resId = context.resources.getIdentifier("bgm_clear", "raw", context.packageName)
-            if (resId != 0 && bgmEnabled) {
-                try { clearPlayer?.release() } catch (_: Exception) {}
-                clearPlayer = MediaPlayer.create(context, resId)?.apply {
-                    isLooping = false
-                    setVolume(1.0f, 1.0f)
-                    start()
+        // この関数はGameThreadから呼ばれる（クリア判定時）。MediaPlayer.createは
+        // ファイルを開いてprepareする同期処理で数十ms止まるため、そのまま実行すると
+        // クリア演出の出だしがカクつく。メインスレッドへ逃がして描画を止めない。
+        val appCtx = context.applicationContext
+        mainHandler.post {
+            if (released) return@post
+            try {
+                if (clearResIdCache < 0) {
+                    clearResIdCache = try {
+                        appCtx.resources.getIdentifier("bgm_clear", "raw", appCtx.packageName)
+                    } catch (_: Exception) { 0 }
                 }
-                if (clearPlayer != null) return
+                val resId = clearResIdCache
+                if (resId != 0 && bgmEnabled) {
+                    try { clearPlayer?.release() } catch (_: Exception) {}
+                    clearPlayer = null
+                    val mp = MediaPlayer.create(appCtx, resId)
+                    if (mp != null) {
+                        mp.isLooping = false
+                        mp.setVolume(1.0f, 1.0f)
+                        // 再生し終えたら自分で解放する（旧実装は次のジングルかonDestroyまで保持していた）
+                        mp.setOnCompletionListener { p ->
+                            try { p.release() } catch (_: Exception) {}
+                            if (clearPlayer === p) clearPlayer = null
+                        }
+                        clearPlayer = mp
+                        // アプリがバックグラウンドなら鳴らさない（ボス撃破直後にホームへ戻ると
+                        // 裏でジングルが流れてしまうため）
+                        if (!bgmActivityPaused && !released) {
+                            try { mp.start() } catch (_: Exception) {}
+                        }
+                        return@post
+                    }
+                }
+            } catch (_: Exception) { /* ジングル失敗しても続行 */ }
+            // 代用ファンファーレ: アイテム取得音（上昇スイープ）×3回
+            if (sfxEnabled && !released) {
+                Thread {
+                    repeat(3) {
+                        if (released) return@Thread
+                        playItemPickup()
+                        try { Thread.sleep(220) } catch (_: InterruptedException) { return@Thread }
+                    }
+                }.apply { isDaemon = true; start() }
             }
-        } catch (_: Exception) { /* ジングル失敗しても続行 */ }
-        // 代用ファンファーレ: アイテム取得音（上昇スイープ）×3回
-        if (sfxEnabled) {
-            Thread {
-                repeat(3) {
-                    playItemPickup()
-                    try { Thread.sleep(220) } catch (_: InterruptedException) {}
-                }
-            }.apply { isDaemon = true; start() }
         }
     }
 
     fun pauseBgmByUser() {
         bgmUserPaused = true
+        cancelBgmStart()   // 予約済みの遅延再生も取り消す
         try { mediaPlayer?.pause() } catch (_: Exception) {}
     }
     fun resumeBgmByUser() {
@@ -239,24 +310,32 @@ class SoundManager {
     }
     fun pauseBgmBySystem() {
         bgmActivityPaused = true
+        cancelBgmStart()   // バックグラウンドで後から鳴り出すのを防ぐ
         try { mediaPlayer?.pause() } catch (_: Exception) {}
         try { clearPlayer?.pause() } catch (_: Exception) {}
     }
     fun resumeBgmBySystem() {
         bgmActivityPaused = false
         if (bgmEnabled && !bgmUserPaused) try { mediaPlayer?.start() } catch (_: Exception) {}
+        // クリアジングルの途中で離席していた場合は続きから再開する
+        // （再生完了済みならOnCompletionListenerで解放済み=nullなので何もしない）
+        if (bgmEnabled) try { clearPlayer?.start() } catch (_: Exception) {}
     }
 
     fun release() {
+        // 先にreleasedを立てる。生成中のSFXプールスレッドや遅延再生・ジングル生成が
+        // これを見て自分で後始末する（release後に新しい資源が湧くのを防ぐ）。
+        released = true
+        cancelBgmStart()
         try { mediaPlayer?.stop(); mediaPlayer?.release() } catch (_: Exception) {}
         mediaPlayer = null
         try { clearPlayer?.stop(); clearPlayer?.release() } catch (_: Exception) {}
         clearPlayer = null
         bgmRunning = false
         sfxReady = false
-        sfxInitStarted = false  // 次回のstart/restartでプールを作り直せるように戻す
-        for (pool in arrayOf(killPool, damagePool, itemPool)) {
-            for (t in pool) { try { t?.stop(); t?.release() } catch (_: Exception) {} }
-        }
+        // sfxInitStarted は false に戻さない。SoundManagerはGameActivityごとに新規生成され
+        // release後に再利用されないため、戻すと生成中スレッドとの競合でプールが
+        // 作り直されてリークする危険だけが残る。
+        releaseAllTracks()
     }
 }

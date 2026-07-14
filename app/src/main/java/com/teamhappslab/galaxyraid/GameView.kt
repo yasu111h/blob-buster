@@ -304,7 +304,9 @@ class GameView(
     private var invincibleTimer: Int = 0
     private val invincibleDuration: Int = 90  // 1.5秒 @ 60fps
 
-    private var gameState: GameState = GameState.PLAYING
+    // UIスレッド（タッチ操作・pause()）とGameThread（update/draw）の両方から読み書きされるため
+    // @Volatileで変更を確実に見せる。
+    @Volatile private var gameState: GameState = GameState.PLAYING
     private var frameCount: Int = 0
     private var bgScrollY: Float = 0f
 
@@ -800,6 +802,22 @@ class GameView(
     }
 
     private fun startThread() {
+        // 前回のstopThread()でjoinしきれなかったスレッドが残っている場合は、
+        // 確実に止めてから起動する。2本のGameThreadが並走すると update/draw が
+        // 同時実行され、リスト操作の競合(CME)や二重lockCanvasでクラッシュする。
+        gameThread?.let { old ->
+            if (old.isAlive) {
+                old.isRunning = false
+                try {
+                    old.join(2000)
+                } catch (e: InterruptedException) {
+                    // 無視
+                }
+                // それでも止まらない異常時は起動を見送る（並走させるよりは安全）。
+                // 次の resume()/surfaceCreated() で再試行される。
+                if (old.isAlive) return
+            }
+        }
         gameThread = GameThread(this).also {
             it.isRunning = true
             it.start()
@@ -814,16 +832,29 @@ class GameView(
             } catch (e: InterruptedException) {
                 // 無視
             }
+            // joinがタイムアウトしても参照をnullにすると、旧スレッド生存のまま
+            // 次のstartThread()が2本目を起動してしまう。生きている間は参照を保持し、
+            // startThread()側で確実に止めてから起動させる。
+            if (it.isAlive) return
         }
         gameThread = null
     }
 
     fun pause() {
+        // Surfaceが破棄されない中断（着信オーバーレイ・マルチウィンドウのフォーカス喪失など）でも
+        // 確実に一時停止する。これがないと復帰した瞬間にゲームが動いており、いきなり被弾し得る。
+        if (gameState == GameState.PLAYING) {
+            gameState = GameState.PAUSED
+            soundManager.pauseBgmByUser()
+        }
         stopThread()
     }
 
     fun resume() {
-        if (gameThread == null && holder.surface.isValid) {
+        // 「gameThread == null」を条件にすると、stopThread()が停止しきれずに参照を
+        // 保持したケースで永久に再開できずフリーズする。起動可否の判断はstartThread()に
+        // 一元化する（生きていれば止めてから起動、既に死んでいればそのまま新規起動）。
+        if (holder.surface.isValid) {
             startThread()
         }
     }
@@ -831,6 +862,10 @@ class GameView(
     private val dragZoneTop get() = screenHeight * 0.75f  // 後方互換のため残す
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // ゲーム初期化(initGame)前のタッチを弾く。起動直後の連打で lateinit の
+        // player/blobManager を参照すると UninitializedPropertyAccessException で落ちる。
+        if (!::player.isInitialized || !::blobManager.isInitialized) return true
+
         // 一時停止ボタン（GAME_OVER以外で有効）
         if (event.actionMasked == MotionEvent.ACTION_UP &&
             pauseBtnRect.contains(event.x, event.y)) {

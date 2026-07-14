@@ -19,7 +19,17 @@ object MenuBgm {
         if (!AppPrefs.isBgmEnabled(app)) { pause(); return }
         if (mp == null) {
             mp = try {
-                MediaPlayer.create(app, R.raw.bgm_menu)?.apply { isLooping = true }
+                MediaPlayer.create(app, R.raw.bgm_menu)?.apply {
+                    isLooping = true
+                    // エラー時は破棄してnullに戻す。これがないと一度ERROR状態に落ちた
+                    // MediaPlayerを保持し続け、アプリを再起動するまでメニューBGMが
+                    // 永久に無音になる（次のresumeで作り直せるようにする）。
+                    setOnErrorListener { player, _, _ ->
+                        try { player.release() } catch (_: Exception) {}
+                        if (mp === player) mp = null
+                        true   // ハンドル済み（OnCompletionListenerを呼ばせない）
+                    }
+                }
             } catch (_: Exception) { null }
         }
         try { mp?.let { if (!it.isPlaying) it.start() } } catch (_: Exception) {}
