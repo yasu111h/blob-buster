@@ -339,6 +339,11 @@ class GameView(
     // ※毎フレームのグラデーション生成・拡大・半透明合成を避けるのが目的（SurfaceViewはCPU描画）。
     private var bgBitmap: Bitmap? = null
 
+    // surfaceCreatedで初期化を済ませた画面サイズ。同じサイズで再生成されたら
+    // 重い初期化（PNGデコード・背景Bitmap生成）をスキップするために使う。
+    private var initializedWidth = 0
+    private var initializedHeight = 0
+
     // グリッドライン（薄い）
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(18, 64, 160, 255)
@@ -430,6 +435,23 @@ class GameView(
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
+        // 【重要・パフォーマンス】同じ画面サイズでSurfaceが作り直された場合（ホームから復帰、
+        // アプリ切替からの復帰など）は、重い初期化を丸ごとスキップする。
+        // 従来は復帰のたびに敵PNG8枚＋自機＋ボス2枚（原寸1024x1536・計約20MB）のデコードと
+        // 全画面背景Bitmapの焼き直しを毎回やり直しており、メインスレッドが数百ms止まっていた。
+        // Bitmapはstatic(companion)保持で surfaceDestroyed では解放されないため、
+        // サイズが同じなら作り直す必要は一切ない。
+        if (width == initializedWidth && height == initializedHeight &&
+            bgBitmap != null && ::player.isInitialized) {
+            if (gameState == GameState.PLAYING) {
+                // 復帰時はリセットせず自動一時停止（従来どおり）
+                gameState = GameState.PAUSED
+                soundManager.pauseBgmByUser()
+            }
+            startThread()
+            return
+        }
+
         screenWidth = width
         screenHeight = height
 
@@ -653,6 +675,10 @@ class GameView(
 
         // アイテム取得オーラ
         powerUpAuraPaint.strokeWidth = screenWidth * 0.018f
+
+        // このサイズでの初期化が完了した。次回同じサイズで来たら冒頭でスキップされる。
+        initializedWidth = screenWidth
+        initializedHeight = screenHeight
 
         if (!::player.isInitialized) {
             // 初回のSurface生成時のみ新規ゲーム開始。
@@ -1421,6 +1447,15 @@ class GameView(
     /** ゲームが実際に進行中か（PLAYINGのみ）。停止中は補間を切って静止させるために使う。 */
     fun isSimulating(): Boolean = gameState == GameState.PLAYING
 
+    /**
+     * 画面が完全に静止しているか（＝描画レートを落としても見た目が変わらないか）。
+     * PAUSED / GAME_OVER は動く要素が一切ないのに、BlurMaskFilter付きの巨大文字を含む
+     * 全画面をCPUで毎秒60回描き直しており、端末が無駄に発熱する。
+     * CLEARは紙吹雪(clearCelebration)が動くため対象外。
+     */
+    fun isStaticScreen(): Boolean =
+        gameState == GameState.PAUSED || gameState == GameState.GAME_OVER
+
     fun draw(alpha: Float = 0f) {
         val canvas: Canvas = holder.lockCanvas() ?: return
         try {
@@ -1441,16 +1476,19 @@ class GameView(
     private fun drawInternal(canvas: Canvas, alpha: Float = 0f) {
         val area = screenHeight * 0.92f
 
-        // まずキャンバス全体を背景色で塗る（保険）。
-        // 画面サイズが後から変わっても screenHeight は surfaceChanged が空で更新されないため、
-        // bgBitmap（screenHeight高）より実キャンバスが高いと下端に塗り残し＝未初期化バッファの
-        // ゴミ（色付きの四角＝紙吹雪が溜まって見える現象）が残る。全面塗りで物理的に防ぐ。
-        canvas.drawColor(bgPaint.color)
-
-        // 背景（背景色＋星雲を焼いた不透明Bitmapを等倍で貼るだけ）。無ければ従来の単色塗り。
+        // 背景（背景色＋星雲を焼いた不透明Bitmapを等倍で貼るだけ）。
+        // bgBitmapが実キャンバス全体を覆うなら、その貼付だけで全画素が上書きされるため、
+        // 事前の全面塗り(drawColor)は完全に無駄になる（CPU描画では全画面塗り1回ぶんのコスト）。
+        // 覆いきれない場合のみ、下端の塗り残し（未初期化バッファのゴミ＝色付きの四角が
+        // 溜まって見える現象）を防ぐために全面塗りを行う。
         val bg = bgBitmap
-        if (bg != null) canvas.drawBitmap(bg, 0f, 0f, null)
-        else canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), bgPaint)
+        if (bg != null && bg.width >= canvas.width && bg.height >= canvas.height) {
+            canvas.drawBitmap(bg, 0f, 0f, null)
+        } else {
+            canvas.drawColor(bgPaint.color)
+            if (bg != null) canvas.drawBitmap(bg, 0f, 0f, null)
+            else canvas.drawRect(0f, 0f, screenWidth.toFloat(), screenHeight.toFloat(), bgPaint)
+        }
 
         // グリッドライン（下側ほど濃く・上に行くほど消える＝航路感）
         val gridSpacing = screenWidth * 0.12f
