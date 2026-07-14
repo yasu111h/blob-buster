@@ -20,10 +20,13 @@ class TitleView(context: Context) : View(context) {
     private var animTick = 0
     private val handler = Handler(Looper.getMainLooper())
     private val updateRunnable = object : Runnable {
+        // メニュー画面は30fpsで十分（星の流れ・明滅・ボタンの脈動しか動かない）。
+        // 60fps(16ms)で全画面Bitmap＋グロー描画を回し続けると、放置時の発熱・電池消費が
+        // 無駄に大きい。tickを2ずつ進めるのでアニメの速度は従来と変わらない。
         override fun run() {
-            animTick++
+            animTick += 2
             invalidate()
-            handler.postDelayed(this, 16L)
+            handler.postDelayed(this, 33L)
         }
     }
 
@@ -318,6 +321,10 @@ class TitleView(context: Context) : View(context) {
         val left = (dstW - sw) / 2f
         val top = (dstH - sh) / 2f
         c.drawBitmap(src, null, RectF(left, top, left + sw, top + sh), Paint(Paint.FILTER_BITMAP_FLAG))
+        // 全面不透明なので合成ではなくコピー扱いにして貼付を高速化。
+        // これがないと ARGB_8888 のまま毎フレーム全画面アルファブレンドされる
+        // （ホーム画面は常時再描画しているため、その分がまるごと無駄になる）。
+        out.setHasAlpha(false)
         return out
     }
 

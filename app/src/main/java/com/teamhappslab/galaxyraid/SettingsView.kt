@@ -24,7 +24,8 @@ class SettingsView(context: Context) : View(context) {
     private var animTick = 0
     private val handler = Handler(Looper.getMainLooper())
     private val updateRunnable = object : Runnable {
-        override fun run() { animTick++; invalidate(); handler.postDelayed(this, 16L) }
+        // 30fpsで再描画（tickは2ずつ進めるのでアニメ速度は従来どおり）。放置時の電池消費を半減。
+        override fun run() { animTick += 2; invalidate(); handler.postDelayed(this, 33L) }
     }
 
     private var screenW = 0f

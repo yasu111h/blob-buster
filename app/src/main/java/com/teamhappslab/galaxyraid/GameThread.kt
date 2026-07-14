@@ -87,8 +87,13 @@ class GameThread(private val gameView: GameView) : Thread() {
             gameView.draw(alpha)
 
             // 画面リフレッシュ(60fps)に合わせて寝る。これで描画回数を論理回数より多く保つ。
+            // ただし一時停止・ゲームオーバー中は画面が完全に静止しているので、60fpsで描き直す
+            // 意味がない（ブラー付き巨大文字を含む全画面のCPU描画が丸ごと無駄）。
+            // 30fpsに落として負荷を半減させる。見た目は静止画なので変わらず、
+            // 再開ボタンへの反応も最大33ms遅れるだけで体感できない。
+            val stepNs = if (gameView.isStaticScreen()) RENDER_STEP_NS * 2 else RENDER_STEP_NS
             val work = System.nanoTime() - frameStart
-            val sleepMs = (RENDER_STEP_NS - work) / 1_000_000L
+            val sleepMs = (stepNs - work) / 1_000_000L
             if (sleepMs > 1) {
                 try {
                     sleep(sleepMs)
