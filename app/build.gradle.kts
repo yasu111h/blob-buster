@@ -7,7 +7,11 @@ android {
     compileSdk = 35
     defaultConfig {
         applicationId = "com.teamhappslab.galaxyraid"
-        minSdk = 26
+        // Android 9 (API 28) 以上のみ対応。
+        // 理由: タイトル等の発光に使う BlurMaskFilter は、API 28 未満だとハードウェア
+        // アクセラレーション描画で非対応で、Android 8系ではタイトル文字が潰れて表示される。
+        // API 28 からGPU描画で正式サポートされるため、下限を上げて根本解決する。
+        minSdk = 28
         targetSdk = 35
         versionCode = 4
         versionName = "1.2"
