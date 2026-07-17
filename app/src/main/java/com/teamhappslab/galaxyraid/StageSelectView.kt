@@ -131,11 +131,13 @@ class StageSelectView(context: Context) : View(context) {
         backRect = RectF((w - bw) / 2f, h * 0.90f, (w + bw) / 2f, h * 0.90f + bh)
     }
 
-    private fun isUnlocked(stage: Int) = stage <= maxOf(2, clearedStage + 1)
+    private fun isUnlocked(stage: Int) =
+        AppPrefs.UNLOCK_ALL_STAGES || stage <= maxOf(2, clearedStage + 1)
     private fun isCleared(stage: Int) = stage <= clearedStage
 
     /** FINAL STAGE（最終ステージ）は直前のSTAGE5をクリアするまで表示しない。 */
-    private val finalStageUnlocked get() = clearedStage >= StageConfig.MAX_STAGE - 1
+    private val finalStageUnlocked get() =
+        AppPrefs.UNLOCK_ALL_STAGES || clearedStage >= StageConfig.MAX_STAGE - 1
     /** 画面に表示するステージ数（FINAL STAGEは解放後にのみ出現させる）。 */
     private val visibleStageCount get() = if (finalStageUnlocked) StageConfig.MAX_STAGE else StageConfig.MAX_STAGE - 1
 

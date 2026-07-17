@@ -5,6 +5,13 @@ import android.content.Context
 object AppPrefs {
     private const val PREFS = "blob_buster_prefs"
 
+    /**
+     * 全ステージ解放フラグ。BuildConfig.DEBUG に連動させ、debugビルド(=手元の実機テスト)では
+     * クリア状況に関係なく全ステージを選べる。リリースビルド(=Google Play配信版)では
+     * 自動的にfalseになり、通常どおりクリアしないと次のステージは解放されない。
+     */
+    val UNLOCK_ALL_STAGES = BuildConfig.DEBUG
+
     fun isBgmEnabled(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("bgm_enabled", true)
 
@@ -36,7 +43,7 @@ object AppPrefs {
 
     /** そのステージが解放済みか。Stage1・2は常に解放、以降は(クリア済み+1)まで解放。 */
     fun isStageUnlocked(context: Context, stage: Int): Boolean =
-        stage <= maxOf(2, getStoryClearedStage(context) + 1)
+        UNLOCK_ALL_STAGES || stage <= maxOf(2, getStoryClearedStage(context) + 1)
 
     /** ボスモード（ストーリー）の進捗をリセット。クリア済みステージを0に戻す。 */
     fun resetStoryProgress(context: Context) {
