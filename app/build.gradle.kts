@@ -22,6 +22,12 @@ android {
         buildConfig = true
     }
     buildTypes {
+        debug {
+            // リリース版（Google Play版）と別アプリ扱いにして同一端末に共存させる。
+            // 同じ applicationId のままだと上書きインストールになるため。
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
